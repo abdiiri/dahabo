@@ -10,9 +10,9 @@ export const Route = createFileRoute("/forgot-password")({
   head: () => ({
     meta: [
       { title: "Forgot Password | Dahabo Global Logistics" },
-      { name: "description", content: "Request a password reset link for your Dahabo portal account." },
+      { name: "description", content: "Request a password reset link for your Dahabo Global Logistics staff account." },
       { property: "og:title", content: "Forgot Password | Dahabo Global Logistics" },
-      { property: "og:description", content: "Request a password reset link for your Dahabo portal account." },
+      { property: "og:description", content: "Request a password reset link for your Dahabo Global Logistics staff account." },
     ],
   }),
   component: Page,
@@ -23,7 +23,7 @@ function Page() {
     <AuthLayout
       title="Reset your password"
       subtitle="We'll email you a secure reset link."
-      footer={<Link to="/login" className="font-semibold text-primary hover:text-gold">Back to sign in</Link>}
+      footer={<Link to="/staff-login" className="font-semibold text-primary hover:text-gold">Back to sign in</Link>}
     >
       <form className="grid gap-4">
         <div className="grid gap-2"><Label htmlFor="e">Email</Label><Input id="e" type="email" placeholder="you@company.com" /></div>

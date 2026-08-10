@@ -9,9 +9,9 @@ export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
       { title: "About Dahabo Global Logistics Ltd" },
-      { name: "description", content: "Our story, values, leadership and compliance credentials as a regional freight and warehousing operator." },
+      { name: "description", content: "Our story, values and what drives our raw material supply and transportation business in Nairobi." },
       { property: "og:title", content: "About Dahabo Global Logistics Ltd" },
-      { property: "og:description", content: "14 years moving freight across East Africa and the Horn." },
+      { property: "og:description", content: "Supplying raw materials and moving cargo across Kenya, with reliability at the core." },
     ],
   }),
   component: About,
@@ -37,23 +37,23 @@ function About() {
           <SectionHeading
             eyebrow="Our story"
             title="From four trucks to a regional network"
-            description="What began as a single Nairobi–Mombasa haulage route now spans six branches, five warehouses and a 46-vehicle fleet serving over 300 corporate customers."
+            description="From a single truck moving raw materials around Nairobi, we've grown into a dependable supplier and transporter serving builders, contractors and businesses across Kenya."
           />
           <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
-            We invest in operating discipline: standardised handling procedures, licensed clearing
-            agents, validated cold-chain equipment and a control tower that tracks every consignment
-            from booking to proof of delivery. Our customers include manufacturers, pharmaceutical
-            distributors, agricultural exporters and humanitarian agencies.
+            We invest in operating discipline: reliable sourcing, well-maintained trucks and
+            equipment, and a team that treats every delivery like it's the only one that matters.
+            Our customers include contractors, construction firms and businesses that need raw
+            materials and cargo moved without excuses.
           </p>
         </div>
       </div>
 
       <div className="mt-20 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
         {[
-          { icon: Target, t: "Mission", d: "Move our customers' goods safely, on time and with complete transparency." },
-          { icon: Compass, t: "Vision", d: "To be the most trusted logistics operator in the Horn of Africa." },
+          { icon: Target, t: "Mission", d: "Supply the materials and move the cargo our customers need — safely, on time and without excuses." },
+          { icon: Compass, t: "Vision", d: "To be the most trusted raw material and transport partner in Kenya." },
           { icon: HeartHandshake, t: "Values", d: "Integrity, accountability, safety and relentless service." },
-          { icon: Award, t: "Compliance", d: "ISO 9001:2015, licensed customs agent, GDP-compliant cold chain." },
+          { icon: Award, t: "Reliability", d: "Well-maintained trucks and equipment, and a team that shows up on time." },
         ].map((v) => (
           <Card key={v.t} className="card-lift gap-2 p-6 shadow-soft">
             <span className="grid size-11 place-items-center rounded-xl bg-gold/18 text-gold">

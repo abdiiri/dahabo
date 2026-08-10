@@ -15,6 +15,7 @@ import { Route as BranchesRouteImport } from './routes/branches'
 import { Route as CareersRouteImport } from './routes/careers'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CreatePasswordRouteImport } from './routes/create-password'
+import { Route as DriverRouteImport } from './routes/driver'
 import { Route as FleetRouteImport } from './routes/fleet'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as IndustriesRouteImport } from './routes/industries'
@@ -31,6 +32,7 @@ import { Route as StaffRouteImport } from './routes/staff'
 import { Route as StaffLoginRouteImport } from './routes/staff-login'
 import { Route as TrackRouteImport } from './routes/track'
 import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
+import { Route as DriverIndexRouteImport } from './routes/driver.index'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
 import { Route as PortalInvoicesRouteImport } from './routes/portal.invoices'
 import { Route as PortalNotificationsRouteImport } from './routes/portal.notifications'
@@ -55,6 +57,7 @@ import { Route as StaffSettingsRouteImport } from './routes/staff.settings'
 import { Route as StaffShipmentsRouteImport } from './routes/staff.shipments'
 import { Route as StaffUsersRouteImport } from './routes/staff.users'
 import { Route as StaffWarehousesRouteImport } from './routes/staff.warehouses'
+import { Route as StaffDriversDriverIdRouteImport } from './routes/staff.drivers.$driverId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -84,6 +87,11 @@ const ContactRoute = ContactRouteImport.update({
 const CreatePasswordRoute = CreatePasswordRouteImport.update({
   id: '/create-password',
   path: '/create-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DriverRoute = DriverRouteImport.update({
+  id: '/driver',
+  path: '/driver',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FleetRoute = FleetRouteImport.update({
@@ -165,6 +173,11 @@ const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
   path: '/unauthorized',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DriverIndexRoute = DriverIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DriverRoute,
 } as any)
 const PortalIndexRoute = PortalIndexRouteImport.update({
   id: '/',
@@ -286,6 +299,11 @@ const StaffWarehousesRoute = StaffWarehousesRouteImport.update({
   path: '/warehouses',
   getParentRoute: () => StaffRoute,
 } as any)
+const StaffDriversDriverIdRoute = StaffDriversDriverIdRouteImport.update({
+  id: '/$driverId',
+  path: '/$driverId',
+  getParentRoute: () => StaffDriversRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -294,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/create-password': typeof CreatePasswordRoute
+  '/driver': typeof DriverRouteWithChildren
   '/fleet': typeof FleetRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/industries': typeof IndustriesRoute
@@ -323,7 +342,7 @@ export interface FileRoutesByFullPath {
   '/staff/company': typeof StaffCompanyRoute
   '/staff/customers': typeof StaffCustomersRoute
   '/staff/documents': typeof StaffDocumentsRoute
-  '/staff/drivers': typeof StaffDriversRoute
+  '/staff/drivers': typeof StaffDriversRouteWithChildren
   '/staff/finance': typeof StaffFinanceRoute
   '/staff/fleet': typeof StaffFleetRoute
   '/staff/notifications': typeof StaffNotificationsRoute
@@ -332,8 +351,10 @@ export interface FileRoutesByFullPath {
   '/staff/shipments': typeof StaffShipmentsRoute
   '/staff/users': typeof StaffUsersRoute
   '/staff/warehouses': typeof StaffWarehousesRoute
+  '/driver/': typeof DriverIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/staff/': typeof StaffIndexRoute
+  '/staff/drivers/$driverId': typeof StaffDriversDriverIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -369,7 +390,7 @@ export interface FileRoutesByTo {
   '/staff/company': typeof StaffCompanyRoute
   '/staff/customers': typeof StaffCustomersRoute
   '/staff/documents': typeof StaffDocumentsRoute
-  '/staff/drivers': typeof StaffDriversRoute
+  '/staff/drivers': typeof StaffDriversRouteWithChildren
   '/staff/finance': typeof StaffFinanceRoute
   '/staff/fleet': typeof StaffFleetRoute
   '/staff/notifications': typeof StaffNotificationsRoute
@@ -378,8 +399,10 @@ export interface FileRoutesByTo {
   '/staff/shipments': typeof StaffShipmentsRoute
   '/staff/users': typeof StaffUsersRoute
   '/staff/warehouses': typeof StaffWarehousesRoute
+  '/driver': typeof DriverIndexRoute
   '/portal': typeof PortalIndexRoute
   '/staff': typeof StaffIndexRoute
+  '/staff/drivers/$driverId': typeof StaffDriversDriverIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -389,6 +412,7 @@ export interface FileRoutesById {
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/create-password': typeof CreatePasswordRoute
+  '/driver': typeof DriverRouteWithChildren
   '/fleet': typeof FleetRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/industries': typeof IndustriesRoute
@@ -418,7 +442,7 @@ export interface FileRoutesById {
   '/staff/company': typeof StaffCompanyRoute
   '/staff/customers': typeof StaffCustomersRoute
   '/staff/documents': typeof StaffDocumentsRoute
-  '/staff/drivers': typeof StaffDriversRoute
+  '/staff/drivers': typeof StaffDriversRouteWithChildren
   '/staff/finance': typeof StaffFinanceRoute
   '/staff/fleet': typeof StaffFleetRoute
   '/staff/notifications': typeof StaffNotificationsRoute
@@ -427,8 +451,10 @@ export interface FileRoutesById {
   '/staff/shipments': typeof StaffShipmentsRoute
   '/staff/users': typeof StaffUsersRoute
   '/staff/warehouses': typeof StaffWarehousesRoute
+  '/driver/': typeof DriverIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/staff/': typeof StaffIndexRoute
+  '/staff/drivers/$driverId': typeof StaffDriversDriverIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -439,6 +465,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/contact'
     | '/create-password'
+    | '/driver'
     | '/fleet'
     | '/forgot-password'
     | '/industries'
@@ -477,8 +504,10 @@ export interface FileRouteTypes {
     | '/staff/shipments'
     | '/staff/users'
     | '/staff/warehouses'
+    | '/driver/'
     | '/portal/'
     | '/staff/'
+    | '/staff/drivers/$driverId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -523,8 +552,10 @@ export interface FileRouteTypes {
     | '/staff/shipments'
     | '/staff/users'
     | '/staff/warehouses'
+    | '/driver'
     | '/portal'
     | '/staff'
+    | '/staff/drivers/$driverId'
   id:
     | '__root__'
     | '/'
@@ -533,6 +564,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/contact'
     | '/create-password'
+    | '/driver'
     | '/fleet'
     | '/forgot-password'
     | '/industries'
@@ -571,8 +603,10 @@ export interface FileRouteTypes {
     | '/staff/shipments'
     | '/staff/users'
     | '/staff/warehouses'
+    | '/driver/'
     | '/portal/'
     | '/staff/'
+    | '/staff/drivers/$driverId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -582,6 +616,7 @@ export interface RootRouteChildren {
   CareersRoute: typeof CareersRoute
   ContactRoute: typeof ContactRoute
   CreatePasswordRoute: typeof CreatePasswordRoute
+  DriverRoute: typeof DriverRouteWithChildren
   FleetRoute: typeof FleetRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   IndustriesRoute: typeof IndustriesRoute
@@ -642,6 +677,13 @@ declare module '@tanstack/react-router' {
       path: '/create-password'
       fullPath: '/create-password'
       preLoaderRoute: typeof CreatePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/driver': {
+      id: '/driver'
+      path: '/driver'
+      fullPath: '/driver'
+      preLoaderRoute: typeof DriverRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/fleet': {
@@ -755,6 +797,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/unauthorized'
       preLoaderRoute: typeof UnauthorizedRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/driver/': {
+      id: '/driver/'
+      path: '/'
+      fullPath: '/driver/'
+      preLoaderRoute: typeof DriverIndexRouteImport
+      parentRoute: typeof DriverRoute
     }
     '/portal/': {
       id: '/portal/'
@@ -924,8 +973,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffWarehousesRouteImport
       parentRoute: typeof StaffRoute
     }
+    '/staff/drivers/$driverId': {
+      id: '/staff/drivers/$driverId'
+      path: '/$driverId'
+      fullPath: '/staff/drivers/$driverId'
+      preLoaderRoute: typeof StaffDriversDriverIdRouteImport
+      parentRoute: typeof StaffDriversRoute
+    }
   }
 }
+
+interface DriverRouteChildren {
+  DriverIndexRoute: typeof DriverIndexRoute
+}
+
+const DriverRouteChildren: DriverRouteChildren = {
+  DriverIndexRoute: DriverIndexRoute,
+}
+
+const DriverRouteWithChildren =
+  DriverRoute._addFileChildren(DriverRouteChildren)
 
 interface PortalRouteChildren {
   PortalInvoicesRoute: typeof PortalInvoicesRoute
@@ -956,12 +1023,24 @@ const PortalRouteChildren: PortalRouteChildren = {
 const PortalRouteWithChildren =
   PortalRoute._addFileChildren(PortalRouteChildren)
 
+interface StaffDriversRouteChildren {
+  StaffDriversDriverIdRoute: typeof StaffDriversDriverIdRoute
+}
+
+const StaffDriversRouteChildren: StaffDriversRouteChildren = {
+  StaffDriversDriverIdRoute: StaffDriversDriverIdRoute,
+}
+
+const StaffDriversRouteWithChildren = StaffDriversRoute._addFileChildren(
+  StaffDriversRouteChildren,
+)
+
 interface StaffRouteChildren {
   StaffAuditLogsRoute: typeof StaffAuditLogsRoute
   StaffCompanyRoute: typeof StaffCompanyRoute
   StaffCustomersRoute: typeof StaffCustomersRoute
   StaffDocumentsRoute: typeof StaffDocumentsRoute
-  StaffDriversRoute: typeof StaffDriversRoute
+  StaffDriversRoute: typeof StaffDriversRouteWithChildren
   StaffFinanceRoute: typeof StaffFinanceRoute
   StaffFleetRoute: typeof StaffFleetRoute
   StaffNotificationsRoute: typeof StaffNotificationsRoute
@@ -978,7 +1057,7 @@ const StaffRouteChildren: StaffRouteChildren = {
   StaffCompanyRoute: StaffCompanyRoute,
   StaffCustomersRoute: StaffCustomersRoute,
   StaffDocumentsRoute: StaffDocumentsRoute,
-  StaffDriversRoute: StaffDriversRoute,
+  StaffDriversRoute: StaffDriversRouteWithChildren,
   StaffFinanceRoute: StaffFinanceRoute,
   StaffFleetRoute: StaffFleetRoute,
   StaffNotificationsRoute: StaffNotificationsRoute,
@@ -999,6 +1078,7 @@ const rootRouteChildren: RootRouteChildren = {
   CareersRoute: CareersRoute,
   ContactRoute: ContactRoute,
   CreatePasswordRoute: CreatePasswordRoute,
+  DriverRoute: DriverRouteWithChildren,
   FleetRoute: FleetRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   IndustriesRoute: IndustriesRoute,
@@ -1019,3 +1099,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

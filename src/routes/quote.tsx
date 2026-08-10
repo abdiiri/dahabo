@@ -38,7 +38,7 @@ function QuotePage() {
           {[
             [Clock3, "Two-hour response", "Quotes are returned within two working hours, 07:00 to 20:00."],
             [ShieldCheck, "Insured movements", "Goods-in-transit cover is included on every consignment."],
-            [PhoneCall, "Prefer to talk?", "Call the operations desk on +254 700 100 100, any time."],
+            [PhoneCall, "Prefer to talk?", "Call the operations desk on +254 722 665 333, any time."],
           ].map(([I, title, desc]) => {
             const Ico = I as typeof Clock3;
             return (

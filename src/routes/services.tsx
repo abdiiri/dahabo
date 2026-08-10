@@ -9,10 +9,10 @@ import { serviceList } from "@/data/mock";
 export const Route = createFileRoute("/services")({
   head: () => ({
     meta: [
-      { title: "Logistics Services — Road, Air, Sea, Warehousing | Dahabo" },
-      { name: "description", content: "Road freight, air freight, sea freight, warehousing, cold chain, customs clearing, project cargo and last-mile distribution." },
-      { property: "og:title", content: "Logistics Services | Dahabo Global Logistics" },
-      { property: "og:description", content: "Eight integrated service lines managed from one control tower." },
+      { title: "Our Services — Raw Material Supply & Transportation | Dahabo" },
+      { name: "description", content: "Supplying raw materials like gypsum and cement, plus reliable transportation and logistics across Kenya and the region." },
+      { property: "og:title", content: "Services | Dahabo Global Logistics" },
+      { property: "og:description", content: "Raw material supply and transportation & logistics, delivered by one accountable team." },
     ],
   }),
   component: Services,
@@ -22,10 +22,10 @@ function Services() {
   return (
     <PublicPage
       eyebrow="Services"
-      title="Eight service lines, one accountable partner"
-      description="Every service is delivered on the same operating platform, so reporting, tracking and billing stay consistent no matter how your cargo moves."
+      title="What we do"
+      description="Two core services, delivered with the same reliability and accountability: sourcing the materials you need, and moving them where they need to go."
     >
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {serviceList.map((s) => (
           <Card key={s.key} className="card-lift gap-3 p-7 shadow-soft">
             <h2 className="text-xl font-bold">{s.name}</h2>
@@ -49,10 +49,10 @@ function Services() {
           <h2 className="text-2xl font-extrabold">Frequently asked</h2>
           <Accordion type="single" collapsible className="mt-6">
             {[
-              ["What regions do you cover?", "Kenya, Uganda, Tanzania, Ethiopia, South Sudan, Somalia and Djibouti, with partner coverage into Rwanda and DRC."],
-              ["Do you handle customs clearing?", "Yes — we are a licensed clearing and forwarding agent and can pre-lodge declarations before cargo arrives."],
-              ["Is my cargo insured?", "All movements carry goods-in-transit cover up to USD 2M per consignment, with higher limits available on request."],
-              ["Can I integrate with your systems?", "Integration slots for tracking, messaging and payments are already provisioned on the platform."],
+              ["What areas do you cover?", "We are based in Nairobi and serve customers across Kenya, with capacity for regional movements on request."],
+              ["What raw materials do you supply?", "We currently supply gypsum and cement, in bulk or bagged quantities, sourced and delivered to your site."],
+              ["Can you handle bulk cargo?", "Yes — our fleet includes heavy-duty trucks and trailers built for bulk and high-volume consignments."],
+              ["How do I get a price?", "Share your material or transport requirement through the contact form or by phone, and we'll respond with a quote promptly."],
             ].map(([q, a]) => (
               <AccordionItem key={q} value={String(q)}>
                 <AccordionTrigger className="text-left">{q}</AccordionTrigger>

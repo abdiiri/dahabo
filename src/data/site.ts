@@ -30,21 +30,8 @@ export type PublicService = {
 };
 
 export const publicServices: PublicService[] = [
-  { slug: "road-freight", name: "Road Freight", desc: "Full and part-load haulage on every major corridor in Kenya and the region.", icon: "Truck" },
-  { slug: "express-delivery", name: "Express Delivery", desc: "Same-day and next-day priority movements with guaranteed time windows.", icon: "Zap" },
-  { slug: "door-to-door", name: "Door-to-Door Delivery", desc: "Collection at origin, delivery at destination — one waybill, one owner.", icon: "DoorOpen" },
-  { slug: "distribution", name: "Distribution Services", desc: "Multi-drop distribution runs planned around your stock replenishment cycle.", icon: "Network" },
-  { slug: "commercial-cargo", name: "Commercial Cargo", desc: "Palletised and loose commercial freight handled with full chain of custody.", icon: "Boxes" },
-  { slug: "household-moving", name: "Household Moving", desc: "Packing, wrapping, loading and reassembly by trained moving crews.", icon: "Home" },
-  { slug: "office-relocation", name: "Office Relocation", desc: "Weekend office moves with IT crating, labelling and floor-plan placement.", icon: "Building2" },
-  { slug: "bulk-cargo", name: "Bulk Cargo", desc: "High-volume and heavy consignments on tippers, flatbeds and low loaders.", icon: "Container" },
-  { slug: "retail-distribution", name: "Retail Distribution", desc: "Store-level deliveries with proof of delivery captured on the driver app.", icon: "ShoppingBag" },
-  { slug: "warehouse-storage", name: "Warehouse Storage", desc: "Secure short and long-term storage with inventory visibility 24/7.", icon: "Warehouse" },
-  { slug: "fleet-transport", name: "Fleet Transport", desc: "Vehicle and machinery transport on purpose-built carriers.", icon: "CarFront" },
-  { slug: "last-mile", name: "Last Mile Delivery", desc: "Motorcycle and van last-mile coverage across urban centres.", icon: "Bike" },
-  { slug: "scheduled-deliveries", name: "Scheduled Deliveries", desc: "Fixed-slot recurring runs on a contracted weekly timetable.", icon: "CalendarClock" },
-  { slug: "corporate-logistics", name: "Corporate Logistics", desc: "Dedicated account teams, SLAs and monthly performance reporting.", icon: "Briefcase" },
-  { slug: "cross-border", name: "Cross-Border Transport", desc: "Regional movements into Uganda, Tanzania, Ethiopia and Somalia.", icon: "Globe2", tag: "Coming soon" },
+  { slug: "raw-material-supply", name: "Raw Material Supply", desc: "Sourcing and bulk supply of gypsum, cement and other construction raw materials, delivered directly to your site.", icon: "Mountain" },
+  { slug: "transportation-logistics", name: "Transportation & Logistics", desc: "Heavy-duty trucking and haulage for bulk cargo, moved reliably across Kenya and the region.", icon: "Truck" },
 ];
 
 export const whyChooseUs = [
@@ -148,10 +135,10 @@ export const branchDirectory = [
   {
     city: "Nairobi",
     name: "Nairobi Head Office",
-    address: "Enterprise Road, Industrial Area, Nairobi",
-    phone: "+254 700 100 100",
-    email: "nairobi@dahaboglobal.com",
-    manager: "Fatuma Warsame",
+    address: "Parklands, Limuru Road, Amco Crystal Plaza, Suite 5A, Nairobi",
+    phone: "+254 722 665 333",
+    email: "abdirashiidmahad@gmail.com",
+    manager: "Abdirashiid Mahad",
     hours: "Mon–Sat 07:00 – 20:00 · Sun on call",
   },
   {
@@ -298,11 +285,11 @@ export const newsArticles = [
     excerpt: "Licensing and partner onboarding is underway for Uganda, Tanzania, Ethiopia and Somalia corridors.",
   },
   {
-    slug: "customer-portal-launch",
-    title: "Customer portal brings shipments, invoices and tracking together",
+    slug: "control-tower-upgrade",
+    title: "New control tower dashboard brings live fleet and shipment data together",
     category: "Technology",
     date: "18 April 2026",
-    excerpt: "Clients can now self-serve documents, pickup requests and delivery performance reports in one place.",
+    excerpt: "Our operations and admin teams now track shipments, invoices, pickups and delivery performance in one unified dashboard.",
   },
 ];
 

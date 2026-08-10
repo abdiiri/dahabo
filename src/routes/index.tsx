@@ -36,17 +36,17 @@ import containerYard from "@/assets/container-yard.jpg";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dahabo Global Logistics — Cargo Transport Across Kenya & East Africa" },
+      { title: "Dahabo Global Logistics — Raw Material Supply & Transportation, Nairobi" },
       {
         name: "description",
         content:
-          "Road freight, express delivery, distribution, relocations and warehousing across Kenya and East Africa. Track shipments live and request a quote from Dahabo Global Logistics Limited.",
+          "Supplying raw materials like gypsum and cement, plus reliable transportation and logistics across Kenya. Based in Parklands, Nairobi.",
       },
       { property: "og:title", content: "Dahabo Global Logistics Limited — Delivering Beyond Borders" },
       {
         property: "og:description",
         content:
-          "Reliable cargo movement, vehicle transport, distribution and logistics solutions across Kenya and East Africa.",
+          "Raw material supply and transportation & logistics, delivered by one accountable team based in Nairobi.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -71,13 +71,18 @@ function Home() {
     <PublicLayout transparentHeader>
       {/* Hero */}
       <section className="relative isolate flex min-h-screen items-center overflow-hidden text-navy-foreground">
-        <img
-          src={heroImage}
-          alt="Dahabo Global Logistics cargo truck on the highway at sunrise"
-          width={1920}
-          height={1088}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster={heroImage}
+          preload="auto"
+          aria-hidden="true"
           className="absolute inset-0 -z-20 size-full object-cover"
-        />
+        >
+          <source src="/video/hero-truck.mp4" type="video/mp4" />
+        </video>
         <div
           className="absolute inset-0 -z-10 bg-[linear-gradient(105deg,oklch(0.18_0.05_262/0.94)_0%,oklch(0.2_0.06_262/0.82)_45%,oklch(0.2_0.06_262/0.45)_100%)]"
           aria-hidden="true"
@@ -97,9 +102,9 @@ function Home() {
             </Reveal>
             <Reveal delay={160}>
               <p className="mt-6 max-w-2xl text-lg leading-relaxed text-navy-foreground/85">
-                Dahabo Global Logistics Limited is a trusted transportation company providing
-                reliable cargo movement, vehicle transport, distribution and complete logistics
-                solutions across Kenya and East Africa — delivering beyond borders, every day.
+                Dahabo Global Logistics Limited supplies quality raw materials — including
+                gypsum and cement — and provides reliable transportation and logistics across
+                Kenya, from our base in Nairobi.
               </p>
             </Reveal>
             <Reveal delay={240}>
@@ -123,8 +128,8 @@ function Home() {
                   className="h-13 px-4 text-base text-navy-foreground hover:bg-white/10 hover:text-gold"
                   asChild
                 >
-                  <a href="tel:+254700100100">
-                    <PhoneCall className="size-4" /> +254 700 100 100
+                  <a href="tel:+254722665333">
+                    <PhoneCall className="size-4" /> +254 722 665 333
                   </a>
                 </Button>
               </div>
@@ -154,26 +159,19 @@ function Home() {
         <Reveal>
           <SectionHeading
             eyebrow="What we do"
-            title="Logistics services built around your cargo"
-            description="Fifteen service lines, one operating platform. Every movement is planned, tracked and reported from the same control tower."
+            title="Two services, one dependable partner"
+            description="From sourcing raw materials to moving them where they're needed, every job is planned and delivered by the same accountable team."
             align="center"
           />
         </Reveal>
-        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="mx-auto mt-14 grid max-w-4xl gap-6 sm:grid-cols-2">
           {publicServices.map((s, i) => (
-            <Reveal key={s.slug} delay={(i % 4) * 70}>
-              <Card className="card-lift group h-full gap-3 overflow-hidden p-6 shadow-soft">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="grid size-12 place-items-center rounded-2xl bg-navy text-gold transition-colors group-hover:bg-gold group-hover:text-gold-foreground">
-                    <Icon name={s.icon} className="size-6" />
-                  </span>
-                  {s.tag ? (
-                    <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">
-                      {s.tag}
-                    </Badge>
-                  ) : null}
-                </div>
-                <h3 className="mt-2 text-lg font-bold">{s.name}</h3>
+            <Reveal key={s.slug} delay={i * 90}>
+              <Card className="card-lift group h-full gap-4 overflow-hidden p-8 shadow-soft">
+                <span className="grid size-14 place-items-center rounded-2xl bg-navy text-gold transition-colors group-hover:bg-gold group-hover:text-gold-foreground">
+                  <Icon name={s.icon} className="size-7" />
+                </span>
+                <h3 className="mt-2 text-xl font-bold">{s.name}</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">{s.desc}</p>
                 <Link
                   to="/services"

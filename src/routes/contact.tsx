@@ -14,9 +14,9 @@ export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
       { title: "Contact Dahabo Global Logistics" },
-      { name: "description", content: "Reach our 24/7 operations desk in Nairobi, Mombasa, Kisumu, Eldoret, Kampala or Djibouti." },
+      { name: "description", content: "Reach us in Parklands, Nairobi — call, email, or send a message and our team will respond shortly." },
       { property: "og:title", content: "Contact Dahabo Global Logistics" },
-      { property: "og:description", content: "Reach our 24/7 operations desk in Nairobi, Mombasa, Kisumu, Eldoret, Kampala or Djibouti." },
+      { property: "og:description", content: "Reach us in Parklands, Nairobi — call, email, or send a message and our team will respond shortly." },
     ],
   }),
   component: Contact,
@@ -26,8 +26,8 @@ function Contact() {
   return (
     <PublicPage
       eyebrow="Contact"
-      title="Talk to the operations desk"
-      description="Our team answers within one business hour, and the operations desk is staffed around the clock for active shipments."
+      title="Get in touch"
+      description="Have a question about supply or transport? Send us a message or reach out directly — we usually respond within one business day."
     >
       <div className="grid gap-10 lg:grid-cols-[1fr_0.8fr]">
         <Card className="gap-5 p-7 shadow-soft">
@@ -55,7 +55,7 @@ function Contact() {
           </form>
         </Card>
         <div className="space-y-4">
-          {[[Phone, "Operations desk", "+254 700 100 100"], [Mail, "Email", "ops@dahaboglobal.com"], [MapPin, "Head office", "Enterprise Road, Industrial Area, Nairobi"]].map(([Icon, t, v], i) => {
+          {[[Phone, "Call us", "+254 722 665 333"], [Mail, "Email", "abdirashiidmahad@gmail.com"], [MapPin, "Office location", "Parklands, Limuru Road, Amco Crystal Plaza, Suite 5A"]].map(([Icon, t, v], i) => {
             const I = Icon as typeof Phone;
             return (
               <Card key={i} className="flex-row items-center gap-4 p-5 shadow-soft">

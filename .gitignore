@@ -16,6 +16,11 @@ dist-ssr
 .nitro
 *.local
 
+# Environment variables (contains secrets, esp. SUPABASE_SERVICE_ROLE_KEY)
+.env
+.env.*
+!.env.example
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

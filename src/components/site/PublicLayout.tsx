@@ -14,7 +14,6 @@ import {
   Send,
   ShieldCheck,
   Twitter,
-  UserRound,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
@@ -32,15 +31,8 @@ import { toast } from "sonner";
 
 const links = [
   { label: "Home", to: "/" },
-  { label: "About", to: "/about" },
   { label: "Services", to: "/services" },
-  { label: "Fleet", to: "/fleet" },
-  { label: "Branches", to: "/branches" },
-  { label: "Industries", to: "/industries" },
-  { label: "Request Quote", to: "/quote" },
-  { label: "Track Shipment", to: "/track" },
-  { label: "News", to: "/news" },
-  { label: "Careers", to: "/careers" },
+  { label: "About", to: "/about" },
   { label: "Contact", to: "/contact" },
 ];
 
@@ -51,23 +43,20 @@ function TopStrip() {
     <div className="hidden bg-navy text-navy-foreground lg:block">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-2 text-xs">
         <div className="flex items-center gap-5">
-          <a href="tel:+254700100100" className="flex items-center gap-1.5 hover:text-gold">
-            <Phone className="size-3.5 text-gold" /> +254 700 100 100
+          <a href="tel:+254722665333" className="flex items-center gap-1.5 hover:text-gold">
+            <Phone className="size-3.5 text-gold" /> +254 722 665 333
           </a>
-          <a href="mailto:ops@dahaboglobal.com" className="flex items-center gap-1.5 hover:text-gold">
-            <Mail className="size-3.5 text-gold" /> ops@dahaboglobal.com
+          <a href="mailto:abdirashiidmahad@gmail.com" className="flex items-center gap-1.5 hover:text-gold">
+            <Mail className="size-3.5 text-gold" /> abdirashiidmahad@gmail.com
           </a>
           <span className="flex items-center gap-1.5">
-            <MapPin className="size-3.5 text-gold" /> Enterprise Road, Nairobi
+            <MapPin className="size-3.5 text-gold" /> Parklands, Limuru Road, Nairobi
           </span>
         </div>
         <div className="flex items-center gap-4">
           <span className="font-semibold uppercase tracking-widest text-gold">24/7 Operations Desk</span>
-          <Link to="/login" className="flex items-center gap-1.5 hover:text-gold">
-            <UserRound className="size-3.5" /> Customer Login
-          </Link>
           <Link to="/staff-login" className="flex items-center gap-1.5 hover:text-gold">
-            <ShieldCheck className="size-3.5" /> Staff Login
+            <ShieldCheck className="size-3.5" /> Admin & Staff Login
           </Link>
         </div>
       </div>
@@ -126,9 +115,9 @@ function SiteHeader({ transparent }: { transparent?: boolean | undefined }) {
           : "border-border bg-background/90 shadow-soft backdrop-blur",
       )}
     >
-      <div className="mx-auto flex h-[76px] max-w-7xl items-center gap-3 px-4 sm:px-6">
-        <Logo variant={floating ? "light" : "default"} />
-        <nav className="ml-4 hidden items-center gap-0.5 2xl:flex">
+      <div className="mx-auto flex h-24 max-w-7xl items-center gap-3 px-4 sm:px-6">
+        <Logo variant={floating ? "light" : "default"} size="lg" />
+        <nav className="ml-6 hidden items-center gap-1 lg:flex">
           {links.map((l) => (
             <Link
               key={l.to}
@@ -136,7 +125,7 @@ function SiteHeader({ transparent }: { transparent?: boolean | undefined }) {
               activeOptions={{ exact: l.to === "/" }}
               activeProps={{ className: floating ? "text-gold" : "bg-secondary text-foreground" }}
               className={cn(
-                "rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-colors",
+                "rounded-lg px-3.5 py-2.5 text-sm font-semibold transition-colors",
                 floating
                   ? "text-navy-foreground/85 hover:text-gold"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground",
@@ -154,21 +143,11 @@ function SiteHeader({ transparent }: { transparent?: boolean | undefined }) {
           <Button
             variant="ghost"
             size="sm"
-            className={cn("hidden xl:inline-flex", floating && "text-navy-foreground hover:bg-white/10 hover:text-gold")}
-            asChild
-          >
-            <Link to="/login">
-              <LogIn className="size-4" /> Customer
-            </Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn("hidden xl:inline-flex", floating && "text-navy-foreground hover:bg-white/10 hover:text-gold")}
+            className={cn("hidden lg:inline-flex", floating && "text-navy-foreground hover:bg-white/10 hover:text-gold")}
             asChild
           >
             <Link to="/staff-login">
-              <ShieldCheck className="size-4" /> Staff
+              <LogIn className="size-4" /> Login
             </Link>
           </Button>
           <Button
@@ -176,7 +155,7 @@ function SiteHeader({ transparent }: { transparent?: boolean | undefined }) {
             className="hidden bg-gold text-gold-foreground hover:bg-gold/90 sm:inline-flex"
             asChild
           >
-            <a href="tel:+254700100100">
+            <a href="tel:+254722665333">
               <Phone className="size-4" /> Call Now
             </a>
           </Button>
@@ -185,7 +164,7 @@ function SiteHeader({ transparent }: { transparent?: boolean | undefined }) {
               <Button
                 variant={floating ? "ghost" : "outline"}
                 size="icon"
-                className={cn("2xl:hidden", floating && "text-navy-foreground hover:bg-white/10")}
+                className={cn("lg:hidden", floating && "text-navy-foreground hover:bg-white/10")}
                 aria-label="Open navigation"
               >
                 <Menu className="size-5" />
@@ -207,13 +186,10 @@ function SiteHeader({ transparent }: { transparent?: boolean | undefined }) {
               </nav>
               <div className="mt-4 flex flex-col gap-2 border-t border-border px-4 pt-4">
                 <Button variant="outline" asChild onClick={() => setOpen(false)}>
-                  <Link to="/login">Customer Login</Link>
-                </Button>
-                <Button variant="outline" asChild onClick={() => setOpen(false)}>
-                  <Link to="/staff-login">Staff Login</Link>
+                  <Link to="/staff-login">Admin & Staff Login</Link>
                 </Button>
                 <Button className="bg-gold text-gold-foreground hover:bg-gold/90" asChild>
-                  <a href="tel:+254700100100">Call Now</a>
+                  <a href="tel:+254722665333">Call Now</a>
                 </Button>
                 <div className="flex items-center justify-between pt-2">
                   <LanguageSwitch />
@@ -237,8 +213,8 @@ function SiteFooter() {
           <div className="lg:col-span-2">
             <Logo variant="light" size="lg" />
             <p className="mt-5 max-w-sm text-sm leading-relaxed text-navy-foreground/70">
-              Dahabo Global Logistics Limited moves cargo across Kenya and East Africa — road freight,
-              distribution, relocations and warehousing, delivered beyond borders.
+              Dahabo Global Logistics Limited supplies raw materials — including gypsum and
+              cement — and provides reliable transportation and logistics across Kenya.
             </p>
             <div className="mt-6">
               <p className="text-xs font-bold uppercase tracking-[0.24em] text-gold">Newsletter</p>
@@ -297,8 +273,7 @@ function SiteFooter() {
                 ["Request Quote", "/quote"],
                 ["News & Updates", "/news"],
                 ["Contact Us", "/contact"],
-                ["Customer Portal", "/portal"],
-                ["Staff Portal", "/staff"],
+                ["Admin & Staff Portal", "/staff-login"],
               ],
             },
             {
@@ -328,14 +303,14 @@ function SiteFooter() {
         </div>
 
         <div className="mt-12 grid gap-4 rounded-2xl bg-white/5 p-6 sm:grid-cols-3">
-          <a href="tel:+254700100100" className="flex gap-3 text-sm hover:text-gold">
-            <Phone className="mt-0.5 size-4 shrink-0 text-gold" /> +254 700 100 100 · 24/7 desk
+          <a href="tel:+254722665333" className="flex gap-3 text-sm hover:text-gold">
+            <Phone className="mt-0.5 size-4 shrink-0 text-gold" /> +254 722 665 333 · 24/7 desk
           </a>
-          <a href="mailto:ops@dahaboglobal.com" className="flex gap-3 text-sm hover:text-gold">
-            <Mail className="mt-0.5 size-4 shrink-0 text-gold" /> ops@dahaboglobal.com
+          <a href="mailto:abdirashiidmahad@gmail.com" className="flex gap-3 text-sm hover:text-gold">
+            <Mail className="mt-0.5 size-4 shrink-0 text-gold" /> abdirashiidmahad@gmail.com
           </a>
           <span className="flex gap-3 text-sm text-navy-foreground/75">
-            <MapPin className="mt-0.5 size-4 shrink-0 text-gold" /> Enterprise Road, Industrial Area, Nairobi
+            <MapPin className="mt-0.5 size-4 shrink-0 text-gold" /> Parklands, Limuru Road, Amco Crystal Plaza, Suite 5A, Nairobi
           </span>
         </div>
 

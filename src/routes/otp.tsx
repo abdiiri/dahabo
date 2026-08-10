@@ -21,7 +21,7 @@ export const Route = createFileRoute("/otp")({
 function Page() {
   return (
     <AuthLayout title="Verify your identity" subtitle="Enter the 6-digit code sent to +254 •• ••• 100."
-      footer={<Link to="/login" className="font-semibold text-primary hover:text-gold">Back to sign in</Link>}>
+      footer={<Link to="/staff-login" className="font-semibold text-primary hover:text-gold">Back to sign in</Link>}>
       <div className="grid gap-5">
         <InputOTP maxLength={6}>
           <InputOTPGroup>

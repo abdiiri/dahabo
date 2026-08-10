@@ -28,12 +28,14 @@ export function DataTable<T extends { id: string }>({
   searchPlaceholder = "Search records…",
   pageSize = 8,
   toolbar,
+  onRowClick,
 }: {
   data: T[];
   columns: Column<T>[];
   searchPlaceholder?: string;
   pageSize?: number;
   toolbar?: ReactNode;
+  onRowClick?: (row: T) => void;
 }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
@@ -160,9 +162,13 @@ export function DataTable<T extends { id: string }>({
             {rows.map((row) => (
               <tr
                 key={row.id}
-                className="border-t border-border transition-colors hover:bg-secondary/60"
+                onClick={() => onRowClick?.(row)}
+                className={cn(
+                  "border-t border-border transition-colors hover:bg-secondary/60",
+                  onRowClick && "cursor-pointer",
+                )}
               >
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selected.includes(row.id)}
                     onCheckedChange={(v) =>

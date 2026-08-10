@@ -72,13 +72,13 @@ function SidebarNav({
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex h-16 items-center border-b border-sidebar-border px-4">
+      <div className="flex h-20 items-center border-b border-sidebar-border px-4">
         {collapsed ? (
           <Link to="/" className="mx-auto grid size-9 place-items-center rounded-xl bg-gold text-gold-foreground">
             <Truck className="size-5" />
           </Link>
         ) : (
-          <Logo variant="light" />
+          <Logo variant="light" size="sm" />
         )}
       </div>
 
@@ -301,10 +301,13 @@ export function PortalShell({
   nav,
   persona,
   children,
+  onSignOut,
 }: {
   nav: NavGroup[];
   persona: Persona;
   children: ReactNode;
+  /** Called when the user chooses "Sign out". Falls back to the staff login link if omitted. */
+  onSignOut?: () => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const { open, setOpen } = useCommandPalette();
@@ -414,7 +417,7 @@ export function PortalShell({
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/portal/profile">
+                  <Link to="/staff/settings">
                     <UserRound className="size-4" /> Profile
                   </Link>
                 </DropdownMenuItem>
@@ -424,11 +427,17 @@ export function PortalShell({
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/login">
+                {onSignOut ? (
+                  <DropdownMenuItem onSelect={onSignOut}>
                     <LogOut className="size-4" /> Sign out
-                  </Link>
-                </DropdownMenuItem>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link to="/staff-login">
+                      <LogOut className="size-4" /> Sign out
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

@@ -1,14 +1,56 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { PortalShell } from "@/components/portal/PortalShell";
 import { staffNav } from "@/config/navigation";
+import { useAuth, personaInitials } from "@/lib/auth";
 
 export const Route = createFileRoute("/staff")({ component: Layout });
 
 function Layout() {
+  const { loading, user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (loading) return;
+    // No signed-in session -> straight back to the sign-in page. Nobody
+    // gets in without a real Supabase account created by an admin.
+    if (!user) {
+      navigate({ to: "/staff-login" });
+      return;
+    }
+    // Drivers get their own lightweight dashboard, not the full staff app.
+    if (profile && profile.role === "driver") {
+      navigate({ to: "/driver" });
+      return;
+    }
+    if (profile?.mustChangePassword) {
+      navigate({ to: "/create-password" });
+    }
+  }, [loading, user, profile, navigate]);
+
+  if (loading || !user || !profile || profile.role === "driver" || profile.mustChangePassword) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-surface">
+        <p className="text-sm text-muted-foreground">Checking your session…</p>
+      </div>
+    );
+  }
+
+  const persona = {
+    name: profile.fullName,
+    role: profile.roleLabel,
+    initials: personaInitials(profile.fullName),
+    email: profile.email,
+  };
+
   return (
     <PortalShell
       nav={staffNav}
-      persona={{ name: "Amina Dahir", role: "Super Admin", initials: "AD", email: "amina@dahaboglobal.com" }}
+      persona={persona}
+      onSignOut={async () => {
+        await signOut();
+        navigate({ to: "/staff-login" });
+      }}
     >
       <Outlet />
     </PortalShell>

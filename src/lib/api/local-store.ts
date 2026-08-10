@@ -1,0 +1,57 @@
+// A tiny browser-only persistence layer used ONLY when no Supabase project
+// is connected yet (see src/lib/supabase.ts). It lets the dashboard be fully
+// clickable — adding staff, drivers, and work assignments really "saves" —
+// without requiring a database for a first look at the app.
+//
+// Once VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are set, the api modules
+// in this folder talk to Supabase instead and this file is not used.
+
+const PREFIX = "dahabo:demo:";
+
+function read<T>(key: string, fallback: T[]): T[] {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(PREFIX + key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T[];
+  } catch {
+    return fallback;
+  }
+}
+
+function write<T>(key: string, value: T[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PREFIX + key, JSON.stringify(value));
+  } catch {
+    // ignore quota / private-mode errors — demo mode only
+  }
+}
+
+export function localStore<T extends { id: string }>(key: string, seed: T[]) {
+  return {
+    list(): T[] {
+      return read<T>(key, seed);
+    },
+    get(id: string): T | undefined {
+      return read<T>(key, seed).find((row) => row.id === id);
+    },
+    insert(row: T): T {
+      const rows = read<T>(key, seed);
+      const next = [row, ...rows];
+      write(key, next);
+      return row;
+    },
+    update(id: string, patch: Partial<T>): T | undefined {
+      const rows = read<T>(key, seed);
+      let updated: T | undefined;
+      const next = rows.map((row) => {
+        if (row.id !== id) return row;
+        updated = { ...row, ...patch };
+        return updated;
+      });
+      write(key, next);
+      return updated;
+    },
+  };
+}

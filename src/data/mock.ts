@@ -14,7 +14,7 @@ export type Shipment = {
   value: number;
 };
 
-const cities = ["Nairobi", "Mombasa", "Kisumu", "Eldoret", "Nakuru", "Garissa", "Kampala", "Dar es Salaam", "Addis Ababa", "Djibouti"];
+export const cities = ["Nairobi", "Mombasa", "Kisumu", "Eldoret", "Nakuru", "Garissa", "Kampala", "Dar es Salaam", "Addis Ababa", "Djibouti"];
 const customers = [
   "Sahal Trading Co.",
   "Horn Freight Ltd",
@@ -265,14 +265,18 @@ export const jobs = [
 ];
 
 export const serviceList = [
-  { key: "road", name: "Road Freight", desc: "FTL and LTL haulage across the East & Horn of Africa corridors with live telemetry.", points: ["FTL & LTL", "Cross-border permits", "Escorted convoys"] },
-  { key: "air", name: "Air Freight", desc: "Time-critical airport-to-door movement with priority customs handling.", points: ["Next-flight-out", "Charter brokerage", "Dangerous goods"] },
-  { key: "sea", name: "Sea Freight", desc: "FCL and LCL consolidation through Mombasa and Djibouti ports.", points: ["FCL / LCL", "Port clearance", "Container tracking"] },
-  { key: "warehouse", name: "Warehousing", desc: "Bonded and ambient storage with WMS-managed inventory accuracy.", points: ["Bonded storage", "Pick & pack", "Cycle counting"] },
-  { key: "cold", name: "Cold Chain", desc: "Validated 2–8°C and frozen transport for pharma and perishables.", points: ["Reefer fleet", "Temperature logging", "GDP compliant"] },
-  { key: "customs", name: "Customs Clearing", desc: "Licensed clearing and forwarding with pre-lodged declarations.", points: ["Pre-clearance", "Duty advisory", "Transit bonds"] },
-  { key: "project", name: "Project Cargo", desc: "Abnormal load engineering, route surveys and escorted movement.", points: ["Route survey", "Heavy lift", "Permit handling"] },
-  { key: "lastmile", name: "Last Mile", desc: "Urban distribution with proof-of-delivery capture and SLA reporting.", points: ["Same-day", "ePOD", "SLA dashboards"] },
+  {
+    key: "raw-material",
+    name: "Raw Material Supply",
+    desc: "We source and supply quality raw materials for construction and industry — including gypsum and cement — in bulk or bagged quantities, delivered directly from source to your site.",
+    points: ["Gypsum supply", "Cement supply", "Bulk & bagged quantities", "Quality-assured sourcing", "Direct site delivery"],
+  },
+  {
+    key: "transport",
+    name: "Transportation & Logistics",
+    desc: "Our fleet of heavy-duty trucks and loading equipment moves bulk and general cargo reliably across Kenya and the wider region, backed by an experienced operations team.",
+    points: ["Heavy-duty trucking", "Bulk cargo haulage", "Excavator loading support", "Nationwide coverage", "Scheduled & on-demand runs"],
+  },
 ];
 
 export const integrations = [

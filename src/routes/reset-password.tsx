@@ -10,9 +10,9 @@ export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
       { title: "Reset Password | Dahabo Global Logistics" },
-      { name: "description", content: "Choose a new password for your Dahabo portal account." },
+      { name: "description", content: "Choose a new password for your Dahabo Global Logistics staff account." },
       { property: "og:title", content: "Reset Password | Dahabo Global Logistics" },
-      { property: "og:description", content: "Choose a new password for your Dahabo portal account." },
+      { property: "og:description", content: "Choose a new password for your Dahabo Global Logistics staff account." },
     ],
   }),
   component: Page,
@@ -21,11 +21,11 @@ export const Route = createFileRoute("/reset-password")({
 function Page() {
   return (
     <AuthLayout title="Choose a new password" subtitle="Use at least 10 characters with a number and a symbol."
-      footer={<Link to="/login" className="font-semibold text-primary hover:text-gold">Back to sign in</Link>}>
+      footer={<Link to="/staff-login" className="font-semibold text-primary hover:text-gold">Back to sign in</Link>}>
       <form className="grid gap-4">
         <div className="grid gap-2"><Label htmlFor="p1">New password</Label><Input id="p1" type="password" /></div>
         <div className="grid gap-2"><Label htmlFor="p2">Confirm password</Label><Input id="p2" type="password" /></div>
-        <Button asChild><Link to="/login">Update password</Link></Button>
+        <Button asChild><Link to="/staff-login">Update password</Link></Button>
       </form>
     </AuthLayout>
   );

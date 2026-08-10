@@ -4,11 +4,8 @@ import {
   Bell,
   Boxes,
   Building2,
-  CalendarClock,
-  CreditCard,
   FileText,
   Gauge,
-  LifeBuoy,
   Package,
   ScrollText,
   Settings,
@@ -75,31 +72,35 @@ export const staffNav: NavGroup[] = [
   },
 ];
 
+// NOTE: portal.tsx imports this but it was missing from the original
+// template, which would break the build the first time anyone visited
+// /portal. Kept minimal since the customer portal isn't wired to real data.
 export const customerNav: NavGroup[] = [
   {
     group: "Overview",
     items: [
       { label: "Dashboard", to: "/portal", icon: Gauge },
-      { label: "My Shipments", to: "/portal/shipments", icon: Package },
-      { label: "Tracking", to: "/portal/tracking", icon: Activity },
-      { label: "Pickup Requests", to: "/portal/pickups", icon: CalendarClock },
-    ],
-  },
-  {
-    group: "Billing",
-    items: [
-      { label: "Invoices", to: "/portal/invoices", icon: FileText },
-      { label: "Payments", to: "/portal/payments", icon: CreditCard },
+      { label: "Shipments", to: "/portal/shipments", icon: Package },
+      { label: "Tracking", to: "/portal/tracking", icon: Truck },
     ],
   },
   {
     group: "Account",
     items: [
-      { label: "Notifications", to: "/portal/notifications", icon: Bell, badge: "3" },
-      { label: "Support", to: "/portal/support", icon: LifeBuoy },
-      { label: "Profile", to: "/portal/profile", icon: Users },
+      { label: "Invoices", to: "/portal/invoices", icon: BadgeDollarSign },
+      { label: "Payments", to: "/portal/payments", icon: Activity },
+      { label: "Pickups", to: "/portal/pickups", icon: Boxes },
+      { label: "Notifications", to: "/portal/notifications", icon: Bell },
+      { label: "Support", to: "/portal/support", icon: FileText },
       { label: "Settings", to: "/portal/settings", icon: Settings },
     ],
+  },
+];
+
+export const driverNav: NavGroup[] = [
+  {
+    group: "My work",
+    items: [{ label: "Dashboard", to: "/driver", icon: Gauge }],
   },
 ];
 
