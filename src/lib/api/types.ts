@@ -2,6 +2,10 @@
 // Once you connect a real project you can replace these with generated
 // types (see docs/SUPABASE_SETUP.md -> "Regenerating TypeScript types").
 
+/* =========================================================
+   STAFF
+   ========================================================= */
+
 export type StaffRole =
   | "admin"
   | "operations_manager"
@@ -11,12 +15,70 @@ export type StaffRole =
   | "staff"
   | "driver";
 
-export type StaffStatus = "active" | "suspended" | "on_leave";
-export type DriverStatus = "available" | "on_route" | "off_duty" | "suspended";
-export type LicenseClass = "A" | "B" | "C" | "D" | "E" | "CE" | "BCE";
+export type StaffStatus =
+  | "active"
+  | "suspended"
+  | "on_leave";
 
-export type AssignmentType = "delivery" | "pickup" | "transfer" | "maintenance_run" | "other";
-export type AssignmentStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
+/* =========================================================
+   DRIVER
+   ========================================================= */
+
+export type DriverStatus =
+  | "available"
+  | "on_route"
+  | "off_duty"
+  | "suspended";
+
+export type LicenseClass =
+  | "A"
+  | "B"
+  | "C"
+  | "D"
+  | "E"
+  | "CE"
+  | "BCE";
+
+/* =========================================================
+   ASSIGNMENTS
+   ========================================================= */
+
+export type AssignmentType =
+  | "delivery"
+  | "pickup"
+  | "transfer"
+  | "maintenance_run"
+  | "other";
+
+export type AssignmentStatus =
+  | "scheduled"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
+
+/* =========================================================
+   VEHICLES
+   ========================================================= */
+
+export type VehicleType =
+  | "motorcycle"
+  | "car"
+  | "van"
+  | "pickup"
+  | "truck"
+  | "trailer"
+  | "bus";
+
+export type VehicleStatus =
+  | "active"
+  | "inactive"
+  | "maintenance"
+  | "assigned"
+  | "available";
+
+/* =========================================================
+   LABELS
+   ========================================================= */
 
 export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   admin: "Admin",
@@ -60,6 +122,28 @@ export const ASSIGNMENT_TYPE_LABELS: Record<AssignmentType, string> = {
   other: "Other",
 };
 
+export const VEHICLE_TYPE_LABELS: Record<VehicleType, string> = {
+  motorcycle: "Motorcycle",
+  car: "Car",
+  van: "Van",
+  pickup: "Pickup",
+  truck: "Truck",
+  trailer: "Trailer",
+  bus: "Bus",
+};
+
+export const VEHICLE_STATUS_LABELS: Record<VehicleStatus, string> = {
+  active: "Active",
+  inactive: "Inactive",
+  maintenance: "Maintenance",
+  assigned: "Assigned",
+  available: "Available",
+};
+
+/* =========================================================
+   STAFF MEMBER
+   ========================================================= */
+
 export type StaffMember = {
   id: string;
   staffCode: string;
@@ -83,6 +167,10 @@ export type NewStaffInput = {
   jobTitle?: string | undefined;
   department?: string | undefined;
 };
+
+/* =========================================================
+   DRIVER
+   ========================================================= */
 
 export type Driver = {
   id: string;
@@ -109,10 +197,14 @@ export type Driver = {
   createdAt: string;
 };
 
-/** Only fullName, nationalId and licenseNumber are required — everything
- * else can be filled in later from the driver's profile page. Login email
- * + a temporary password are also required since that's how the account
- * gets created. */
+/**
+ * Only fullName, nationalId and licenseNumber are required.
+ * Everything else can be filled in later from the driver's profile page.
+ *
+ * Login email and a temporary password are also required since
+ * that's how the account gets created.
+ */
+
 export type NewDriverInput = {
   fullName: string;
   nationalId: string;
@@ -127,6 +219,10 @@ export type NewDriverInput = {
   nextOfKinName?: string | undefined;
   nextOfKinPhone?: string | undefined;
 };
+
+/* =========================================================
+   DRIVER ADVANCES
+   ========================================================= */
 
 export type DriverAdvance = {
   id: string;
@@ -152,6 +248,10 @@ export type UsageReportInput = {
   usageAmount: number;
   usageReport: string;
 };
+
+/* =========================================================
+   ASSIGNMENTS
+   ========================================================= */
 
 export type Assignment = {
   id: string;
