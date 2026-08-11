@@ -31,7 +31,8 @@ export default defineConfig(async ({ command }) => {
   // "vercel" for Vercel, "netlify" for Netlify, etc.
   if (command === "build") {
     const { nitro } = await import("nitro/vite");
-plugins.push(nitro({ preset: "vercel" }));  }
+    plugins.push(nitro({ preset: "node-server" }));
+  }
 
   return {
     css: { transformer: "lightningcss" as const },
