@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, Wallet, Receipt, CheckCircle2 } from "lucide-react";
+import { Loader2, Wallet, Receipt, CheckCircle2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatusPill } from "@/components/common/StatusPill";
@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
 import { listMyAdvances, submitUsageReport } from "@/lib/api/driver-advances";
-import type { DriverAdvance } from "@/lib/api/types";
+import { getDriver, updateMyLocation } from "@/lib/api/drivers";
+import type { Driver, DriverAdvance } from "@/lib/api/types";
 
 export const Route = createFileRoute("/driver/")({
   head: () => ({ meta: [{ title: "My Dashboard | Dahabo Driver Portal" }] }),
@@ -21,11 +22,13 @@ export const Route = createFileRoute("/driver/")({
 function Page() {
   const { profile } = useAuth();
   const [advances, setAdvances] = useState<DriverAdvance[] | null>(null);
+  const [driver, setDriver] = useState<Driver | null>(null);
 
   useEffect(() => {
     if (!profile) return;
     let active = true;
     listMyAdvances(profile.id).then((rows) => active && setAdvances(rows));
+    getDriver(profile.id).then((d) => active && setDriver(d ?? null));
     return () => {
       active = false;
     };
@@ -43,6 +46,8 @@ function Page() {
         title={`Welcome, ${profile.fullName.split(" ")[0]}`}
         description="Money handed to you and what still needs a usage report."
       />
+
+      <LocationCard driverId={profile.id} driver={driver} onUpdated={setDriver} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="gap-1.5 p-5 shadow-soft">
@@ -87,6 +92,68 @@ function Page() {
         )}
       </Card>
     </>
+  );
+}
+
+function LocationCard({
+  driverId,
+  driver,
+  onUpdated,
+}: {
+  driverId: string;
+  driver: Driver | null;
+  onUpdated: (driver: Driver) => void;
+}) {
+  const [location, setLocation] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit() {
+    if (!location.trim()) {
+      toast.error("Enter where you are");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await updateMyLocation(driverId, location.trim());
+      if (driver) {
+        onUpdated({ ...driver, currentLocation: location.trim(), locationUpdatedAt: new Date().toISOString() });
+      }
+      toast.success("Location updated");
+      setLocation("");
+    } catch (err) {
+      toast.error("Couldn't update your location", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Card className="gap-3 p-5 shadow-soft">
+      <div className="flex items-center gap-2">
+        <MapPin className="size-4 text-muted-foreground" />
+        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Where are you?</h2>
+      </div>
+      {driver?.currentLocation ? (
+        <p className="text-sm text-muted-foreground">
+          Last reported: <span className="font-medium text-foreground">{driver.currentLocation}</span>
+          {driver.locationUpdatedAt ? ` · ${new Date(driver.locationUpdatedAt).toLocaleString()}` : ""}
+        </p>
+      ) : null}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder="e.g. Mtito Andei, on the Nairobi–Mombasa road"
+          className="sm:flex-1"
+        />
+        <Button onClick={handleSubmit} disabled={submitting}>
+          {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
+          Update
+        </Button>
+      </div>
+    </Card>
   );
 }
 

@@ -22,9 +22,10 @@ required — just copy/paste.
 4. Click **Run** (or press Ctrl/Cmd + Enter).
 5. You should see "Success. No rows returned." When it finishes, go to
    **Table Editor** in the sidebar — you'll see every table (`profiles`,
-   `drivers`, `vehicles`, `shipments`, `assignments`, `customers`,
-   `warehouses`, `invoices`, `payments`, `documents`, `notifications`,
-   `audit_logs`, `branches`), all empty and ready to use.
+   `drivers`, `assignments`, `driver_advances`, plus a few not currently used
+   by the app — `vehicles`, `shipments`, `customers`, `warehouses`,
+   `invoices`, `payments`, `documents`, `notifications`, `audit_logs`,
+   `branches`), all empty and ready to use.
 
 This schema also turns on **Row Level Security** on every table, so only
 signed-in staff/admin/driver accounts can read or write data — there is no
@@ -42,6 +43,13 @@ Open `supabase/migrations/002_driver_accounts.sql`, copy its contents into a
 
 (If you're setting up a brand-new project, `schema.sql` already includes
 these — this step is only needed to bring an existing project up to date.)
+
+### 2c. Run the driver-location migration
+
+Same process — open `supabase/migrations/003_driver_location.sql`, run it in
+the SQL editor. This adds `current_location`/`location_updated_at` to
+`drivers`, and a trigger so a driver can check in their own location without
+being able to touch any of their other compliance data.
 
 ## 3. Turn on email/password sign-in
 
@@ -124,40 +132,42 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 Without this key, adding a driver will fail with a clear error message
 rather than silently doing nothing.
 
-## What's already wired up to the database
+## What the app does
 
-- **Staff & drivers**: Admins can add staff (`/staff/users`, sent an email
-  sign-in link) and drivers (`/staff/drivers`, given a login email +
-  temporary password directly). Every driver gets a company driver ID, and
-  only full name, national ID and licence number are required up front —
-  everything else (licence expiry, next of kin, base branch...) can be
-  filled in later.
-- **First-login password change**: any admin-created driver account is
-  flagged `must_change_password`; they're required to set their own
-  password (`/create-password`) before they can use their dashboard.
-- **Deactivating a driver**: from a driver's profile page, an admin can
-  deactivate their account — this blocks sign-in immediately, even with the
-  correct password, until reactivated.
-- **Driver dashboard & cash advances**: drivers only see a lightweight
-  `/driver` dashboard (not the full staff app). Staff can record cash
-  handed to a driver from that driver's profile page; the driver sees it on
-  their dashboard and can submit how it was used.
-- **Driver detail & work assignment**: Clicking a driver opens their full
-  profile. From there, staff can assign work (a delivery, pickup, transfer,
-  etc.) directly to that driver.
-- **Shipments & customers**: `/staff/shipments` and `/staff/customers` read
-  straight from the (initially empty) `shipments`/`customers` tables — no
-  more sample data.
+This is deliberately a small, focused tool — not a full logistics suite.
+Everything in it is real and wired to the database; nothing is sample data.
+
+- **Staff** (`/staff/users`): admins can add staff (sent an email sign-in
+  link), edit their name/role/title, deactivate their account, or delete it
+  outright.
+- **Drivers** (`/staff/drivers`): admins add a driver with a login email and
+  temporary password set directly — only full name, national ID and licence
+  number are required, everything else can be filled in later. Admins can
+  edit, deactivate, or permanently delete a driver from their profile page.
+- **First-login password change**: any admin-created account is flagged
+  `must_change_password`; they must set their own password
+  (`/create-password`) before they can use their dashboard.
+- **Deactivating an account**: blocks sign-in immediately, even with the
+  correct password, until reactivated — for both staff and drivers.
+- **Work assignment**: from a driver's profile page, staff can assign them
+  work (a delivery, pickup, transfer, etc.) with notes and a schedule.
+- **Cash advances**: staff record money handed to a driver from that
+  driver's profile page. The driver sees it on their own `/driver`
+  dashboard and submits how it was used (amount + a short note).
+- **Location check-in**: a driver can post where they currently are from
+  their dashboard, for the office to follow up. Staff see the latest
+  location on the driver's list and profile page. A driver can only update
+  this field on their own record — not any of their compliance data.
 
 ## Extending it further
 
-The tables for fleet, warehouses, invoices, payments, documents,
-notifications and audit logs are all created and ready — the dashboard
-pages for those currently still show sample data. Wiring each one up
-follows the same pattern used for drivers/shipments/customers: see
-`src/lib/api/drivers.ts`, `src/lib/api/shipments.ts` and
-`src/lib/api/customers.ts` for a template, and `src/lib/supabase.ts` for the
-client.
+A few tables from the original template (`vehicles`, `shipments`,
+`customers`, `warehouses`, `invoices`, `payments`, `documents`,
+`notifications`, `audit_logs`, `branches`) are still created by
+`schema.sql` but nothing in the app reads or writes them yet — there's no
+harm in leaving them empty, or you can extend the app to use them following
+the pattern in `src/lib/api/drivers.ts` and `src/lib/api/staff.ts`, and
+`src/lib/supabase.ts` for the client.
 
 ## Regenerating TypeScript types (optional)
 

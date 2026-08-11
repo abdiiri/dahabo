@@ -1,32 +1,19 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  Bell,
   ChevronDown,
-  Clock,
   LogOut,
   Maximize2,
-  MessageSquare,
-  Globe,
   PanelLeftClose,
   PanelLeftOpen,
-  Plus,
   Search,
-  Settings,
-  Star,
   UserRound,
-  PackagePlus,
-  UserPlus,
-  Truck,
-  CalendarPlus,
-  FileBarChart,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { CommandPalette, useCommandPalette } from "@/components/portal/CommandPalette";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -39,11 +26,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { notifications } from "@/data/mock";
 import type { NavGroup } from "@/config/navigation";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 type Persona = { name: string; role: string; initials: string; email: string };
 
@@ -68,14 +52,12 @@ function SidebarNav({
       .filter((g) => g.items.length > 0);
   }, [nav, query]);
 
-  const favourites = nav[0]?.items.slice(0, 2) ?? [];
-
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex h-20 items-center border-b border-sidebar-border px-4">
         {collapsed ? (
           <Link to="/" className="mx-auto grid size-9 place-items-center rounded-xl bg-gold text-gold-foreground">
-            <Truck className="size-5" />
+            <UserRound className="size-5" />
           </Link>
         ) : (
           <Logo variant="light" size="sm" />
@@ -97,24 +79,6 @@ function SidebarNav({
       ) : null}
 
       <ScrollArea className="flex-1 px-2 pb-4">
-        {!collapsed && favourites.length ? (
-          <div className="mb-2 px-2">
-            <p className="mb-1.5 flex items-center gap-1.5 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-sidebar-foreground/50">
-              <Star className="size-3 text-sidebar-primary" /> Favourites
-            </p>
-            {favourites.map((f) => (
-              <Link
-                key={`fav-${f.to}`}
-                to={f.to}
-                onClick={onNavigate}
-                className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              >
-                <f.icon className="size-4" /> {f.label}
-              </Link>
-            ))}
-          </div>
-        ) : null}
-
         {filtered.map((group) => (
           <div key={group.group} className="mb-2">
             {!collapsed ? (
@@ -190,109 +154,7 @@ function SidebarNav({
             </ul>
           </div>
         ))}
-
-        {!collapsed ? (
-          <div className="mt-3 rounded-xl border border-sidebar-border bg-sidebar-accent/50 p-3">
-            <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-sidebar-foreground/50">
-              <Clock className="size-3" /> Recent pages
-            </p>
-            <p className="mt-2 truncate text-xs text-sidebar-foreground/70">{pathname}</p>
-            <p className="truncate text-xs text-sidebar-foreground/50">/staff/shipments</p>
-          </div>
-        ) : null}
       </ScrollArea>
-    </div>
-  );
-}
-
-function NotificationBell() {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative rounded-full" aria-label="Notifications">
-          <Bell className="size-[18px]" />
-          <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-destructive ring-2 ring-background" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[340px] p-0">
-        <div className="flex items-center justify-between px-3 py-2.5">
-          <p className="text-sm font-bold">Notifications</p>
-          <Badge variant="secondary">{notifications.length} new</Badge>
-        </div>
-        <Separator />
-        <Tabs defaultValue="All">
-          <TabsList className="m-2 grid w-[calc(100%-1rem)] grid-cols-5 text-[11px]">
-            {["All", "Shipment", "Finance", "Drivers", "System"].map((t) => (
-              <TabsTrigger key={t} value={t} className="text-[11px]">
-                {t}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          {["All", "Shipment", "Finance", "Drivers", "System"].map((t) => (
-            <TabsContent key={t} value={t} className="m-0">
-              <ScrollArea className="h-72">
-                {notifications
-                  .filter((n) => t === "All" || n.category === t)
-                  .map((n) => (
-                    <div
-                      key={n.id}
-                      className="flex gap-3 border-b border-border px-3 py-3 last:border-0 hover:bg-secondary/60"
-                    >
-                      <span
-                        className={cn(
-                          "mt-1.5 size-2 shrink-0 rounded-full",
-                          n.tone === "success"
-                            ? "bg-success"
-                            : n.tone === "warning"
-                              ? "bg-warning"
-                              : n.tone === "danger"
-                                ? "bg-destructive"
-                                : "bg-chart-4",
-                        )}
-                      />
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-medium leading-snug">{n.title}</p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          {n.category} · {n.time}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-              </ScrollArea>
-            </TabsContent>
-          ))}
-        </Tabs>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function QuickActionsFab() {
-  const actions = [
-    { label: "Create Shipment", icon: PackagePlus },
-    { label: "Create Customer", icon: UserPlus },
-    { label: "Assign Driver", icon: Truck },
-    { label: "Request Pickup", icon: CalendarPlus },
-    { label: "Generate Report", icon: FileBarChart },
-  ];
-  return (
-    <div className="fixed bottom-6 right-6 z-40">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button size="icon" className="size-14 rounded-full bg-gold text-gold-foreground shadow-lift hover:bg-gold/90">
-            <Plus className="size-6" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" side="top" className="w-56">
-          <DropdownMenuLabel>Quick actions</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {actions.map((a) => (
-            <DropdownMenuItem key={a.label} onSelect={() => toast.success(`${a.label} — demo action`)}>
-              <a.icon className="size-4" /> {a.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
     </div>
   );
 }
@@ -352,31 +214,13 @@ export function PortalShell({
             className="group ml-1 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 text-left text-sm text-muted-foreground transition-colors hover:bg-secondary md:max-w-md"
           >
             <Search className="size-4 shrink-0" />
-            <span className="truncate">Search everything…</span>
+            <span className="truncate">Search…</span>
             <kbd className="ml-auto hidden shrink-0 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold sm:block">
               Ctrl K
             </kbd>
           </button>
 
           <div className="ml-auto flex items-center gap-0.5">
-            <Button variant="ghost" size="icon" className="hidden rounded-full sm:inline-flex" aria-label="Messages">
-              <MessageSquare className="size-[18px]" />
-            </Button>
-            <NotificationBell />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="hidden rounded-full md:inline-flex" aria-label="Language">
-                  <Globe className="size-[18px]" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {["English", "Kiswahili", "Somali", "Français"].map((l) => (
-                  <DropdownMenuItem key={l} onSelect={() => toast(`Language set to ${l} (demo)`)}>
-                    {l}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -389,11 +233,6 @@ export function PortalShell({
               }}
             >
               <Maximize2 className="size-[18px]" />
-            </Button>
-            <Button variant="ghost" size="icon" className="hidden rounded-full lg:inline-flex" aria-label="Settings" asChild>
-              <Link to="/staff/settings">
-                <Settings className="size-[18px]" />
-              </Link>
             </Button>
 
             <DropdownMenu>
@@ -416,17 +255,6 @@ export function PortalShell({
                   <p className="text-xs text-muted-foreground">{persona.email}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/staff/settings">
-                    <UserRound className="size-4" /> Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/lock">
-                    <Settings className="size-4" /> Lock screen
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 {onSignOut ? (
                   <DropdownMenuItem onSelect={onSignOut}>
                     <LogOut className="size-4" /> Sign out
@@ -446,7 +274,6 @@ export function PortalShell({
         <main className="min-w-0 flex-1 space-y-6 p-4 sm:p-6">{children}</main>
       </div>
 
-      <QuickActionsFab />
       <CommandPalette open={open} onOpenChange={setOpen} />
     </div>
   );

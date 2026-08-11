@@ -21,11 +21,11 @@ function seedDrivers(): Driver[] {
     address: undefined,
     nextOfKinName: undefined,
     nextOfKinPhone: undefined,
-    baseBranch: d.base,
-    assignedVehicle: d.vehicle,
     status: d.status === "On Route" ? "on_route" : d.status === "Off Duty" ? "off_duty" : "available",
     accountStatus: "active",
     mustChangePassword: false,
+    currentLocation: undefined,
+    locationUpdatedAt: undefined,
     rating: Number(d.rating),
     totalTrips: d.trips,
     dateJoined: "2024-01-01",
@@ -134,17 +134,79 @@ export async function createDriver(input: NewDriverInput): Promise<Driver> {
     address: input.address,
     nextOfKinName: input.nextOfKinName,
     nextOfKinPhone: input.nextOfKinPhone,
-    baseBranch: input.baseBranch,
-    assignedVehicle: input.assignedVehicle,
     status: "available",
     accountStatus: "active",
     mustChangePassword: true,
+    currentLocation: undefined,
+    locationUpdatedAt: undefined,
     rating: 5,
     totalTrips: 0,
     dateJoined: new Date().toISOString().slice(0, 10),
     createdAt: new Date().toISOString(),
   };
   return store.insert(driver);
+}
+
+export type EditDriverInput = Partial<
+  Pick<
+    NewDriverInput,
+    | "fullName"
+    | "phone"
+    | "nationalId"
+    | "licenseNumber"
+    | "licenseClass"
+    | "licenseExpiry"
+    | "dateOfBirth"
+    | "address"
+    | "nextOfKinName"
+    | "nextOfKinPhone"
+  >
+>;
+
+export async function editDriver(id: string, input: EditDriverInput): Promise<Driver> {
+  if (isSupabaseConfigured && supabase) {
+    if (input.fullName !== undefined || input.phone !== undefined) {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          ...(input.fullName !== undefined ? { full_name: input.fullName } : {}),
+          ...(input.phone !== undefined ? { phone: input.phone || null } : {}),
+        })
+        .eq("id", id);
+      if (error) throw error;
+    }
+    const { data, error } = await supabase
+      .from("drivers")
+      .update({
+        ...(input.nationalId !== undefined ? { national_id: input.nationalId } : {}),
+        ...(input.licenseNumber !== undefined ? { license_number: input.licenseNumber } : {}),
+        ...(input.licenseClass !== undefined ? { license_class: input.licenseClass } : {}),
+        ...(input.licenseExpiry !== undefined ? { license_expiry: input.licenseExpiry || null } : {}),
+        ...(input.dateOfBirth !== undefined ? { date_of_birth: input.dateOfBirth || null } : {}),
+        ...(input.address !== undefined ? { address: input.address || null } : {}),
+        ...(input.nextOfKinName !== undefined ? { next_of_kin_name: input.nextOfKinName || null } : {}),
+        ...(input.nextOfKinPhone !== undefined ? { next_of_kin_phone: input.nextOfKinPhone || null } : {}),
+      })
+      .eq("id", id)
+      .select(`*, profiles!inner(${PROFILE_COLUMNS})`)
+      .single();
+    if (error) throw error;
+    return mapSupabaseDriver(data);
+  }
+
+  const updated = store.update(id, input as Partial<Driver>);
+  if (!updated) throw new Error("Driver not found");
+  return updated;
+}
+
+/** Permanently removes the driver's login and every record tied to it
+ * (compliance record, assignments, cash advances) via cascading deletes. */
+export async function deleteDriver(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    await deleteAuthAccount({ data: { userId: id } });
+    return;
+  }
+  store.remove(id);
 }
 
 /** Deactivate (or reactivate) a driver's login. A suspended account is
@@ -159,6 +221,22 @@ export async function setDriverAccountStatus(id: string, active: boolean): Promi
     return;
   }
   store.update(id, { accountStatus: active ? "active" : "suspended" } as Partial<Driver>);
+}
+
+/** A driver checking in their current location, for the office to follow up. */
+export async function updateMyLocation(driverId: string, location: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from("drivers")
+      .update({ current_location: location, location_updated_at: new Date().toISOString() })
+      .eq("id", driverId);
+    if (error) throw error;
+    return;
+  }
+  store.update(driverId, {
+    currentLocation: location,
+    locationUpdatedAt: new Date().toISOString(),
+  } as Partial<Driver>);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -177,11 +255,11 @@ function mapSupabaseDriver(row: any): Driver {
     address: row.address ?? undefined,
     nextOfKinName: row.next_of_kin_name ?? undefined,
     nextOfKinPhone: row.next_of_kin_phone ?? undefined,
-    baseBranch: row.base_branch_id ?? undefined,
-    assignedVehicle: row.assigned_vehicle_id ?? undefined,
     status: row.status,
     accountStatus: row.profiles?.status ?? "active",
     mustChangePassword: Boolean(row.profiles?.must_change_password),
+    currentLocation: row.current_location ?? undefined,
+    locationUpdatedAt: row.location_updated_at ?? undefined,
     rating: Number(row.rating ?? 5),
     totalTrips: row.total_trips ?? 0,
     dateJoined: row.created_at?.slice(0, 10) ?? "",

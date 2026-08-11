@@ -155,6 +155,8 @@ create table public.drivers (
   status public.driver_status not null default 'available',
   rating numeric(2, 1) default 5.0,
   total_trips integer not null default 0,
+  current_location text,
+  location_updated_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -413,6 +415,40 @@ create policy "drivers update (staff or self)" on public.drivers
   for update using (public.is_staff() or id = auth.uid());
 create policy "drivers delete (admin only)" on public.drivers
   for delete using (public.is_admin());
+
+-- The self-update policy above lets a driver update their own row (to
+-- check in current_location). This trigger narrows that to just the
+-- location fields — everything else about their own compliance record can
+-- only be changed by staff.
+create or replace function public.protect_driver_fields()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_staff() then
+    new.driver_code := old.driver_code;
+    new.national_id := old.national_id;
+    new.license_number := old.license_number;
+    new.license_class := old.license_class;
+    new.license_expiry := old.license_expiry;
+    new.date_of_birth := old.date_of_birth;
+    new.address := old.address;
+    new.next_of_kin_name := old.next_of_kin_name;
+    new.next_of_kin_phone := old.next_of_kin_phone;
+    new.base_branch_id := old.base_branch_id;
+    new.assigned_vehicle_id := old.assigned_vehicle_id;
+    new.status := old.status;
+    new.rating := old.rating;
+    new.total_trips := old.total_trips;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger drivers_protect_fields before update on public.drivers
+  for each row execute function public.protect_driver_fields();
 
 -- assignments: staff manage; a driver can read/update only their own assignments.
 create policy "assignments read (staff or own)" on public.assignments

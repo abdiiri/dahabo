@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { createDriver, generateTempPassword } from "@/lib/api/drivers";
 import { LICENSE_CLASS_LABELS, type Driver, type LicenseClass, type NewDriverInput } from "@/lib/api/types";
-import { cities } from "@/data/mock";
 
 const empty: NewDriverInput = {
   fullName: "",
@@ -37,8 +36,6 @@ const empty: NewDriverInput = {
   address: "",
   nextOfKinName: "",
   nextOfKinPhone: "",
-  baseBranch: "",
-  assignedVehicle: "",
 };
 
 // Only these are required. Everything else can be filled in later from the
@@ -182,21 +179,8 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
               <Field label="Licence expiry date">
                 <Input type="date" value={values.licenseExpiry} onChange={(e) => set("licenseExpiry")(e.target.value)} />
               </Field>
-              <Field label="Home address">
+              <Field label="Home address" className="sm:col-span-2">
                 <Input value={values.address} onChange={(e) => set("address")(e.target.value)} placeholder="Estate, town" />
-              </Field>
-              <Field label="Base branch">
-                <Select value={values.baseBranch ?? ""} onValueChange={(v) => set("baseBranch")(v)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Select branch" /></SelectTrigger>
-                  <SelectContent>
-                    {cities.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Assigned vehicle" className="sm:col-span-2">
-                <Input value={values.assignedVehicle} onChange={(e) => set("assignedVehicle")(e.target.value)} placeholder="Plate number, e.g. KDD 145A" />
               </Field>
             </div>
           </section>

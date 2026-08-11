@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { createStaff } from "@/lib/api/staff";
 import { STAFF_ROLE_LABELS, type NewStaffInput, type StaffMember, type StaffRole } from "@/lib/api/types";
-import { cities } from "@/data/mock";
 
 const empty: NewStaffInput = {
   fullName: "",
@@ -31,7 +30,6 @@ const empty: NewStaffInput = {
   role: "staff",
   jobTitle: "",
   department: "",
-  branch: "",
 };
 
 const ASSIGNABLE_ROLES: StaffRole[] = [
@@ -109,29 +107,16 @@ export function AddStaffDialog({ onCreated }: { onCreated?: (member: StaffMember
               <Input value={values.phone} onChange={(e) => set("phone")(e.target.value)} placeholder="+254 7xx xxx xxx" />
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label className="mb-1.5 block text-sm">Role</Label>
-              <Select value={values.role} onValueChange={(v) => set("role")(v)}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {ASSIGNABLE_ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>{STAFF_ROLE_LABELS[r]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="mb-1.5 block text-sm">Branch</Label>
-              <Select value={values.branch ?? ""} onValueChange={(v) => set("branch")(v)}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Select branch" /></SelectTrigger>
-                <SelectContent>
-                  {cities.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <Label className="mb-1.5 block text-sm">Role</Label>
+            <Select value={values.role} onValueChange={(v) => set("role")(v)}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ASSIGNABLE_ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>{STAFF_ROLE_LABELS[r]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>

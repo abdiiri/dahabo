@@ -60,60 +60,6 @@ export const ASSIGNMENT_TYPE_LABELS: Record<AssignmentType, string> = {
   other: "Other",
 };
 
-export type VehicleType =
-  | "prime_mover"
-  | "reefer_truck"
-  | "flatbed"
-  | "box_truck"
-  | "tanker"
-  | "van"
-  | "pickup"
-  | "lowbed"
-  | "other";
-
-export type VehicleStatus = "active" | "idle" | "maintenance" | "decommissioned";
-
-export const VEHICLE_TYPE_LABELS: Record<VehicleType, string> = {
-  prime_mover: "Prime Mover",
-  reefer_truck: "Reefer Truck",
-  flatbed: "Flatbed",
-  box_truck: "Box Truck",
-  tanker: "Tanker",
-  van: "Van",
-  pickup: "Pickup",
-  lowbed: "Lowbed",
-  other: "Other",
-};
-
-export const VEHICLE_STATUS_LABELS: Record<VehicleStatus, string> = {
-  active: "Active",
-  idle: "Idle",
-  maintenance: "Maintenance",
-  decommissioned: "Decommissioned",
-};
-
-export type Vehicle = {
-  id: string;
-  vehicleCode: string;
-  plateNumber: string;
-  type: VehicleType;
-  capacity?: string | undefined;
-  status: VehicleStatus;
-  odometerKm: number;
-  nextServiceDate?: string | undefined;
-  branch?: string | undefined;
-  createdAt: string;
-};
-
-export type NewVehicleInput = {
-  plateNumber: string;
-  type: VehicleType;
-  capacity?: string | undefined;
-  odometerKm?: number | undefined;
-  nextServiceDate?: string | undefined;
-  branch?: string | undefined;
-};
-
 export type StaffMember = {
   id: string;
   staffCode: string;
@@ -123,7 +69,6 @@ export type StaffMember = {
   role: StaffRole;
   jobTitle?: string | undefined;
   department?: string | undefined;
-  branch?: string | undefined;
   status: StaffStatus;
   mustChangePassword: boolean;
   dateJoined: string;
@@ -137,7 +82,6 @@ export type NewStaffInput = {
   role: StaffRole;
   jobTitle?: string | undefined;
   department?: string | undefined;
-  branch?: string | undefined;
 };
 
 export type Driver = {
@@ -154,11 +98,11 @@ export type Driver = {
   address?: string | undefined;
   nextOfKinName?: string | undefined;
   nextOfKinPhone?: string | undefined;
-  baseBranch?: string | undefined;
-  assignedVehicle?: string | undefined;
   status: DriverStatus;
   accountStatus: StaffStatus;
   mustChangePassword: boolean;
+  currentLocation?: string | undefined;
+  locationUpdatedAt?: string | undefined;
   rating: number;
   totalTrips: number;
   dateJoined: string;
@@ -182,8 +126,6 @@ export type NewDriverInput = {
   address?: string | undefined;
   nextOfKinName?: string | undefined;
   nextOfKinPhone?: string | undefined;
-  baseBranch?: string | undefined;
-  assignedVehicle?: string | undefined;
 };
 
 export type DriverAdvance = {
@@ -209,30 +151,6 @@ export type NewAdvanceInput = {
 export type UsageReportInput = {
   usageAmount: number;
   usageReport: string;
-};
-
-export type Shipment = {
-  id: string;
-  shipmentCode: string;
-  customer?: string | undefined;
-  origin: string;
-  destination: string;
-  status: string;
-  service?: string | undefined;
-  eta?: string | undefined;
-  driver?: string | undefined;
-};
-
-export type Customer = {
-  id: string;
-  customerCode: string;
-  name: string;
-  contact?: string | undefined;
-  email?: string | undefined;
-  phone?: string | undefined;
-  tier: string;
-  outstanding: number;
-  status: string;
 };
 
 export type Assignment = {

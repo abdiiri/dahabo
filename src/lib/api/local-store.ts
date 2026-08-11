@@ -53,5 +53,12 @@ export function localStore<T extends { id: string }>(key: string, seed: T[]) {
       write(key, next);
       return updated;
     },
+    remove(id: string): void {
+      const rows = read<T>(key, seed);
+      write(
+        key,
+        rows.filter((row) => row.id !== id),
+      );
+    },
   };
 }

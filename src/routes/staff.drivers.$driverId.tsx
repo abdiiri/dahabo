@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   BadgeCheck,
   Calendar,
@@ -8,10 +8,11 @@ import {
   Loader2,
   Lock,
   MapPin,
+  Pencil,
   Phone,
   ShieldAlert,
   Star,
-  Truck,
+  Trash2,
   Unlock,
   Wallet,
 } from "lucide-react";
@@ -44,8 +45,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AssignWorkDialog } from "@/components/staff/AssignWorkDialog";
-import { getDriver, setDriverAccountStatus } from "@/lib/api/drivers";
+import { getDriver, setDriverAccountStatus, editDriver, deleteDriver, type EditDriverInput } from "@/lib/api/drivers";
 import { listAssignmentsForDriver } from "@/lib/api/assignments";
 import { listAdvancesForDriver, giveAdvance } from "@/lib/api/driver-advances";
 import {
@@ -56,6 +64,7 @@ import {
   type Assignment,
   type Driver,
   type DriverAdvance,
+  type LicenseClass,
 } from "@/lib/api/types";
 
 export const Route = createFileRoute("/staff/drivers/$driverId")({
@@ -84,12 +93,14 @@ function isExpiringSoon(dateStr?: string) {
 
 function Page() {
   const { driverId } = Route.useParams();
+  const navigate = useNavigate();
   const [driver, setDriver] = useState<Driver | null | undefined>(undefined);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [advances, setAdvances] = useState<DriverAdvance[]>([]);
   const [loadingAdvances, setLoadingAdvances] = useState(true);
   const [statusBusy, setStatusBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -144,6 +155,21 @@ function Page() {
     }
   }
 
+  async function handleDelete() {
+    if (!driver) return;
+    setDeleting(true);
+    try {
+      await deleteDriver(driver.id);
+      toast.success(`${driver.fullName} was removed`);
+      navigate({ to: "/staff/drivers" });
+    } catch (err) {
+      toast.error("Couldn't delete this driver", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+      setDeleting(false);
+    }
+  }
+
   if (driver === undefined) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center text-muted-foreground">
@@ -174,6 +200,7 @@ function Page() {
         description={`${driver.driverCode} · ${LICENSE_CLASS_LABELS[driver.licenseClass]}`}
         actions={
           <>
+            <EditDriverDialog driver={driver} onSaved={(d) => setDriver(d)} />
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" disabled={statusBusy}>
@@ -199,6 +226,28 @@ function Page() {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={toggleAccountStatus}>Confirm</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="text-destructive hover:text-destructive" disabled={deleting}>
+                  <Trash2 className="size-4" /> Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete {driver.fullName}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently deletes their login, compliance record, work history and cash advances. This
+                    can't be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Delete permanently
+                  </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -231,8 +280,22 @@ function Page() {
             <dl className="grid gap-3 text-sm">
               <Row icon={Phone} label="Phone" value={driver.phone} />
               <Row icon={IdCard} label="National ID" value={driver.nationalId} />
-              <Row icon={MapPin} label="Base branch" value={driver.baseBranch} />
-              <Row icon={Truck} label="Assigned vehicle" value={driver.assignedVehicle} />
+              <Row
+                icon={MapPin}
+                label="Last known location"
+                value={
+                  driver.currentLocation ? (
+                    <span>
+                      {driver.currentLocation}
+                      {driver.locationUpdatedAt ? (
+                        <span className="ml-1 block text-xs font-normal text-muted-foreground">
+                          {new Date(driver.locationUpdatedAt).toLocaleString()}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : undefined
+                }
+              />
               <Row icon={Calendar} label="Date joined" value={driver.dateJoined} />
             </dl>
           </Card>
@@ -365,6 +428,141 @@ function Page() {
         </Card>
       </div>
     </>
+  );
+}
+
+function EditDriverDialog({
+  driver,
+  onSaved,
+}: {
+  driver: Driver;
+  onSaved: (driver: Driver) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [values, setValues] = useState<EditDriverInput>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  function openChange(next: boolean) {
+    setOpen(next);
+    if (next) {
+      setValues({
+        fullName: driver.fullName,
+        phone: driver.phone ?? "",
+        nationalId: driver.nationalId,
+        licenseNumber: driver.licenseNumber,
+        licenseClass: driver.licenseClass,
+        licenseExpiry: driver.licenseExpiry ?? "",
+        dateOfBirth: driver.dateOfBirth ?? "",
+        address: driver.address ?? "",
+        nextOfKinName: driver.nextOfKinName ?? "",
+        nextOfKinPhone: driver.nextOfKinPhone ?? "",
+      });
+    }
+  }
+
+  const set = <K extends keyof EditDriverInput>(k: K) => (v: EditDriverInput[K]) =>
+    setValues((s) => ({ ...s, [k]: v }));
+
+  async function handleSubmit() {
+    if (!values.fullName?.trim() || !values.nationalId?.trim() || !values.licenseNumber?.trim()) {
+      toast.error("Name, national ID and licence number are required");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const updated = await editDriver(driver.id, values);
+      onSaved(updated);
+      toast.success("Driver updated");
+      setOpen(false);
+    } catch (err) {
+      toast.error("Couldn't save changes", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={openChange}>
+      <DialogTrigger asChild>
+        <Button variant="outline">
+          <Pencil className="size-4" /> Edit
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit driver</DialogTitle>
+          <DialogDescription>Their login email can't be changed here.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 py-2">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-sm">Full name</Label>
+              <Input value={values.fullName ?? ""} onChange={(e) => set("fullName")(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Phone</Label>
+              <Input value={values.phone ?? ""} onChange={(e) => set("phone")(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-sm">National ID number</Label>
+              <Input value={values.nationalId ?? ""} onChange={(e) => set("nationalId")(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Driving licence number</Label>
+              <Input value={values.licenseNumber ?? ""} onChange={(e) => set("licenseNumber")(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-sm">Licence class</Label>
+              <Select value={values.licenseClass ?? "CE"} onValueChange={(v) => set("licenseClass")(v as LicenseClass)}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(LICENSE_CLASS_LABELS) as LicenseClass[]).map((k) => (
+                    <SelectItem key={k} value={k}>{LICENSE_CLASS_LABELS[k]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Licence expiry date</Label>
+              <Input type="date" value={values.licenseExpiry ?? ""} onChange={(e) => set("licenseExpiry")(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-sm">Date of birth</Label>
+              <Input type="date" value={values.dateOfBirth ?? ""} onChange={(e) => set("dateOfBirth")(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Home address</Label>
+              <Input value={values.address ?? ""} onChange={(e) => set("address")(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-sm">Next of kin name</Label>
+              <Input value={values.nextOfKinName ?? ""} onChange={(e) => set("nextOfKinName")(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Next of kin phone</Label>
+              <Input value={values.nextOfKinPhone ?? ""} onChange={(e) => set("nextOfKinPhone")(e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={submitting}>
+            {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
+            Save changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

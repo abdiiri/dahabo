@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { localStore } from "./local-store";
 import { staffUsers } from "@/data/mock";
+import { deleteAuthAccount } from "./accounts.server";
 import type { StaffMember, NewStaffInput, StaffRole } from "./types";
 
 const ROLE_MAP: Record<string, StaffRole> = {
@@ -25,7 +26,6 @@ function seedStaff(): StaffMember[] {
       role: ROLE_MAP[u.role] ?? "staff",
       jobTitle: u.role,
       department: undefined,
-      branch: u.branch,
       status: u.status === "Suspended" ? "suspended" : "active",
       mustChangePassword: false,
       dateJoined: `202${3 + (i % 3)}-01-01`,
@@ -102,13 +102,62 @@ export async function createStaff(input: NewStaffInput): Promise<StaffMember> {
     role: input.role,
     jobTitle: input.jobTitle,
     department: input.department,
-    branch: input.branch,
     status: "active",
     mustChangePassword: true,
     dateJoined: new Date().toISOString().slice(0, 10),
     createdAt: new Date().toISOString(),
   };
   return store.insert(member);
+}
+
+export type EditStaffInput = Partial<
+  Pick<NewStaffInput, "fullName" | "phone" | "role" | "jobTitle" | "department">
+>;
+
+export async function editStaff(id: string, input: EditStaffInput): Promise<StaffMember> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({
+        ...(input.fullName !== undefined ? { full_name: input.fullName } : {}),
+        ...(input.phone !== undefined ? { phone: input.phone || null } : {}),
+        ...(input.role !== undefined ? { role: input.role } : {}),
+        ...(input.jobTitle !== undefined ? { job_title: input.jobTitle || null } : {}),
+        ...(input.department !== undefined ? { department: input.department || null } : {}),
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    return mapSupabaseProfile(data);
+  }
+
+  const updated = store.update(id, input as Partial<StaffMember>);
+  if (!updated) throw new Error("Staff member not found");
+  return updated;
+}
+
+/** Permanently removes the staff member's login and profile. */
+export async function deleteStaff(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    await deleteAuthAccount({ data: { userId: id } });
+    return;
+  }
+  store.remove(id);
+}
+
+/** Deactivate (or reactivate) a staff member's login. A suspended account
+ * is blocked at sign-in even with the correct password — see src/lib/auth.tsx. */
+export async function setStaffAccountStatus(id: string, active: boolean): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ status: active ? "active" : "suspended" })
+      .eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  store.update(id, { status: active ? "active" : "suspended" } as Partial<StaffMember>);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -122,7 +171,6 @@ function mapSupabaseProfile(row: any): StaffMember {
     role: row.role,
     jobTitle: row.job_title ?? undefined,
     department: row.department ?? undefined,
-    branch: row.branch_id ?? undefined,
     status: row.status,
     mustChangePassword: Boolean(row.must_change_password),
     dateJoined: row.date_joined ?? row.created_at?.slice(0, 10) ?? "",
