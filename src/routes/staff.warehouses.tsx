@@ -1,9 +1,9 @@
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
-import { StatusPill } from "@/components/common/StatusPill";
-import { Button } from "@/components/ui/button";
-import { warehouses } from "@/data/mock";
+import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 
 export const Route = createFileRoute("/staff/warehouses")({
   head: () => ({
@@ -17,24 +17,38 @@ export const Route = createFileRoute("/staff/warehouses")({
   component: Page,
 });
 
-type Row = (typeof warehouses)[number];
-
-const columns: Column<Row>[] = [
-    { key: "id", header: "ID" },
-    { key: "name", header: "Facility" },
-    { key: "city", header: "City" },
-    { key: "sqm", header: "Area (sqm)" },
-    { key: "docks", header: "Docks" },
-    { key: "manager", header: "Manager" },
-    { key: "capacity", header: "Capacity", render: (r) => `${r.capacity}%` },
+const columns: Column<Warehouse>[] = [
+  { key: "warehouseCode", header: "ID" },
+  { key: "name", header: "Facility" },
+  { key: "city", header: "City", render: (r) => r.city ?? "—" },
+  { key: "sizeSqm", header: "Area (sqm)", render: (r) => r.sizeSqm ?? "—" },
+  { key: "dockCount", header: "Docks", render: (r) => r.dockCount ?? "—" },
+  { key: "managerName", header: "Manager", render: (r) => r.managerName ?? "—" },
+  { key: "capacityPct", header: "Capacity", render: (r) => (r.capacityPct != null ? `${r.capacityPct}%` : "—") },
 ];
 
 function Page() {
+  const [warehouses, setWarehouses] = useState<Warehouse[] | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    listWarehouses().then((rows) => active && setWarehouses(rows));
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <>
-      <PageHeader breadcrumb={['Staff', 'Warehouses']} title="Warehouses" description="Facilities, docks and live capacity." actions={<Button>New record</Button>} />
-      
-      <DataTable data={warehouses as Row[]} columns={columns} />
+      <PageHeader breadcrumb={["Staff", "Warehouses"]} title="Warehouses" description="Facilities, docks and live capacity." />
+
+      {warehouses === null ? (
+        <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground">
+          <Loader2 className="size-5 animate-spin" />
+        </div>
+      ) : (
+        <DataTable data={warehouses} columns={columns} searchPlaceholder="Search warehouses…" />
+      )}
     </>
   );
 }

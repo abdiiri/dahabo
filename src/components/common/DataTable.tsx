@@ -1,8 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { ArrowUpDown, ChevronLeft, ChevronRight, Download, Filter, Search, Settings2 } from "lucide-react";
+import { ArrowUpDown, ChevronLeft, ChevronRight, Search, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -12,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export type Column<T> = {
@@ -42,7 +40,6 @@ export function DataTable<T extends { id: string }>({
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
   const [hidden, setHidden] = useState<string[]>([]);
-  const [selected, setSelected] = useState<string[]>([]);
 
   const visibleColumns = columns.filter((c) => !hidden.includes(c.key));
 
@@ -64,7 +61,6 @@ export function DataTable<T extends { id: string }>({
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const current = Math.min(page, pageCount - 1);
   const rows = filtered.slice(current * pageSize, current * pageSize + pageSize);
-  const allChecked = rows.length > 0 && rows.every((r) => selected.includes(r.id));
 
   return (
     <Card className="gap-0 overflow-hidden p-0 shadow-soft">
@@ -83,18 +79,6 @@ export function DataTable<T extends { id: string }>({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {toolbar}
-          {selected.length > 0 ? (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => toast.success(`${selected.length} record(s) queued for bulk action`)}
-            >
-              Bulk actions ({selected.length})
-            </Button>
-          ) : null}
-          <Button size="sm" variant="outline" onClick={() => toast("Filters are demo-only")}>
-            <Filter className="size-4" /> Filter
-          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline">
@@ -117,9 +101,6 @@ export function DataTable<T extends { id: string }>({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" variant="outline" onClick={() => toast.success("Export started (mock)")}>
-            <Download className="size-4" /> Export
-          </Button>
         </div>
       </div>
 
@@ -127,15 +108,6 @@ export function DataTable<T extends { id: string }>({
         <table className="w-full min-w-[720px] text-sm">
           <thead className="sticky top-0 z-10 bg-surface">
             <tr className="text-left">
-              <th className="w-10 px-4 py-3">
-                <Checkbox
-                  checked={allChecked}
-                  onCheckedChange={(v) =>
-                    setSelected(v ? Array.from(new Set([...selected, ...rows.map((r) => r.id)])) : [])
-                  }
-                  aria-label="Select all"
-                />
-              </th>
               {visibleColumns.map((c) => (
                 <th
                   key={c.key}
@@ -168,15 +140,6 @@ export function DataTable<T extends { id: string }>({
                   onRowClick && "cursor-pointer",
                 )}
               >
-                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                  <Checkbox
-                    checked={selected.includes(row.id)}
-                    onCheckedChange={(v) =>
-                      setSelected((s) => (v ? [...s, row.id] : s.filter((id) => id !== row.id)))
-                    }
-                    aria-label={`Select ${row.id}`}
-                  />
-                </td>
                 {visibleColumns.map((c) => (
                   <td key={c.key} className={cn("px-4 py-3 align-middle", c.className)}>
                     {c.render ? c.render(row) : String(row[c.key] ?? "—")}
@@ -187,7 +150,7 @@ export function DataTable<T extends { id: string }>({
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={visibleColumns.length + 1}
+                  colSpan={visibleColumns.length}
                   className="px-4 py-14 text-center text-sm text-muted-foreground"
                 >
                   No records match your search.

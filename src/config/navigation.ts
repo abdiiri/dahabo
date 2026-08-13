@@ -11,6 +11,17 @@ import {
   Headphones,
   User,
   Settings,
+  ClipboardList,
+  Route,
+  Fuel,
+  Wrench,
+  TrendingUp,
+  Users2,
+  DollarSign,
+  Warehouse,
+  BarChart3,
+  ShieldCheck,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -29,10 +40,11 @@ export type NavGroup = {
 
 /**
  * STAFF PORTAL
- * Current local version:
- * Dashboard
- * Drivers
- * Staff
+ *
+ * Staff navigation:
+ * - Dashboard
+ * - Drivers
+ * - Staff
  */
 export const staffNav: NavGroup[] = [
   {
@@ -49,9 +61,99 @@ export const staffNav: NavGroup[] = [
         icon: UserCog,
       },
       {
+        label: "Transport Orders",
+        to: "/staff/transport-orders",
+        icon: ClipboardList,
+      },
+      {
+        label: "Trips",
+        to: "/staff/trips",
+        icon: Route,
+      },
+      {
+        label: "Fleet",
+        to: "/staff/fleet",
+        icon: Truck,
+      },
+      {
+        label: "Fuel",
+        to: "/staff/fuel",
+        icon: Fuel,
+      },
+      {
+        label: "Maintenance",
+        to: "/staff/maintenance",
+        icon: Wrench,
+      },
+      {
+        label: "Driver Payments",
+        to: "/staff/driver-payments",
+        icon: CreditCard,
+      },
+      {
+        label: "Salaries",
+        to: "/staff/salaries",
+        icon: Wallet,
+      },
+      {
+        label: "Vehicle Profit",
+        to: "/staff/vehicle-profit",
+        icon: TrendingUp,
+      },
+      {
         label: "Staff",
         to: "/staff/users",
         icon: Users,
+      },
+    ],
+  },
+  {
+    group: "Business",
+    items: [
+      {
+        label: "Customers",
+        to: "/staff/customers",
+        icon: Users2,
+      },
+      {
+        label: "Shipments",
+        to: "/staff/shipments",
+        icon: Package,
+      },
+      {
+        label: "Finance",
+        to: "/staff/finance",
+        icon: DollarSign,
+      },
+      {
+        label: "Warehouses",
+        to: "/staff/warehouses",
+        icon: Warehouse,
+      },
+      {
+        label: "Documents",
+        to: "/staff/documents",
+        icon: FileText,
+      },
+      {
+        label: "Reports",
+        to: "/staff/reports",
+        icon: BarChart3,
+      },
+      {
+        label: "Audit Logs",
+        to: "/staff/audit-logs",
+        icon: ShieldCheck,
+      },
+      {
+        label: "Notifications",
+        to: "/staff/notifications",
+        icon: Bell,
+      },
+      {
+        label: "Settings",
+        to: "/staff/settings",
+        icon: Settings,
       },
     ],
   },
@@ -76,7 +178,7 @@ export const driverNav: NavGroup[] = [
 /**
  * CUSTOMER PORTAL
  *
- * These exports are required by:
+ * Used by:
  * src/routes/portal.tsx
  */
 export const customerNav: NavGroup[] = [

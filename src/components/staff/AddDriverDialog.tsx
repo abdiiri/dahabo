@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Loader2, UserPlus, RefreshCw, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +31,7 @@ const empty: NewDriverInput = {
   licenseNumber: "",
   email: "",
   password: generateTempPassword(),
+  wantsLogin: false,
   phone: "",
   licenseClass: "CE",
   licenseExpiry: "",
@@ -38,9 +41,9 @@ const empty: NewDriverInput = {
   nextOfKinPhone: "",
 };
 
-// Only these are required. Everything else can be filled in later from the
-// driver's profile page.
-const required: (keyof NewDriverInput)[] = ["fullName", "nationalId", "licenseNumber", "email", "password"];
+// Only these are always required. Login email/password are only required
+// when "Create a login" is switched on.
+const alwaysRequired: (keyof NewDriverInput)[] = ["fullName", "nationalId", "licenseNumber"];
 
 export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) => void }) {
   const [open, setOpen] = useState(false);
@@ -49,7 +52,8 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const set = (k: keyof NewDriverInput) => (v: string) => setValues((s) => ({ ...s, [k]: v }));
+  const set = <K extends keyof NewDriverInput>(k: K) => (v: NewDriverInput[K]) =>
+    setValues((s) => ({ ...s, [k]: v }));
 
   function openChange(next: boolean) {
     setOpen(next);
@@ -58,11 +62,14 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
 
   async function handleSubmit() {
     const nextErrors: typeof errors = {};
-    for (const key of required) {
+    for (const key of alwaysRequired) {
       if (!values[key]?.toString().trim()) nextErrors[key] = "Required";
     }
-    if (values.email && !/^\S+@\S+\.\S+$/.test(values.email)) nextErrors.email = "Enter a valid email";
-    if (values.password && values.password.length < 8) nextErrors.password = "At least 8 characters";
+    if (values.wantsLogin) {
+      if (!values.email?.trim()) nextErrors.email = "Required to create a login";
+      else if (!/^\S+@\S+\.\S+$/.test(values.email)) nextErrors.email = "Enter a valid email";
+      if (!values.password || values.password.length < 8) nextErrors.password = "At least 8 characters";
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -70,14 +77,16 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
     try {
       const driver = await createDriver(values);
       toast.success(`${driver.fullName} added as ${driver.driverCode}`, {
-        description: `Login: ${values.email} — share the temporary password with them directly. They'll be asked to change it on first sign-in.`,
+        description: values.wantsLogin
+          ? `Login: ${values.email} — share the temporary password with them directly. They'll be asked to change it on first sign-in.`
+          : undefined,
       });
       onCreated?.(driver);
       setValues({ ...empty, password: generateTempPassword() });
       setOpen(false);
     } catch (err) {
       toast.error("Couldn't add driver", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setSubmitting(false);
@@ -117,44 +126,53 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
           </section>
 
           <section className="grid gap-3 rounded-lg border border-border bg-secondary/30 p-3.5">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Login — lets the driver into their dashboard
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Login email" error={errors.email}>
-                <Input type="email" value={values.email} onChange={(e) => set("email")(e.target.value)} placeholder="name@dahaboglobal.com" />
-              </Field>
-              <Field label="Temporary password" error={errors.password}>
-                <div className="flex gap-1.5">
-                  <Input value={values.password} onChange={(e) => set("password")(e.target.value)} />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    title="Generate a new password"
-                    onClick={() => set("password")(generateTempPassword())}
-                  >
-                    <RefreshCw className="size-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    title="Copy password"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(values.password);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 1500);
-                    }}
-                  >
-                    {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-                  </Button>
-                </div>
-              </Field>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Create a login for this driver
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Optional. Most drivers don't need one — the office manages their record. Only turn this on if the
+                  driver needs to sign in to their own dashboard.
+                </p>
+              </div>
+              <Switch checked={values.wantsLogin} onCheckedChange={set("wantsLogin")} />
             </div>
-            <p className="text-xs text-muted-foreground">
-              Share this password with the driver directly — they'll be required to set their own on first sign-in.
-            </p>
+
+            {values.wantsLogin ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Login email" error={errors.email}>
+                  <Input type="email" value={values.email} onChange={(e) => set("email")(e.target.value)} placeholder="name@dahaboglobal.com" />
+                </Field>
+                <Field label="Temporary password" error={errors.password}>
+                  <div className="flex gap-1.5">
+                    <Input value={values.password} onChange={(e) => set("password")(e.target.value)} />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      title="Generate a new password"
+                      onClick={() => set("password")(generateTempPassword())}
+                    >
+                      <RefreshCw className="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      title="Copy password"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(values.password ?? "");
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1500);
+                      }}
+                    >
+                      {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                    </Button>
+                  </div>
+                </Field>
+              </div>
+            ) : null}
           </section>
 
           <section className="grid gap-3">
@@ -167,7 +185,7 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
                 <Input type="date" value={values.dateOfBirth} onChange={(e) => set("dateOfBirth")(e.target.value)} />
               </Field>
               <Field label="Licence class">
-                <Select value={values.licenseClass} onValueChange={(v) => set("licenseClass")(v)}>
+                <Select value={values.licenseClass} onValueChange={(v) => set("licenseClass")(v as LicenseClass)}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {(Object.keys(LICENSE_CLASS_LABELS) as LicenseClass[]).map((k) => (

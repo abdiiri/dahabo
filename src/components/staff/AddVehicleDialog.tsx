@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Loader2, Truck } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,7 +56,7 @@ export function AddVehicleDialog({ onCreated }: { onCreated?: (vehicle: Vehicle)
       setOpen(false);
     } catch (err) {
       toast.error("Couldn't add vehicle", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setSubmitting(false);

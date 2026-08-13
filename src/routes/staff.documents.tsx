@@ -1,9 +1,9 @@
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
-import { StatusPill } from "@/components/common/StatusPill";
-import { Button } from "@/components/ui/button";
-import { documents } from "@/data/mock";
+import { listDocuments, type DocumentRecord } from "@/lib/api/documents";
 
 export const Route = createFileRoute("/staff/documents")({
   head: () => ({
@@ -17,23 +17,37 @@ export const Route = createFileRoute("/staff/documents")({
   component: Page,
 });
 
-type Row = (typeof documents)[number];
-
-const columns: Column<Row>[] = [
-    { key: "id", header: "ID" },
-    { key: "name", header: "Document" },
-    { key: "type", header: "Type" },
-    { key: "size", header: "Size" },
-    { key: "owner", header: "Owner" },
-    { key: "updated", header: "Updated" },
+const columns: Column<DocumentRecord>[] = [
+  { key: "documentCode", header: "ID" },
+  { key: "name", header: "Document" },
+  { key: "type", header: "Type" },
+  { key: "fileSizeKb", header: "Size", render: (r) => (r.fileSizeKb != null ? `${r.fileSizeKb} KB` : "—") },
+  { key: "ownerName", header: "Owner", render: (r) => r.ownerName ?? "—" },
+  { key: "createdAt", header: "Updated", render: (r) => new Date(r.createdAt).toLocaleDateString() },
 ];
 
 function Page() {
+  const [documents, setDocuments] = useState<DocumentRecord[] | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    listDocuments().then((rows) => active && setDocuments(rows));
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <>
-      <PageHeader breadcrumb={['Staff', 'Documents']} title="Documents" description="Operational and compliance documents." actions={<Button>New record</Button>} />
-      
-      <DataTable data={documents as Row[]} columns={columns} />
+      <PageHeader breadcrumb={["Staff", "Documents"]} title="Documents" description="Operational and compliance documents." />
+
+      {documents === null ? (
+        <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground">
+          <Loader2 className="size-5 animate-spin" />
+        </div>
+      ) : (
+        <DataTable data={documents} columns={columns} searchPlaceholder="Search documents…" />
+      )}
     </>
   );
 }

@@ -9,7 +9,7 @@ export async function listShipments(): Promise<Shipment[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
       .from("shipments")
-      .select("*, customers(name), drivers(profiles(full_name))")
+      .select("*, customers(name), drivers(full_name)")
       .order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapRow);
@@ -28,6 +28,7 @@ function mapRow(row: any): Shipment {
     status: row.status,
     service: row.service ?? undefined,
     eta: row.eta ?? undefined,
-    driver: row.drivers?.profiles?.full_name ?? undefined,
+    driver: row.drivers?.full_name ?? undefined,
+    updatedAt: row.updated_at ?? undefined,
   };
 }

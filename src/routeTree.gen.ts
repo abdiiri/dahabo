@@ -48,14 +48,21 @@ import { Route as StaffAuditLogsRouteImport } from './routes/staff.audit-logs'
 import { Route as StaffCompanyRouteImport } from './routes/staff.company'
 import { Route as StaffCustomersRouteImport } from './routes/staff.customers'
 import { Route as StaffDocumentsRouteImport } from './routes/staff.documents'
+import { Route as StaffDriverPaymentsRouteImport } from './routes/staff.driver-payments'
 import { Route as StaffDriversRouteImport } from './routes/staff.drivers'
 import { Route as StaffFinanceRouteImport } from './routes/staff.finance'
 import { Route as StaffFleetRouteImport } from './routes/staff.fleet'
+import { Route as StaffFuelRouteImport } from './routes/staff.fuel'
+import { Route as StaffMaintenanceRouteImport } from './routes/staff.maintenance'
 import { Route as StaffNotificationsRouteImport } from './routes/staff.notifications'
 import { Route as StaffReportsRouteImport } from './routes/staff.reports'
+import { Route as StaffSalariesRouteImport } from './routes/staff.salaries'
 import { Route as StaffSettingsRouteImport } from './routes/staff.settings'
 import { Route as StaffShipmentsRouteImport } from './routes/staff.shipments'
+import { Route as StaffTransportOrdersRouteImport } from './routes/staff.transport-orders'
+import { Route as StaffTripsRouteImport } from './routes/staff.trips'
 import { Route as StaffUsersRouteImport } from './routes/staff.users'
+import { Route as StaffVehicleProfitRouteImport } from './routes/staff.vehicle-profit'
 import { Route as StaffWarehousesRouteImport } from './routes/staff.warehouses'
 import { Route as StaffDriversDriverIdRouteImport } from './routes/staff.drivers.$driverId'
 
@@ -254,6 +261,11 @@ const StaffDocumentsRoute = StaffDocumentsRouteImport.update({
   path: '/documents',
   getParentRoute: () => StaffRoute,
 } as any)
+const StaffDriverPaymentsRoute = StaffDriverPaymentsRouteImport.update({
+  id: '/driver-payments',
+  path: '/driver-payments',
+  getParentRoute: () => StaffRoute,
+} as any)
 const StaffDriversRoute = StaffDriversRouteImport.update({
   id: '/drivers',
   path: '/drivers',
@@ -269,6 +281,16 @@ const StaffFleetRoute = StaffFleetRouteImport.update({
   path: '/fleet',
   getParentRoute: () => StaffRoute,
 } as any)
+const StaffFuelRoute = StaffFuelRouteImport.update({
+  id: '/fuel',
+  path: '/fuel',
+  getParentRoute: () => StaffRoute,
+} as any)
+const StaffMaintenanceRoute = StaffMaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
+  getParentRoute: () => StaffRoute,
+} as any)
 const StaffNotificationsRoute = StaffNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -277,6 +299,11 @@ const StaffNotificationsRoute = StaffNotificationsRouteImport.update({
 const StaffReportsRoute = StaffReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => StaffRoute,
+} as any)
+const StaffSalariesRoute = StaffSalariesRouteImport.update({
+  id: '/salaries',
+  path: '/salaries',
   getParentRoute: () => StaffRoute,
 } as any)
 const StaffSettingsRoute = StaffSettingsRouteImport.update({
@@ -289,9 +316,24 @@ const StaffShipmentsRoute = StaffShipmentsRouteImport.update({
   path: '/shipments',
   getParentRoute: () => StaffRoute,
 } as any)
+const StaffTransportOrdersRoute = StaffTransportOrdersRouteImport.update({
+  id: '/transport-orders',
+  path: '/transport-orders',
+  getParentRoute: () => StaffRoute,
+} as any)
+const StaffTripsRoute = StaffTripsRouteImport.update({
+  id: '/trips',
+  path: '/trips',
+  getParentRoute: () => StaffRoute,
+} as any)
 const StaffUsersRoute = StaffUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => StaffRoute,
+} as any)
+const StaffVehicleProfitRoute = StaffVehicleProfitRouteImport.update({
+  id: '/vehicle-profit',
+  path: '/vehicle-profit',
   getParentRoute: () => StaffRoute,
 } as any)
 const StaffWarehousesRoute = StaffWarehousesRouteImport.update({
@@ -342,14 +384,21 @@ export interface FileRoutesByFullPath {
   '/staff/company': typeof StaffCompanyRoute
   '/staff/customers': typeof StaffCustomersRoute
   '/staff/documents': typeof StaffDocumentsRoute
+  '/staff/driver-payments': typeof StaffDriverPaymentsRoute
   '/staff/drivers': typeof StaffDriversRouteWithChildren
   '/staff/finance': typeof StaffFinanceRoute
   '/staff/fleet': typeof StaffFleetRoute
+  '/staff/fuel': typeof StaffFuelRoute
+  '/staff/maintenance': typeof StaffMaintenanceRoute
   '/staff/notifications': typeof StaffNotificationsRoute
   '/staff/reports': typeof StaffReportsRoute
+  '/staff/salaries': typeof StaffSalariesRoute
   '/staff/settings': typeof StaffSettingsRoute
   '/staff/shipments': typeof StaffShipmentsRoute
+  '/staff/transport-orders': typeof StaffTransportOrdersRoute
+  '/staff/trips': typeof StaffTripsRoute
   '/staff/users': typeof StaffUsersRoute
+  '/staff/vehicle-profit': typeof StaffVehicleProfitRoute
   '/staff/warehouses': typeof StaffWarehousesRoute
   '/driver/': typeof DriverIndexRoute
   '/portal/': typeof PortalIndexRoute
@@ -390,14 +439,21 @@ export interface FileRoutesByTo {
   '/staff/company': typeof StaffCompanyRoute
   '/staff/customers': typeof StaffCustomersRoute
   '/staff/documents': typeof StaffDocumentsRoute
+  '/staff/driver-payments': typeof StaffDriverPaymentsRoute
   '/staff/drivers': typeof StaffDriversRouteWithChildren
   '/staff/finance': typeof StaffFinanceRoute
   '/staff/fleet': typeof StaffFleetRoute
+  '/staff/fuel': typeof StaffFuelRoute
+  '/staff/maintenance': typeof StaffMaintenanceRoute
   '/staff/notifications': typeof StaffNotificationsRoute
   '/staff/reports': typeof StaffReportsRoute
+  '/staff/salaries': typeof StaffSalariesRoute
   '/staff/settings': typeof StaffSettingsRoute
   '/staff/shipments': typeof StaffShipmentsRoute
+  '/staff/transport-orders': typeof StaffTransportOrdersRoute
+  '/staff/trips': typeof StaffTripsRoute
   '/staff/users': typeof StaffUsersRoute
+  '/staff/vehicle-profit': typeof StaffVehicleProfitRoute
   '/staff/warehouses': typeof StaffWarehousesRoute
   '/driver': typeof DriverIndexRoute
   '/portal': typeof PortalIndexRoute
@@ -442,14 +498,21 @@ export interface FileRoutesById {
   '/staff/company': typeof StaffCompanyRoute
   '/staff/customers': typeof StaffCustomersRoute
   '/staff/documents': typeof StaffDocumentsRoute
+  '/staff/driver-payments': typeof StaffDriverPaymentsRoute
   '/staff/drivers': typeof StaffDriversRouteWithChildren
   '/staff/finance': typeof StaffFinanceRoute
   '/staff/fleet': typeof StaffFleetRoute
+  '/staff/fuel': typeof StaffFuelRoute
+  '/staff/maintenance': typeof StaffMaintenanceRoute
   '/staff/notifications': typeof StaffNotificationsRoute
   '/staff/reports': typeof StaffReportsRoute
+  '/staff/salaries': typeof StaffSalariesRoute
   '/staff/settings': typeof StaffSettingsRoute
   '/staff/shipments': typeof StaffShipmentsRoute
+  '/staff/transport-orders': typeof StaffTransportOrdersRoute
+  '/staff/trips': typeof StaffTripsRoute
   '/staff/users': typeof StaffUsersRoute
+  '/staff/vehicle-profit': typeof StaffVehicleProfitRoute
   '/staff/warehouses': typeof StaffWarehousesRoute
   '/driver/': typeof DriverIndexRoute
   '/portal/': typeof PortalIndexRoute
@@ -495,14 +558,21 @@ export interface FileRouteTypes {
     | '/staff/company'
     | '/staff/customers'
     | '/staff/documents'
+    | '/staff/driver-payments'
     | '/staff/drivers'
     | '/staff/finance'
     | '/staff/fleet'
+    | '/staff/fuel'
+    | '/staff/maintenance'
     | '/staff/notifications'
     | '/staff/reports'
+    | '/staff/salaries'
     | '/staff/settings'
     | '/staff/shipments'
+    | '/staff/transport-orders'
+    | '/staff/trips'
     | '/staff/users'
+    | '/staff/vehicle-profit'
     | '/staff/warehouses'
     | '/driver/'
     | '/portal/'
@@ -543,14 +613,21 @@ export interface FileRouteTypes {
     | '/staff/company'
     | '/staff/customers'
     | '/staff/documents'
+    | '/staff/driver-payments'
     | '/staff/drivers'
     | '/staff/finance'
     | '/staff/fleet'
+    | '/staff/fuel'
+    | '/staff/maintenance'
     | '/staff/notifications'
     | '/staff/reports'
+    | '/staff/salaries'
     | '/staff/settings'
     | '/staff/shipments'
+    | '/staff/transport-orders'
+    | '/staff/trips'
     | '/staff/users'
+    | '/staff/vehicle-profit'
     | '/staff/warehouses'
     | '/driver'
     | '/portal'
@@ -594,14 +671,21 @@ export interface FileRouteTypes {
     | '/staff/company'
     | '/staff/customers'
     | '/staff/documents'
+    | '/staff/driver-payments'
     | '/staff/drivers'
     | '/staff/finance'
     | '/staff/fleet'
+    | '/staff/fuel'
+    | '/staff/maintenance'
     | '/staff/notifications'
     | '/staff/reports'
+    | '/staff/salaries'
     | '/staff/settings'
     | '/staff/shipments'
+    | '/staff/transport-orders'
+    | '/staff/trips'
     | '/staff/users'
+    | '/staff/vehicle-profit'
     | '/staff/warehouses'
     | '/driver/'
     | '/portal/'
@@ -910,6 +994,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffDocumentsRouteImport
       parentRoute: typeof StaffRoute
     }
+    '/staff/driver-payments': {
+      id: '/staff/driver-payments'
+      path: '/driver-payments'
+      fullPath: '/staff/driver-payments'
+      preLoaderRoute: typeof StaffDriverPaymentsRouteImport
+      parentRoute: typeof StaffRoute
+    }
     '/staff/drivers': {
       id: '/staff/drivers'
       path: '/drivers'
@@ -931,6 +1022,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffFleetRouteImport
       parentRoute: typeof StaffRoute
     }
+    '/staff/fuel': {
+      id: '/staff/fuel'
+      path: '/fuel'
+      fullPath: '/staff/fuel'
+      preLoaderRoute: typeof StaffFuelRouteImport
+      parentRoute: typeof StaffRoute
+    }
+    '/staff/maintenance': {
+      id: '/staff/maintenance'
+      path: '/maintenance'
+      fullPath: '/staff/maintenance'
+      preLoaderRoute: typeof StaffMaintenanceRouteImport
+      parentRoute: typeof StaffRoute
+    }
     '/staff/notifications': {
       id: '/staff/notifications'
       path: '/notifications'
@@ -943,6 +1048,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/staff/reports'
       preLoaderRoute: typeof StaffReportsRouteImport
+      parentRoute: typeof StaffRoute
+    }
+    '/staff/salaries': {
+      id: '/staff/salaries'
+      path: '/salaries'
+      fullPath: '/staff/salaries'
+      preLoaderRoute: typeof StaffSalariesRouteImport
       parentRoute: typeof StaffRoute
     }
     '/staff/settings': {
@@ -959,11 +1071,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffShipmentsRouteImport
       parentRoute: typeof StaffRoute
     }
+    '/staff/transport-orders': {
+      id: '/staff/transport-orders'
+      path: '/transport-orders'
+      fullPath: '/staff/transport-orders'
+      preLoaderRoute: typeof StaffTransportOrdersRouteImport
+      parentRoute: typeof StaffRoute
+    }
+    '/staff/trips': {
+      id: '/staff/trips'
+      path: '/trips'
+      fullPath: '/staff/trips'
+      preLoaderRoute: typeof StaffTripsRouteImport
+      parentRoute: typeof StaffRoute
+    }
     '/staff/users': {
       id: '/staff/users'
       path: '/users'
       fullPath: '/staff/users'
       preLoaderRoute: typeof StaffUsersRouteImport
+      parentRoute: typeof StaffRoute
+    }
+    '/staff/vehicle-profit': {
+      id: '/staff/vehicle-profit'
+      path: '/vehicle-profit'
+      fullPath: '/staff/vehicle-profit'
+      preLoaderRoute: typeof StaffVehicleProfitRouteImport
       parentRoute: typeof StaffRoute
     }
     '/staff/warehouses': {
@@ -1040,14 +1173,21 @@ interface StaffRouteChildren {
   StaffCompanyRoute: typeof StaffCompanyRoute
   StaffCustomersRoute: typeof StaffCustomersRoute
   StaffDocumentsRoute: typeof StaffDocumentsRoute
+  StaffDriverPaymentsRoute: typeof StaffDriverPaymentsRoute
   StaffDriversRoute: typeof StaffDriversRouteWithChildren
   StaffFinanceRoute: typeof StaffFinanceRoute
   StaffFleetRoute: typeof StaffFleetRoute
+  StaffFuelRoute: typeof StaffFuelRoute
+  StaffMaintenanceRoute: typeof StaffMaintenanceRoute
   StaffNotificationsRoute: typeof StaffNotificationsRoute
   StaffReportsRoute: typeof StaffReportsRoute
+  StaffSalariesRoute: typeof StaffSalariesRoute
   StaffSettingsRoute: typeof StaffSettingsRoute
   StaffShipmentsRoute: typeof StaffShipmentsRoute
+  StaffTransportOrdersRoute: typeof StaffTransportOrdersRoute
+  StaffTripsRoute: typeof StaffTripsRoute
   StaffUsersRoute: typeof StaffUsersRoute
+  StaffVehicleProfitRoute: typeof StaffVehicleProfitRoute
   StaffWarehousesRoute: typeof StaffWarehousesRoute
   StaffIndexRoute: typeof StaffIndexRoute
 }
@@ -1057,14 +1197,21 @@ const StaffRouteChildren: StaffRouteChildren = {
   StaffCompanyRoute: StaffCompanyRoute,
   StaffCustomersRoute: StaffCustomersRoute,
   StaffDocumentsRoute: StaffDocumentsRoute,
+  StaffDriverPaymentsRoute: StaffDriverPaymentsRoute,
   StaffDriversRoute: StaffDriversRouteWithChildren,
   StaffFinanceRoute: StaffFinanceRoute,
   StaffFleetRoute: StaffFleetRoute,
+  StaffFuelRoute: StaffFuelRoute,
+  StaffMaintenanceRoute: StaffMaintenanceRoute,
   StaffNotificationsRoute: StaffNotificationsRoute,
   StaffReportsRoute: StaffReportsRoute,
+  StaffSalariesRoute: StaffSalariesRoute,
   StaffSettingsRoute: StaffSettingsRoute,
   StaffShipmentsRoute: StaffShipmentsRoute,
+  StaffTransportOrdersRoute: StaffTransportOrdersRoute,
+  StaffTripsRoute: StaffTripsRoute,
   StaffUsersRoute: StaffUsersRoute,
+  StaffVehicleProfitRoute: StaffVehicleProfitRoute,
   StaffWarehousesRoute: StaffWarehousesRoute,
   StaffIndexRoute: StaffIndexRoute,
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, Wallet, Receipt, CheckCircle2, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatusPill } from "@/components/common/StatusPill";
 import { Card } from "@/components/ui/card";
@@ -122,7 +123,7 @@ function LocationCard({
       setLocation("");
     } catch (err) {
       toast.error("Couldn't update your location", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setSubmitting(false);
@@ -187,7 +188,7 @@ function AdvanceRow({
       setReporting(false);
     } catch (err) {
       toast.error("Couldn't submit report", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setSubmitting(false);

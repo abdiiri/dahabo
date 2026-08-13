@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, Lock, MoreHorizontal, Pencil, Trash2, Unlock } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusPill } from "@/components/common/StatusPill";
@@ -91,7 +92,7 @@ function Page() {
       });
     } catch (err) {
       toast.error("Couldn't update the account", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setBusyId(null);
@@ -108,7 +109,7 @@ function Page() {
       toast.success(`${member?.fullName ?? "Staff member"} was removed`);
     } catch (err) {
       toast.error("Couldn't delete this staff member", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setBusyId(null);
@@ -241,7 +242,7 @@ function EditStaffDialog({
       onSaved(updated);
     } catch (err) {
       toast.error("Couldn't save changes", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setSubmitting(false);

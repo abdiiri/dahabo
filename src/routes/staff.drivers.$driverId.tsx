@@ -17,6 +17,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatusPill } from "@/components/common/StatusPill";
 import { Card } from "@/components/ui/card";
@@ -148,7 +149,7 @@ function Page() {
       });
     } catch (err) {
       toast.error("Couldn't update the account", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setStatusBusy(false);
@@ -164,7 +165,7 @@ function Page() {
       navigate({ to: "/staff/drivers" });
     } catch (err) {
       toast.error("Couldn't delete this driver", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: getErrorMessage(err),
       });
       setDeleting(false);
     }
@@ -239,8 +240,9 @@ function Page() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete {driver.fullName}?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This permanently deletes their login, compliance record, work history and cash advances. This
-                    can't be undone.
+                    {driver.hasLogin
+                      ? "This permanently deletes their login, compliance record, work history and cash advances. This can't be undone."
+                      : "This permanently deletes their compliance record, work history and cash advances. This can't be undone."}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -267,7 +269,7 @@ function Page() {
               </Avatar>
               <div className="min-w-0">
                 <p className="truncate text-lg font-bold">{driver.fullName}</p>
-                <p className="truncate text-sm text-muted-foreground">{driver.email}</p>
+                <p className="truncate text-sm text-muted-foreground">{driver.email || "No login account"}</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   <StatusPill status={DRIVER_STATUS_LABELS[driver.status]} />
                   <StatusPill status={driver.accountStatus === "suspended" ? "Suspended" : "Active"} />
@@ -476,7 +478,7 @@ function EditDriverDialog({
       setOpen(false);
     } catch (err) {
       toast.error("Couldn't save changes", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setSubmitting(false);
@@ -594,7 +596,7 @@ function GiveAdvanceDialog({
       setOpen(false);
     } catch (err) {
       toast.error("Couldn't record the advance", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setSubmitting(false);

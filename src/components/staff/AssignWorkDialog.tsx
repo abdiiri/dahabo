@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ClipboardList, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,7 +73,7 @@ export function AssignWorkDialog({
       setOpen(false);
     } catch (err) {
       toast.error("Couldn't assign work", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setSubmitting(false);
