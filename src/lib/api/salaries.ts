@@ -1,15 +1,20 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { localStore } from "./local-store";
+import { listDrivers } from "./drivers";
 import type { Salary, NewSalaryInput, DriverPaymentStatus } from "./types";
 
 const store = localStore<Salary>("salaries", []);
-const SELECT = "*, drivers(full_name), profiles(full_name)";
 
 export async function listSalaries(): Promise<Salary[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("salaries").select(SELECT).order("period_month", { ascending: false });
+    const { data, error } = await supabase.from("salaries").select("*").is("deleted_at", null).order("period_month", { ascending: false });
     if (error) throw error;
-    return (data ?? []).map(mapRow);
+    // Fetched as a separate step (not a relational embed) so this keeps
+    // working even if the database's cached schema hasn't caught up with
+    // the driver_id column/relationship yet.
+    const drivers = await listDrivers();
+    const nameById = new Map(drivers.map((d) => [d.id, d.fullName]));
+    return (data ?? []).map((row) => mapRow(row, nameById));
   }
   return store.list();
 }
@@ -29,7 +34,7 @@ export async function createSalary(input: NewSalaryInput, isDriver = true): Prom
         period_month: input.periodMonth,
         notes: input.notes || null,
       })
-      .select(SELECT)
+      .select("*")
       .single();
     if (error) throw error;
     return mapRow(data);
@@ -54,7 +59,7 @@ export async function markSalaryPaid(id: string): Promise<Salary | undefined> {
       .from("salaries")
       .update({ status: "paid", paid_at: new Date().toISOString() })
       .eq("id", id)
-      .select(SELECT)
+      .select("*")
       .single();
     if (error) throw error;
     return mapRow(data);
@@ -63,11 +68,11 @@ export async function markSalaryPaid(id: string): Promise<Salary | undefined> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapRow(row: any): Salary {
+function mapRow(row: any, nameById?: Map<string, string>): Salary {
   return {
     id: row.id,
     profileId: row.driver_id ?? row.profile_id,
-    personName: row.drivers?.full_name ?? row.profiles?.full_name ?? undefined,
+    personName: (row.driver_id ? nameById?.get(row.driver_id) : undefined) ?? undefined,
     type: row.type,
     amount: Number(row.amount) || 0,
     periodMonth: row.period_month,

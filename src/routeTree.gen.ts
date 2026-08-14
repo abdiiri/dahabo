@@ -55,6 +55,7 @@ import { Route as StaffFleetRouteImport } from './routes/staff.fleet'
 import { Route as StaffFuelRouteImport } from './routes/staff.fuel'
 import { Route as StaffMaintenanceRouteImport } from './routes/staff.maintenance'
 import { Route as StaffNotificationsRouteImport } from './routes/staff.notifications'
+import { Route as StaffRecycleBinRouteImport } from './routes/staff.recycle-bin'
 import { Route as StaffReportsRouteImport } from './routes/staff.reports'
 import { Route as StaffSalariesRouteImport } from './routes/staff.salaries'
 import { Route as StaffSettingsRouteImport } from './routes/staff.settings'
@@ -296,6 +297,11 @@ const StaffNotificationsRoute = StaffNotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => StaffRoute,
 } as any)
+const StaffRecycleBinRoute = StaffRecycleBinRouteImport.update({
+  id: '/recycle-bin',
+  path: '/recycle-bin',
+  getParentRoute: () => StaffRoute,
+} as any)
 const StaffReportsRoute = StaffReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -391,6 +397,7 @@ export interface FileRoutesByFullPath {
   '/staff/fuel': typeof StaffFuelRoute
   '/staff/maintenance': typeof StaffMaintenanceRoute
   '/staff/notifications': typeof StaffNotificationsRoute
+  '/staff/recycle-bin': typeof StaffRecycleBinRoute
   '/staff/reports': typeof StaffReportsRoute
   '/staff/salaries': typeof StaffSalariesRoute
   '/staff/settings': typeof StaffSettingsRoute
@@ -446,6 +453,7 @@ export interface FileRoutesByTo {
   '/staff/fuel': typeof StaffFuelRoute
   '/staff/maintenance': typeof StaffMaintenanceRoute
   '/staff/notifications': typeof StaffNotificationsRoute
+  '/staff/recycle-bin': typeof StaffRecycleBinRoute
   '/staff/reports': typeof StaffReportsRoute
   '/staff/salaries': typeof StaffSalariesRoute
   '/staff/settings': typeof StaffSettingsRoute
@@ -505,6 +513,7 @@ export interface FileRoutesById {
   '/staff/fuel': typeof StaffFuelRoute
   '/staff/maintenance': typeof StaffMaintenanceRoute
   '/staff/notifications': typeof StaffNotificationsRoute
+  '/staff/recycle-bin': typeof StaffRecycleBinRoute
   '/staff/reports': typeof StaffReportsRoute
   '/staff/salaries': typeof StaffSalariesRoute
   '/staff/settings': typeof StaffSettingsRoute
@@ -565,6 +574,7 @@ export interface FileRouteTypes {
     | '/staff/fuel'
     | '/staff/maintenance'
     | '/staff/notifications'
+    | '/staff/recycle-bin'
     | '/staff/reports'
     | '/staff/salaries'
     | '/staff/settings'
@@ -620,6 +630,7 @@ export interface FileRouteTypes {
     | '/staff/fuel'
     | '/staff/maintenance'
     | '/staff/notifications'
+    | '/staff/recycle-bin'
     | '/staff/reports'
     | '/staff/salaries'
     | '/staff/settings'
@@ -678,6 +689,7 @@ export interface FileRouteTypes {
     | '/staff/fuel'
     | '/staff/maintenance'
     | '/staff/notifications'
+    | '/staff/recycle-bin'
     | '/staff/reports'
     | '/staff/salaries'
     | '/staff/settings'
@@ -1043,6 +1055,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffNotificationsRouteImport
       parentRoute: typeof StaffRoute
     }
+    '/staff/recycle-bin': {
+      id: '/staff/recycle-bin'
+      path: '/recycle-bin'
+      fullPath: '/staff/recycle-bin'
+      preLoaderRoute: typeof StaffRecycleBinRouteImport
+      parentRoute: typeof StaffRoute
+    }
     '/staff/reports': {
       id: '/staff/reports'
       path: '/reports'
@@ -1180,6 +1199,7 @@ interface StaffRouteChildren {
   StaffFuelRoute: typeof StaffFuelRoute
   StaffMaintenanceRoute: typeof StaffMaintenanceRoute
   StaffNotificationsRoute: typeof StaffNotificationsRoute
+  StaffRecycleBinRoute: typeof StaffRecycleBinRoute
   StaffReportsRoute: typeof StaffReportsRoute
   StaffSalariesRoute: typeof StaffSalariesRoute
   StaffSettingsRoute: typeof StaffSettingsRoute
@@ -1204,6 +1224,7 @@ const StaffRouteChildren: StaffRouteChildren = {
   StaffFuelRoute: StaffFuelRoute,
   StaffMaintenanceRoute: StaffMaintenanceRoute,
   StaffNotificationsRoute: StaffNotificationsRoute,
+  StaffRecycleBinRoute: StaffRecycleBinRoute,
   StaffReportsRoute: StaffReportsRoute,
   StaffSalariesRoute: StaffSalariesRoute,
   StaffSettingsRoute: StaffSettingsRoute,

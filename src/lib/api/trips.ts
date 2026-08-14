@@ -19,7 +19,7 @@ const SELECT = "*, vehicles(vehicle_code, plate_number), drivers(full_name)";
 
 export async function listTrips(): Promise<Trip[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("trips").select(SELECT).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("trips").select(SELECT).is("deleted_at", null).order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapSupabaseTrip);
   }
@@ -33,6 +33,7 @@ export async function listTripsForVehicle(vehicleId: string): Promise<Trip[]> {
       .from("trips")
       .select(SELECT)
       .eq("vehicle_id", vehicleId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapSupabaseTrip);

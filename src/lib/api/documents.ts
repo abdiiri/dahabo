@@ -16,7 +16,7 @@ const SELECT = "*, profiles(full_name)";
 
 export async function listDocuments(): Promise<DocumentRecord[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("documents").select(SELECT).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("documents").select(SELECT).is("deleted_at", null).order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapRow);
   }

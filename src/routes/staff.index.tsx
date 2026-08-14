@@ -10,12 +10,14 @@ import {
   Route as RouteIcon,
   TrendingUp,
   Fuel,
+  AlertTriangle,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/common/StatusPill";
+import { getErrorMessage } from "@/lib/utils";
 import { listDrivers } from "@/lib/api/drivers";
 import { listStaff } from "@/lib/api/staff";
 import { listVehicles } from "@/lib/api/vehicles";
@@ -50,15 +52,31 @@ function Page() {
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [orders, setOrders] = useState<TransportOrder[] | null>(null);
   const [profit, setProfit] = useState<VehicleProfitMonth[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    listDrivers().then((rows) => active && setDrivers(rows));
-    listStaff().then((rows) => active && setStaff(rows));
-    listVehicles().then((rows) => active && setVehicles(rows));
-    listTrips().then((rows) => active && setTrips(rows));
-    listTransportOrders().then((rows) => active && setOrders(rows));
-    listVehicleProfitThisMonth().then((rows) => active && setProfit(rows));
+    // Promise.allSettled so one failing call can't leave the page stuck
+    // spinning forever — every section gets its own real value or an empty
+    // fallback, and any failure is shown instead of hidden.
+    Promise.allSettled([
+      listDrivers(),
+      listStaff(),
+      listVehicles(),
+      listTrips(),
+      listTransportOrders(),
+      listVehicleProfitThisMonth(),
+    ]).then(([d, s, v, t, o, p]) => {
+      if (!active) return;
+      setDrivers(d.status === "fulfilled" ? d.value : []);
+      setStaff(s.status === "fulfilled" ? s.value : []);
+      setVehicles(v.status === "fulfilled" ? v.value : []);
+      setTrips(t.status === "fulfilled" ? t.value : []);
+      setOrders(o.status === "fulfilled" ? o.value : []);
+      setProfit(p.status === "fulfilled" ? p.value : []);
+      const failed = [d, s, v, t, o, p].find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+      if (failed) setError(getErrorMessage(failed.reason, "Some dashboard data couldn't be loaded."));
+    });
     return () => {
       active = false;
     };
@@ -88,6 +106,13 @@ function Page() {
   return (
     <>
       <PageHeader breadcrumb={["Staff"]} title="Dashboard" description="Your fleet and team at a glance." />
+
+      {error ? (
+        <Card className="mb-6 flex-row items-center gap-3 border-destructive/30 bg-destructive/5 p-4 shadow-soft">
+          <AlertTriangle className="size-5 shrink-0 text-destructive" />
+          <p className="text-sm text-destructive">{error}</p>
+        </Card>
+      ) : null}
 
       {/* Fleet snapshot — the numbers that matter day to day */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -7,7 +7,7 @@ const SELECT = "*, vehicles(vehicle_code, plate_number)";
 
 export async function listMaintenanceRecords(): Promise<MaintenanceRecord[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("maintenance_records").select(SELECT).order("service_date", { ascending: false });
+    const { data, error } = await supabase.from("maintenance_records").select(SELECT).is("deleted_at", null).order("service_date", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapRow);
   }

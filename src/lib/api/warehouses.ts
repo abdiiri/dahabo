@@ -17,7 +17,7 @@ const SELECT = "*, profiles(full_name)";
 
 export async function listWarehouses(): Promise<Warehouse[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("warehouses").select(SELECT).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("warehouses").select(SELECT).is("deleted_at", null).order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapRow);
   }

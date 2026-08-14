@@ -53,7 +53,7 @@ export function generateTempPassword(): string {
 
 export async function listDrivers(): Promise<Driver[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("drivers").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("drivers").select("*").is("deleted_at", null).order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapSupabaseDriver);
   }
@@ -62,7 +62,7 @@ export async function listDrivers(): Promise<Driver[]> {
 
 export async function getDriver(id: string): Promise<Driver | undefined> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("drivers").select("*").eq("id", id).maybeSingle();
+    const { data, error } = await supabase.from("drivers").select("*").eq("id", id).is("deleted_at", null).maybeSingle();
     if (error) throw error;
     return data ? mapSupabaseDriver(data) : undefined;
   }
@@ -192,15 +192,18 @@ export async function editDriver(id: string, input: EditDriverInput): Promise<Dr
 /** Permanently removes the driver record. If they had a sign-in account,
  * that's removed too (cascades their compliance record, assignments and
  * cash advances). */
+/** Moves the driver to the Recycle Bin (soft delete) — restorable there any
+ * time. If they had a login, that's removed now since restoring an auth
+ * account isn't something we can safely reverse; the driver record itself
+ * comes back fully intact if restored. */
 export async function deleteDriver(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     const driver = await getDriver(id);
-    if (driver?.hasLogin) {
-      await deleteAuthAccount({ data: { userId: id } });
-      return;
-    }
-    const { error } = await supabase.from("drivers").delete().eq("id", id);
+    const { error } = await supabase.from("drivers").update({ deleted_at: new Date().toISOString() }).eq("id", id);
     if (error) throw error;
+    if (driver?.hasLogin) {
+      await deleteAuthAccount({ data: { userId: id } }).catch(() => undefined);
+    }
     return;
   }
   store.remove(id);

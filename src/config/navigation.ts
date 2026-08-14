@@ -22,6 +22,7 @@ import {
   BarChart3,
   ShieldCheck,
   Wallet,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -144,6 +145,11 @@ export const staffNav: NavGroup[] = [
         label: "Audit Logs",
         to: "/staff/audit-logs",
         icon: ShieldCheck,
+      },
+      {
+        label: "Recycle Bin",
+        to: "/staff/recycle-bin",
+        icon: Trash2,
       },
       {
         label: "Notifications",

@@ -4,7 +4,7 @@ import { Loader2, Users } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusPill } from "@/components/common/StatusPill";
-import { Button } from "@/components/ui/button";
+import { AddCustomerDialog } from "@/components/staff/AddCustomerDialog";
 import { listCustomers } from "@/lib/api/customers";
 import type { Customer } from "@/lib/api/types";
 
@@ -43,7 +43,12 @@ function Page() {
 
   return (
     <>
-      <PageHeader breadcrumb={["Staff", "Customers"]} title="Customers" description="Accounts and billing contacts." actions={<Button>New record</Button>} />
+      <PageHeader
+        breadcrumb={["Staff", "Customers"]}
+        title="Customers"
+        description="Accounts and billing contacts."
+        actions={<AddCustomerDialog onCreated={(c) => setCustomers((rows) => [c, ...(rows ?? [])])} />}
+      />
 
       {customers === null ? (
         <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground">

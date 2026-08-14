@@ -41,7 +41,7 @@ function generateVehicleCode(existing: Vehicle[]): string {
 
 export async function listVehicles(): Promise<Vehicle[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("vehicles").select("*").is("deleted_at", null).order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapSupabaseVehicle);
   }

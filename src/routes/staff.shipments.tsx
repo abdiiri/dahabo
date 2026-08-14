@@ -4,7 +4,7 @@ import { Loader2, Package } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusPill } from "@/components/common/StatusPill";
-import { Button } from "@/components/ui/button";
+import { AddShipmentDialog } from "@/components/staff/AddShipmentDialog";
 import { listShipments } from "@/lib/api/shipments";
 import type { Shipment } from "@/lib/api/types";
 
@@ -44,7 +44,12 @@ function Page() {
 
   return (
     <>
-      <PageHeader breadcrumb={["Staff", "Shipments"]} title="Shipments" description="Every consignment across the network." actions={<Button>New record</Button>} />
+      <PageHeader
+        breadcrumb={["Staff", "Shipments"]}
+        title="Shipments"
+        description="Every consignment across the network."
+        actions={<AddShipmentDialog onCreated={(s) => setShipments((rows) => [s, ...(rows ?? [])])} />}
+      />
 
       {shipments === null ? (
         <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground">

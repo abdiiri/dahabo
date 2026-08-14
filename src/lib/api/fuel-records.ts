@@ -7,7 +7,7 @@ const SELECT = "*, vehicles(vehicle_code, plate_number)";
 
 export async function listFuelRecords(): Promise<FuelRecord[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("fuel_records").select(SELECT).order("filled_at", { ascending: false });
+    const { data, error } = await supabase.from("fuel_records").select(SELECT).is("deleted_at", null).order("filled_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapRow);
   }

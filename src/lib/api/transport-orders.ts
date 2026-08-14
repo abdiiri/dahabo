@@ -17,6 +17,7 @@ export async function listTransportOrders(): Promise<TransportOrder[]> {
     const { data, error } = await supabase
       .from("transport_orders")
       .select("*, customers(name)")
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapSupabaseOrder);
