@@ -60,3 +60,50 @@ export const deleteAuthAccount = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+type CreateStaffAccountInput = {
+  email: string;
+  fullName: string;
+  phone?: string;
+  role: string;
+  jobTitle?: string;
+  department?: string;
+};
+
+/**
+ * Admin-created staff account, via the same admin API used for drivers —
+ * this bypasses the project's public "allow signups" setting entirely,
+ * since it's an admin action, not a public self-signup. Sends the new staff
+ * member an email invite link to set their own password.
+ */
+export const createStaffAccount = createServerFn({ method: "POST" })
+  .validator((data: CreateStaffAccountInput) => data)
+  .handler(async ({ data }) => {
+    const { getAdminClient } = await import("@/lib/server/admin-client");
+    const admin = getAdminClient();
+
+    const { data: invited, error } = await admin.auth.admin.inviteUserByEmail(data.email, {
+      data: { full_name: data.fullName },
+    });
+    if (error || !invited.user) {
+      throw new Error(error?.message ?? "Could not invite this staff member.");
+    }
+
+    const { error: updateError } = await admin
+      .from("profiles")
+      .update({
+        role: data.role,
+        full_name: data.fullName,
+        phone: data.phone ?? null,
+        job_title: data.jobTitle ?? null,
+        department: data.department ?? null,
+      })
+      .eq("id", invited.user.id);
+
+    if (updateError) {
+      await admin.auth.admin.deleteUser(invited.user.id);
+      throw new Error(updateError.message);
+    }
+
+    return { id: invited.user.id };
+  });

@@ -7,7 +7,11 @@ const store = localStore<Salary>("salaries", []);
 
 export async function listSalaries(): Promise<Salary[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("salaries").select("*").is("deleted_at", null).order("period_month", { ascending: false });
+    const { data, error } = await supabase
+      .from("salaries")
+      .select("*")
+      .is("deleted_at", null)
+      .order("period_month", { ascending: false });
     if (error) throw error;
     // Fetched as a separate step (not a relational embed) so this keeps
     // working even if the database's cached schema hasn't caught up with
@@ -65,6 +69,32 @@ export async function markSalaryPaid(id: string): Promise<Salary | undefined> {
     return mapRow(data);
   }
   return store.update(id, { status: "paid" as DriverPaymentStatus });
+}
+
+export type EditSalaryInput = Partial<
+  Pick<NewSalaryInput, "type" | "amount" | "periodMonth" | "notes">
+>;
+
+export async function editSalary(id: string, input: EditSalaryInput): Promise<Salary> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("salaries")
+      .update({
+        ...(input.type !== undefined ? { type: input.type } : {}),
+        ...(input.amount !== undefined ? { amount: input.amount } : {}),
+        ...(input.periodMonth !== undefined ? { period_month: input.periodMonth } : {}),
+        ...(input.notes !== undefined ? { notes: input.notes || null } : {}),
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    return mapRow(data);
+  }
+
+  const updated = store.update(id, input as Partial<Salary>);
+  if (!updated) throw new Error("Payment record not found");
+  return updated;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

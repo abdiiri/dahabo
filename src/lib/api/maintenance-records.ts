@@ -7,14 +7,20 @@ const SELECT = "*, vehicles(vehicle_code, plate_number)";
 
 export async function listMaintenanceRecords(): Promise<MaintenanceRecord[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("maintenance_records").select(SELECT).is("deleted_at", null).order("service_date", { ascending: false });
+    const { data, error } = await supabase
+      .from("maintenance_records")
+      .select(SELECT)
+      .is("deleted_at", null)
+      .order("service_date", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapRow);
   }
   return store.list();
 }
 
-export async function createMaintenanceRecord(input: NewMaintenanceRecordInput): Promise<MaintenanceRecord> {
+export async function createMaintenanceRecord(
+  input: NewMaintenanceRecordInput,
+): Promise<MaintenanceRecord> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
       .from("maintenance_records")
@@ -49,12 +55,59 @@ export async function createMaintenanceRecord(input: NewMaintenanceRecordInput):
   return store.insert(record);
 }
 
+export type EditMaintenanceRecordInput = Partial<
+  Pick<
+    NewMaintenanceRecordInput,
+    | "vehicleId"
+    | "branch"
+    | "description"
+    | "vendor"
+    | "cost"
+    | "odometerKm"
+    | "serviceDate"
+    | "nextServiceDate"
+  >
+>;
+
+export async function editMaintenanceRecord(
+  id: string,
+  input: EditMaintenanceRecordInput,
+): Promise<MaintenanceRecord> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("maintenance_records")
+      .update({
+        ...(input.vehicleId !== undefined ? { vehicle_id: input.vehicleId } : {}),
+        ...(input.branch !== undefined ? { branch_id: input.branch || null } : {}),
+        ...(input.description !== undefined ? { description: input.description } : {}),
+        ...(input.vendor !== undefined ? { vendor: input.vendor || null } : {}),
+        ...(input.cost !== undefined ? { cost: input.cost } : {}),
+        ...(input.odometerKm !== undefined ? { odometer_km: input.odometerKm ?? null } : {}),
+        ...(input.serviceDate !== undefined ? { service_date: input.serviceDate } : {}),
+        ...(input.nextServiceDate !== undefined
+          ? { next_service_date: input.nextServiceDate || null }
+          : {}),
+      })
+      .eq("id", id)
+      .select(SELECT)
+      .single();
+    if (error) throw error;
+    return mapRow(data);
+  }
+
+  const updated = store.update(id, input as Partial<MaintenanceRecord>);
+  if (!updated) throw new Error("Maintenance record not found");
+  return updated;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRow(row: any): MaintenanceRecord {
   return {
     id: row.id,
     vehicleId: row.vehicle_id,
-    vehicleLabel: row.vehicles ? `${row.vehicles.vehicle_code} · ${row.vehicles.plate_number}` : undefined,
+    vehicleLabel: row.vehicles
+      ? `${row.vehicles.vehicle_code} · ${row.vehicles.plate_number}`
+      : undefined,
     branch: row.branch_id ?? undefined,
     description: row.description,
     vendor: row.vendor ?? undefined,

@@ -64,6 +64,33 @@ export async function createCustomer(input: NewCustomerInput): Promise<Customer>
   return store.insert(customer);
 }
 
+export type EditCustomerInput = Partial<
+  Pick<NewCustomerInput, "name" | "contact" | "email" | "phone" | "tier">
+>;
+
+export async function editCustomer(id: string, input: EditCustomerInput): Promise<Customer> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("customers")
+      .update({
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.contact !== undefined ? { contact_name: input.contact || null } : {}),
+        ...(input.email !== undefined ? { email: input.email || null } : {}),
+        ...(input.phone !== undefined ? { phone: input.phone || null } : {}),
+        ...(input.tier !== undefined ? { tier: input.tier || "SME" } : {}),
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    return mapRow(data);
+  }
+
+  const updated = store.update(id, input as Partial<Customer>);
+  if (!updated) throw new Error("Customer not found");
+  return updated;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRow(row: any): Customer {
   return {

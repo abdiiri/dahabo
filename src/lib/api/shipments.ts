@@ -60,6 +60,37 @@ export async function createShipment(input: NewShipmentInput): Promise<Shipment>
   return store.insert(shipment);
 }
 
+export type EditShipmentInput = Partial<{
+  origin: string;
+  destination: string;
+  service: string;
+  status: string;
+  eta: string;
+}>;
+
+export async function editShipment(id: string, input: EditShipmentInput): Promise<Shipment> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("shipments")
+      .update({
+        ...(input.origin !== undefined ? { origin: input.origin } : {}),
+        ...(input.destination !== undefined ? { destination: input.destination } : {}),
+        ...(input.service !== undefined ? { service: input.service || null } : {}),
+        ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.eta !== undefined ? { eta: input.eta || null } : {}),
+      })
+      .eq("id", id)
+      .select("*, customers(name), drivers(full_name)")
+      .single();
+    if (error) throw error;
+    return mapRow(data);
+  }
+
+  const updated = store.update(id, input as Partial<Shipment>);
+  if (!updated) throw new Error("Shipment not found");
+  return updated;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRow(row: any): Shipment {
   return {

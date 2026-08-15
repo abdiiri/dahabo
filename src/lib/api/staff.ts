@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { localStore } from "./local-store";
 import { staffUsers } from "@/data/mock";
-import { deleteAuthAccount } from "./accounts.server";
+import { deleteAuthAccount, createStaffAccount } from "./accounts.server";
 import type { StaffMember, NewStaffInput, StaffRole } from "./types";
 
 const ROLE_MAP: Record<string, StaffRole> = {
@@ -58,34 +58,25 @@ export async function listStaff(): Promise<StaffMember[]> {
 
 export async function createStaff(input: NewStaffInput): Promise<StaffMember> {
   if (isSupabaseConfigured && supabase) {
-    // Passwordless invite: creates the auth user + profiles row (via the
-    // database trigger) and emails the new staff member a sign-in link.
-    // No service-role key required — safe to call from the browser.
-    const { error: signInError } = await supabase.auth.signInWithOtp({
-      email: input.email,
-      options: { shouldCreateUser: true, data: { full_name: input.fullName } },
+    // Admin-created invite — same admin API used for driver logins, so this
+    // doesn't depend on the project's public "allow signups" setting at
+    // all. The new staff member gets an email link to set their password.
+    const result = await createStaffAccount({
+      data: {
+        email: input.email,
+        fullName: input.fullName,
+        phone: input.phone,
+        role: input.role,
+        jobTitle: input.jobTitle,
+        department: input.department,
+      },
     });
-    if (signInError) throw signInError;
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", input.email)
-      .single();
-    if (profileError) throw profileError;
 
     const staffCode = `USR-${Date.now().toString().slice(-6)}`;
     const { data, error } = await supabase
       .from("profiles")
-      .update({
-        role: input.role,
-        phone: input.phone ?? null,
-        full_name: input.fullName,
-        job_title: input.jobTitle ?? null,
-        department: input.department ?? null,
-        staff_code: staffCode,
-      })
-      .eq("id", profile.id)
+      .update({ staff_code: staffCode })
+      .eq("id", result.id)
       .select("*")
       .single();
     if (error) throw error;

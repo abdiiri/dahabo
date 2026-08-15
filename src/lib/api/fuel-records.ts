@@ -7,7 +7,11 @@ const SELECT = "*, vehicles(vehicle_code, plate_number)";
 
 export async function listFuelRecords(): Promise<FuelRecord[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("fuel_records").select(SELECT).is("deleted_at", null).order("filled_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("fuel_records")
+      .select(SELECT)
+      .is("deleted_at", null)
+      .order("filled_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapRow);
   }
@@ -49,12 +53,46 @@ export async function createFuelRecord(input: NewFuelRecordInput): Promise<FuelR
   return store.insert(record);
 }
 
+export type EditFuelRecordInput = Partial<
+  Pick<
+    NewFuelRecordInput,
+    "vehicleId" | "branch" | "liters" | "cost" | "odometerKm" | "filledAt" | "notes"
+  >
+>;
+
+export async function editFuelRecord(id: string, input: EditFuelRecordInput): Promise<FuelRecord> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("fuel_records")
+      .update({
+        ...(input.vehicleId !== undefined ? { vehicle_id: input.vehicleId } : {}),
+        ...(input.branch !== undefined ? { branch_id: input.branch || null } : {}),
+        ...(input.liters !== undefined ? { liters: input.liters } : {}),
+        ...(input.cost !== undefined ? { cost: input.cost } : {}),
+        ...(input.odometerKm !== undefined ? { odometer_km: input.odometerKm ?? null } : {}),
+        ...(input.filledAt !== undefined ? { filled_at: input.filledAt } : {}),
+        ...(input.notes !== undefined ? { notes: input.notes || null } : {}),
+      })
+      .eq("id", id)
+      .select(SELECT)
+      .single();
+    if (error) throw error;
+    return mapRow(data);
+  }
+
+  const updated = store.update(id, input as Partial<FuelRecord>);
+  if (!updated) throw new Error("Fuel record not found");
+  return updated;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRow(row: any): FuelRecord {
   return {
     id: row.id,
     vehicleId: row.vehicle_id,
-    vehicleLabel: row.vehicles ? `${row.vehicles.vehicle_code} · ${row.vehicles.plate_number}` : undefined,
+    vehicleLabel: row.vehicles
+      ? `${row.vehicles.vehicle_code} · ${row.vehicles.plate_number}`
+      : undefined,
     tripId: row.trip_id ?? undefined,
     branch: row.branch_id ?? undefined,
     liters: Number(row.liters) || 0,

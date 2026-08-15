@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { localStore } from "./local-store";
 import { fleetData } from "@/data/mock";
-import type { Vehicle, NewVehicleInput, VehicleType } from "./types";
+import type { Vehicle, NewVehicleInput, VehicleType, VehicleStatus } from "./types";
 
 const TYPE_MAP: Record<string, VehicleType> = {
   "Prime Mover": "prime_mover",
@@ -41,7 +41,11 @@ function generateVehicleCode(existing: Vehicle[]): string {
 
 export async function listVehicles(): Promise<Vehicle[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("vehicles").select("*").is("deleted_at", null).order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("vehicles")
+      .select("*")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapSupabaseVehicle);
   }
@@ -81,6 +85,43 @@ export async function createVehicle(input: NewVehicleInput): Promise<Vehicle> {
     createdAt: new Date().toISOString(),
   };
   return store.insert(vehicle);
+}
+
+export type EditVehicleInput = Partial<{
+  plateNumber: string;
+  type: VehicleType;
+  capacity: string;
+  status: VehicleStatus;
+  odometerKm: number;
+  nextServiceDate: string;
+  branch: string;
+}>;
+
+export async function editVehicle(id: string, input: EditVehicleInput): Promise<Vehicle> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("vehicles")
+      .update({
+        ...(input.plateNumber !== undefined ? { plate_number: input.plateNumber } : {}),
+        ...(input.type !== undefined ? { type: input.type } : {}),
+        ...(input.capacity !== undefined ? { capacity: input.capacity || null } : {}),
+        ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.odometerKm !== undefined ? { odometer_km: input.odometerKm } : {}),
+        ...(input.nextServiceDate !== undefined
+          ? { next_service_date: input.nextServiceDate || null }
+          : {}),
+        ...(input.branch !== undefined ? { branch_id: input.branch || null } : {}),
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    return mapSupabaseVehicle(data);
+  }
+
+  const updated = store.update(id, input as Partial<Vehicle>);
+  if (!updated) throw new Error("Vehicle not found");
+  return updated;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

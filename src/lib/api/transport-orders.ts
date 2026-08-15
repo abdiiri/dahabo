@@ -91,6 +91,40 @@ export async function updateTransportOrderStatus(
   return store.update(id, { status });
 }
 
+export type EditTransportOrderInput = Partial<
+  Pick<
+    NewTransportOrderInput,
+    "customerId" | "branch" | "pickupLocation" | "destination" | "agreedAmount" | "notes"
+  >
+>;
+
+export async function editTransportOrder(
+  id: string,
+  input: EditTransportOrderInput,
+): Promise<TransportOrder> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("transport_orders")
+      .update({
+        ...(input.customerId !== undefined ? { customer_id: input.customerId || null } : {}),
+        ...(input.branch !== undefined ? { branch_id: input.branch || null } : {}),
+        ...(input.pickupLocation !== undefined ? { pickup_location: input.pickupLocation } : {}),
+        ...(input.destination !== undefined ? { destination: input.destination } : {}),
+        ...(input.agreedAmount !== undefined ? { agreed_amount: input.agreedAmount } : {}),
+        ...(input.notes !== undefined ? { notes: input.notes || null } : {}),
+      })
+      .eq("id", id)
+      .select("*, customers(name)")
+      .single();
+    if (error) throw error;
+    return mapSupabaseOrder(data);
+  }
+
+  const updated = store.update(id, input as Partial<TransportOrder>);
+  if (!updated) throw new Error("Transport order not found");
+  return updated;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapSupabaseOrder(row: any): TransportOrder {
   return {
