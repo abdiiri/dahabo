@@ -24,6 +24,19 @@ export async function listWarehouses(): Promise<Warehouse[]> {
   return store.list();
 }
 
+/** Moves the warehouse to the Recycle Bin (soft delete) — restorable there any time. */
+export async function deleteWarehouse(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from("warehouses")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  store.remove(id);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRow(row: any): Warehouse {
   return {

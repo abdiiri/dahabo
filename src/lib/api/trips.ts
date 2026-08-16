@@ -131,6 +131,17 @@ export async function completeTrip(id: string, input: CompleteTripInput): Promis
   return updated;
 }
 
+/** Moves the trip to the Recycle Bin (soft delete), along with the driver
+ * payment and any fuel records logged against it — restorable there any time. */
+export async function deleteTrip(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.rpc("delete_trip_cascade", { p_trip_id: id });
+    if (error) throw error;
+    return;
+  }
+  store.remove(id);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapSupabaseTrip(row: any): Trip {
   return {

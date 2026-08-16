@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, MoreHorizontal, Pencil } from "lucide-react";
+import { Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -31,14 +31,26 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AddTransportOrderDialog } from "@/components/staff/AddTransportOrderDialog";
 import {
   listTransportOrders,
   updateTransportOrderStatus,
   editTransportOrder,
+  deleteTransportOrder,
   type EditTransportOrderInput,
 } from "@/lib/api/transport-orders";
 import { listCustomers } from "@/lib/api/customers";
+import { useAuth } from "@/lib/auth";
 import { TRANSPORT_ORDER_STATUS_LABELS, type TransportOrder, type Customer } from "@/lib/api/types";
 
 export const Route = createFileRoute("/staff/transport-orders")({
@@ -55,9 +67,12 @@ export const Route = createFileRoute("/staff/transport-orders")({
 });
 
 function Page() {
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === "admin";
   const [orders, setOrders] = useState<TransportOrder[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editing, setEditing] = useState<TransportOrder | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -79,6 +94,24 @@ function Page() {
       toast.error("Couldn't update this order", { description: getErrorMessage(err) });
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deletingId) return;
+    const order = (orders ?? []).find((r) => r.id === deletingId);
+    setBusyId(deletingId);
+    try {
+      await deleteTransportOrder(deletingId);
+      setOrders((rows) => (rows ?? []).filter((r) => r.id !== deletingId));
+      toast.success(`${order?.orderCode ?? "Order"} was removed`, {
+        description: "Its trips, driver payments, and fuel records went with it.",
+      });
+    } catch (err) {
+      toast.error("Couldn't delete this order", { description: getErrorMessage(err) });
+    } finally {
+      setBusyId(null);
+      setDeletingId(null);
     }
   }
 
@@ -121,6 +154,14 @@ function Page() {
             {r.status !== "completed" && r.status !== "cancelled" ? (
               <DropdownMenuItem onSelect={() => markComplete(r)}>Mark complete</DropdownMenuItem>
             ) : null}
+            {isAdmin ? (
+              <DropdownMenuItem
+                onSelect={() => setDeletingId(r.id)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="size-4" /> Delete
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -154,6 +195,28 @@ function Page() {
           setEditing(null);
         }}
       />
+
+      <AlertDialog open={deletingId !== null} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This also removes its trips, and the driver payments and fuel records logged
+              against those trips. Everything moves to the Recycle Bin, where it can be restored
+              later or permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
