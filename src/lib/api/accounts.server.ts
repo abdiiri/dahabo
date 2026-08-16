@@ -63,18 +63,20 @@ export const deleteAuthAccount = createServerFn({ method: "POST" })
 
 type CreateStaffAccountInput = {
   email: string;
+  password: string;
   fullName: string;
-  phone?: string;
+  phone?: string | undefined;
   role: string;
-  jobTitle?: string;
-  department?: string;
+  jobTitle?: string | undefined;
+  department?: string | undefined;
 };
 
 /**
  * Admin-created staff account, via the same admin API used for drivers —
  * this bypasses the project's public "allow signups" setting entirely,
- * since it's an admin action, not a public self-signup. Sends the new staff
- * member an email invite link to set their own password.
+ * since it's an admin action, not a public self-signup. The admin sets a
+ * temporary password and hands it to the staff member directly; they're
+ * required to change it on first sign-in (must_change_password).
  */
 export const createStaffAccount = createServerFn({ method: "POST" })
   .validator((data: CreateStaffAccountInput) => data)
@@ -82,13 +84,18 @@ export const createStaffAccount = createServerFn({ method: "POST" })
     const { getAdminClient } = await import("@/lib/server/admin-client");
     const admin = getAdminClient();
 
-    const { data: invited, error } = await admin.auth.admin.inviteUserByEmail(data.email, {
-      data: { full_name: data.fullName },
+    const { data: created, error } = await admin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { full_name: data.fullName },
     });
-    if (error || !invited.user) {
-      throw new Error(error?.message ?? "Could not invite this staff member.");
+    if (error || !created.user) {
+      throw new Error(error?.message ?? "Could not create this staff member's login.");
     }
 
+    // The on_auth_user_created trigger creates the profiles row in the same
+    // transaction as the user insert, so it already exists by now.
     const { error: updateError } = await admin
       .from("profiles")
       .update({
@@ -97,13 +104,16 @@ export const createStaffAccount = createServerFn({ method: "POST" })
         phone: data.phone ?? null,
         job_title: data.jobTitle ?? null,
         department: data.department ?? null,
+        must_change_password: true,
       })
-      .eq("id", invited.user.id);
+      .eq("id", created.user.id);
 
     if (updateError) {
-      await admin.auth.admin.deleteUser(invited.user.id);
+      // Roll back the auth user so a failed staff record doesn't leave an
+      // orphaned login behind.
+      await admin.auth.admin.deleteUser(created.user.id);
       throw new Error(updateError.message);
     }
 
-    return { id: invited.user.id };
+    return { id: created.user.id };
   });

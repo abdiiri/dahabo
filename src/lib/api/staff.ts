@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { localStore } from "./local-store";
 import { staffUsers } from "@/data/mock";
 import { deleteAuthAccount, createStaffAccount } from "./accounts.server";
+import { generateTempPassword } from "./drivers";
 import type { StaffMember, NewStaffInput, StaffRole } from "./types";
 
 const ROLE_MAP: Record<string, StaffRole> = {
@@ -58,12 +59,13 @@ export async function listStaff(): Promise<StaffMember[]> {
 
 export async function createStaff(input: NewStaffInput): Promise<StaffMember> {
   if (isSupabaseConfigured && supabase) {
-    // Admin-created invite — same admin API used for driver logins, so this
-    // doesn't depend on the project's public "allow signups" setting at
-    // all. The new staff member gets an email link to set their password.
+    // Admin-created account, same admin API used for driver logins — the
+    // admin sets a temporary password here and hands it to the staff
+    // member directly; they're forced to change it on first sign-in.
     const result = await createStaffAccount({
       data: {
         email: input.email,
+        password: input.password ?? generateTempPassword(),
         fullName: input.fullName,
         phone: input.phone,
         role: input.role,

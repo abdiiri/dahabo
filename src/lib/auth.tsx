@@ -1,7 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import type { User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { STAFF_ROLE_LABELS, type StaffRole } from "@/lib/api/types";
+
+/** After this many milliseconds with no mouse/keyboard/touch/scroll activity,
+ * a signed-in session is auto-locked (see /lock) and needs the password
+ * re-entered to resume. Change this single constant to adjust the timeout. */
+const IDLE_LOCK_MS = 50_000;
 
 export type AuthProfile = {
   id: string;
@@ -40,6 +46,7 @@ function initials(name: string) {
 export { initials as personaInitials };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AuthProfile | null>(null);
   // Not configured -> nothing to wait for, so start "not loading".
@@ -73,6 +80,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sub.subscription.unsubscribe();
     };
   }, []);
+
+  // Auto-lock a signed-in session after a period of no activity. This
+  // doesn't sign the user out of Supabase — it just sends them to /lock,
+  // which requires the password again before they can resume. Runs
+  // app-wide (public pages included) but is a no-op while signed out.
+  useEffect(() => {
+    if (!user) return;
+
+    let timer: ReturnType<typeof setTimeout>;
+
+    function resetTimer() {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (window.location.pathname !== "/lock") {
+          navigate({ to: "/lock" });
+        }
+      }, IDLE_LOCK_MS);
+    }
+
+    const activityEvents = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"] as const;
+    activityEvents.forEach((evt) => window.addEventListener(evt, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      clearTimeout(timer);
+      activityEvents.forEach((evt) => window.removeEventListener(evt, resetTimer));
+    };
+  }, [user, navigate]);
 
   // Once we have an authenticated user, load their profile row. This is the
   // ONLY place persona info comes from — never hard-coded.

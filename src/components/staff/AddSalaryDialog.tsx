@@ -24,18 +24,24 @@ import {
 } from "@/components/ui/select";
 import { createSalary } from "@/lib/api/salaries";
 import { listDrivers } from "@/lib/api/drivers";
-import { SALARY_TYPE_LABELS, type NewSalaryInput, type Salary, type SalaryType, type Driver } from "@/lib/api/types";
+import {
+  SALARY_TYPE_LABELS,
+  type NewSalaryInput,
+  type Salary,
+  type SalaryType,
+  type Driver,
+} from "@/lib/api/types";
 
-function currentMonth(): string {
+function currentDate(): string {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 const empty: NewSalaryInput = {
   profileId: "",
   type: "salary",
   amount: 0,
-  periodMonth: currentMonth(),
+  periodMonth: currentDate(),
   notes: "",
 };
 
@@ -50,8 +56,10 @@ export function AddSalaryDialog({ onCreated }: { onCreated?: (entry: Salary) => 
     if (open) listDrivers().then(setDrivers);
   }, [open]);
 
-  const set = <K extends keyof NewSalaryInput>(k: K) => (v: NewSalaryInput[K]) =>
-    setValues((s) => ({ ...s, [k]: v }));
+  const set =
+    <K extends keyof NewSalaryInput>(k: K) =>
+    (v: NewSalaryInput[K]) =>
+      setValues((s) => ({ ...s, [k]: v }));
 
   async function handleSubmit() {
     if (!values.profileId || values.amount <= 0) {
@@ -64,7 +72,7 @@ export function AddSalaryDialog({ onCreated }: { onCreated?: (entry: Salary) => 
       const entry = await createSalary(values, true);
       toast.success("Payment recorded");
       onCreated?.(entry);
-      setValues({ ...empty, periodMonth: currentMonth() });
+      setValues({ ...empty, periodMonth: currentDate() });
       setOpen(false);
     } catch (err) {
       toast.error("Couldn't record payment", { description: getErrorMessage(err) });
@@ -84,8 +92,9 @@ export function AddSalaryDialog({ onCreated }: { onCreated?: (entry: Salary) => 
         <DialogHeader>
           <DialogTitle>Record a driver payment</DialogTitle>
           <DialogDescription>
-            For salary, allowances or bonuses — separate from mileage pay, which is calculated automatically. Fully
-            optional; only add this if a driver actually gets paid something outside mileage.
+            For salary, allowances or bonuses — separate from mileage pay, which is calculated
+            automatically. Fully optional; only add this if a driver actually gets paid something
+            outside mileage.
           </DialogDescription>
         </DialogHeader>
 
@@ -93,10 +102,14 @@ export function AddSalaryDialog({ onCreated }: { onCreated?: (entry: Salary) => 
           <div>
             <Label className="mb-1.5 block text-sm">Driver</Label>
             <Select value={values.profileId} onValueChange={set("profileId")}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Select a driver" /></SelectTrigger>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a driver" />
+              </SelectTrigger>
               <SelectContent>
                 {drivers.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.fullName}</SelectItem>
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.fullName}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -105,38 +118,57 @@ export function AddSalaryDialog({ onCreated }: { onCreated?: (entry: Salary) => 
             <div>
               <Label className="mb-1.5 block text-sm">Type</Label>
               <Select value={values.type} onValueChange={(v) => set("type")(v as SalaryType)}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {(Object.keys(SALARY_TYPE_LABELS) as SalaryType[]).map((k) => (
-                    <SelectItem key={k} value={k}>{SALARY_TYPE_LABELS[k]}</SelectItem>
+                    <SelectItem key={k} value={k}>
+                      {SALARY_TYPE_LABELS[k]}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Amount</Label>
-              <Input type="number" min={0} value={values.amount || ""} onChange={(e) => set("amount")(Number(e.target.value))} />
+              <Input
+                type="number"
+                min={0}
+                value={values.amount || ""}
+                onChange={(e) => set("amount")(Number(e.target.value))}
+              />
             </div>
           </div>
           <div>
-            <Label className="mb-1.5 block text-sm">Month</Label>
+            <Label className="mb-1.5 block text-sm">Date</Label>
             <Input
-              type="month"
-              value={values.periodMonth.slice(0, 7)}
-              onChange={(e) => set("periodMonth")(`${e.target.value}-01`)}
+              type="date"
+              value={values.periodMonth}
+              onChange={(e) => set("periodMonth")(e.target.value)}
             />
           </div>
           {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
           <div>
             <Label className="mb-1.5 block text-sm">Notes (optional)</Label>
-            <Textarea value={values.notes} onChange={(e) => set("notes")(e.target.value)} rows={2} />
+            <Textarea
+              value={values.notes}
+              onChange={(e) => set("notes")(e.target.value)}
+              rows={2}
+            />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>Cancel</Button>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting ? <Loader2 className="size-4 animate-spin" /> : <Wallet className="size-4" />}
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Wallet className="size-4" />
+            )}
             Save
           </Button>
         </DialogFooter>

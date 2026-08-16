@@ -41,16 +41,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddDriverDialog } from "@/components/staff/AddDriverDialog";
-import { listDrivers, editDriver, deleteDriver, setDriverAccountStatus, type EditDriverInput } from "@/lib/api/drivers";
+import {
+  listDrivers,
+  editDriver,
+  deleteDriver,
+  setDriverAccountStatus,
+  type EditDriverInput,
+} from "@/lib/api/drivers";
 import { LICENSE_CLASS_LABELS, type Driver, type LicenseClass } from "@/lib/api/types";
 
 export const Route = createFileRoute("/staff/drivers")({
   head: () => ({
     meta: [
       { title: "Drivers | Dahabo Staff Portal" },
-      { name: "description", content: "Driver roster, licences, work assignments and cash advances." },
+      {
+        name: "description",
+        content: "Driver roster, licences, work assignments and cash advances.",
+      },
       { property: "og:title", content: "Drivers | Dahabo Staff Portal" },
-      { property: "og:description", content: "Driver roster, licences, work assignments and cash advances." },
+      {
+        property: "og:description",
+        content: "Driver roster, licences, work assignments and cash advances.",
+      },
     ],
   }),
   component: Page,
@@ -78,9 +90,15 @@ function Page() {
     setBusyId(driver.id);
     try {
       await setDriverAccountStatus(driver.id, activate);
-      setDrivers((rows) => (rows ?? []).map((r) => (r.id === driver.id ? { ...r, accountStatus: activate ? "active" : "suspended" } : r)));
+      setDrivers((rows) =>
+        (rows ?? []).map((r) =>
+          r.id === driver.id ? { ...r, accountStatus: activate ? "active" : "suspended" } : r,
+        ),
+      );
       toast.success(activate ? "Driver reactivated" : "Driver deactivated", {
-        description: activate ? `${driver.fullName} is active again.` : `${driver.fullName} is marked inactive.`,
+        description: activate
+          ? `${driver.fullName} is active again.`
+          : `${driver.fullName} is marked inactive.`,
       });
     } catch (err) {
       toast.error("Couldn't update the driver", { description: getErrorMessage(err) });
@@ -128,7 +146,13 @@ function Page() {
           <span className="text-muted-foreground">—</span>
         ),
     },
-    { key: "status", header: "Account", render: (r) => <StatusPill status={r.accountStatus === "suspended" ? "Suspended" : "Active"} /> },
+    {
+      key: "status",
+      header: "Account",
+      render: (r) => (
+        <StatusPill status={r.accountStatus === "suspended" ? "Suspended" : "Active"} />
+      ),
+    },
     {
       key: "id",
       header: "",
@@ -136,7 +160,13 @@ function Page() {
       render: (r) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-8" disabled={busyId === r.id} onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              disabled={busyId === r.id}
+              onClick={(e) => e.stopPropagation()}
+            >
               <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -145,10 +175,17 @@ function Page() {
               <Pencil className="size-4" /> Edit
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => toggleStatus(r)}>
-              {r.accountStatus === "suspended" ? <Unlock className="size-4" /> : <Lock className="size-4" />}
+              {r.accountStatus === "suspended" ? (
+                <Unlock className="size-4" />
+              ) : (
+                <Lock className="size-4" />
+              )}
               {r.accountStatus === "suspended" ? "Activate driver" : "Deactivate driver"}
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setDeletingId(r.id)} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onSelect={() => setDeletingId(r.id)}
+              className="text-destructive focus:text-destructive"
+            >
               <Trash2 className="size-4" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -174,13 +211,17 @@ function Page() {
         <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">
           <UserCog className="size-8" />
           <p className="text-sm font-medium text-foreground">No drivers yet</p>
-          <p className="max-w-sm text-xs">Add your first driver to assign work and cash advances.</p>
+          <p className="max-w-sm text-xs">
+            Add your first driver to assign work and cash advances.
+          </p>
         </div>
       ) : (
         <DataTable
           data={drivers}
           columns={columns}
-          onRowClick={(row) => navigate({ to: "/staff/drivers/$driverId", params: { driverId: row.id } })}
+          onRowClick={(row) =>
+            navigate({ to: "/staff/drivers/$driverId", params: { driverId: row.id } })
+          }
         />
       )}
 
@@ -198,12 +239,16 @@ function Page() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this driver?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes their compliance record, work history and cash advances. This can't be undone.
+              This permanently deletes their compliance record, work history and cash advances. This
+              can't be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete permanently
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -237,12 +282,15 @@ function EditDriverDialog({
         address: driver.address ?? "",
         nextOfKinName: driver.nextOfKinName ?? "",
         nextOfKinPhone: driver.nextOfKinPhone ?? "",
+        mileageRatePerKm: driver.mileageRatePerKm,
       });
     }
   }, [driver]);
 
-  const set = <K extends keyof EditDriverInput>(k: K) => (v: EditDriverInput[K]) =>
-    setValues((s) => ({ ...s, [k]: v }));
+  const set =
+    <K extends keyof EditDriverInput>(k: K) =>
+    (v: EditDriverInput[K]) =>
+      setValues((s) => ({ ...s, [k]: v }));
 
   async function handleSubmit() {
     if (!driver) return;
@@ -273,7 +321,10 @@ function EditDriverDialog({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="mb-1.5 block text-sm">Full name</Label>
-              <Input value={values.fullName ?? ""} onChange={(e) => set("fullName")(e.target.value)} />
+              <Input
+                value={values.fullName ?? ""}
+                onChange={(e) => set("fullName")(e.target.value)}
+              />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Phone</Label>
@@ -281,43 +332,80 @@ function EditDriverDialog({
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">National ID number</Label>
-              <Input value={values.nationalId ?? ""} onChange={(e) => set("nationalId")(e.target.value)} />
+              <Input
+                value={values.nationalId ?? ""}
+                onChange={(e) => set("nationalId")(e.target.value)}
+              />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Driving licence number</Label>
-              <Input value={values.licenseNumber ?? ""} onChange={(e) => set("licenseNumber")(e.target.value)} />
+              <Input
+                value={values.licenseNumber ?? ""}
+                onChange={(e) => set("licenseNumber")(e.target.value)}
+              />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Licence class</Label>
-              <Select value={values.licenseClass ?? "CE"} onValueChange={(v) => set("licenseClass")(v as LicenseClass)}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <Select
+                value={values.licenseClass ?? "CE"}
+                onValueChange={(v) => set("licenseClass")(v as LicenseClass)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {LICENSE_CLASSES.map((k) => (
-                    <SelectItem key={k} value={k}>{LICENSE_CLASS_LABELS[k]}</SelectItem>
+                    <SelectItem key={k} value={k}>
+                      {LICENSE_CLASS_LABELS[k]}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Licence expiry date</Label>
-              <Input type="date" value={values.licenseExpiry ?? ""} onChange={(e) => set("licenseExpiry")(e.target.value)} />
+              <Input
+                type="date"
+                value={values.licenseExpiry ?? ""}
+                onChange={(e) => set("licenseExpiry")(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Mileage rate (KSh per km)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.mileageRatePerKm ?? 0}
+                onChange={(e) => set("mileageRatePerKm")(Number(e.target.value))}
+              />
             </div>
             <div className="sm:col-span-2">
               <Label className="mb-1.5 block text-sm">Home address</Label>
-              <Input value={values.address ?? ""} onChange={(e) => set("address")(e.target.value)} />
+              <Input
+                value={values.address ?? ""}
+                onChange={(e) => set("address")(e.target.value)}
+              />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Next of kin name</Label>
-              <Input value={values.nextOfKinName ?? ""} onChange={(e) => set("nextOfKinName")(e.target.value)} />
+              <Input
+                value={values.nextOfKinName ?? ""}
+                onChange={(e) => set("nextOfKinName")(e.target.value)}
+              />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Next of kin phone</Label>
-              <Input value={values.nextOfKinPhone ?? ""} onChange={(e) => set("nextOfKinPhone")(e.target.value)} />
+              <Input
+                value={values.nextOfKinPhone ?? ""}
+                onChange={(e) => set("nextOfKinPhone")(e.target.value)}
+              />
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
             Save changes

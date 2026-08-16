@@ -87,9 +87,8 @@ function Page() {
     { key: "type", header: "Type", render: (r) => SALARY_TYPE_LABELS[r.type] },
     {
       key: "periodMonth",
-      header: "Month",
-      render: (r) =>
-        new Date(r.periodMonth).toLocaleDateString(undefined, { month: "long", year: "numeric" }),
+      header: "Date",
+      render: (r) => new Date(r.periodMonth).toLocaleDateString(),
     },
     { key: "amount", header: "Amount", render: (r) => `KSh ${r.amount.toLocaleString()}` },
     {
@@ -239,11 +238,11 @@ function EditSalaryDialog({
               />
             </div>
             <div className="sm:col-span-2">
-              <Label className="mb-1.5 block text-sm">Period month</Label>
+              <Label className="mb-1.5 block text-sm">Date</Label>
               <Input
-                type="month"
-                value={(values.periodMonth ?? "").slice(0, 7)}
-                onChange={(e) => set("periodMonth")(`${e.target.value}-01`)}
+                type="date"
+                value={values.periodMonth ?? ""}
+                onChange={(e) => set("periodMonth")(e.target.value)}
               />
             </div>
           </div>

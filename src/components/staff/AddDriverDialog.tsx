@@ -23,7 +23,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createDriver, generateTempPassword } from "@/lib/api/drivers";
-import { LICENSE_CLASS_LABELS, type Driver, type LicenseClass, type NewDriverInput } from "@/lib/api/types";
+import {
+  LICENSE_CLASS_LABELS,
+  type Driver,
+  type LicenseClass,
+  type NewDriverInput,
+} from "@/lib/api/types";
 
 const empty: NewDriverInput = {
   fullName: "",
@@ -52,8 +57,10 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const set = <K extends keyof NewDriverInput>(k: K) => (v: NewDriverInput[K]) =>
-    setValues((s) => ({ ...s, [k]: v }));
+  const set =
+    <K extends keyof NewDriverInput>(k: K) =>
+    (v: NewDriverInput[K]) =>
+      setValues((s) => ({ ...s, [k]: v }));
 
   function openChange(next: boolean) {
     setOpen(next);
@@ -68,7 +75,8 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
     if (values.wantsLogin) {
       if (!values.email?.trim()) nextErrors.email = "Required to create a login";
       else if (!/^\S+@\S+\.\S+$/.test(values.email)) nextErrors.email = "Enter a valid email";
-      if (!values.password || values.password.length < 8) nextErrors.password = "At least 8 characters";
+      if (!values.password || values.password.length < 8)
+        nextErrors.password = "At least 8 characters";
     }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -104,23 +112,41 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
         <DialogHeader>
           <DialogTitle>Add a driver</DialogTitle>
           <DialogDescription>
-            Company ID is generated automatically. Only name, national ID and licence number are required — the rest
-            can be added later.
+            Company ID is generated automatically. Only name, national ID and licence number are
+            required — the rest can be added later.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-5 py-2">
           <section className="grid gap-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Required
+            </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Full name" error={errors.fullName}>
-                <Input value={values.fullName} onChange={(e) => set("fullName")(e.target.value)} placeholder="e.g. Abdi Hassan" />
+                <Input
+                  value={values.fullName}
+                  onChange={(e) => set("fullName")(e.target.value)}
+                  placeholder="e.g. Abdi Hassan"
+                />
               </Field>
               <Field label="National ID number" error={errors.nationalId}>
-                <Input value={values.nationalId} onChange={(e) => set("nationalId")(e.target.value)} placeholder="e.g. 32456789" />
+                <Input
+                  value={values.nationalId}
+                  onChange={(e) => set("nationalId")(e.target.value)}
+                  placeholder="e.g. 32456789"
+                />
               </Field>
-              <Field label="Driving licence number" error={errors.licenseNumber} className="sm:col-span-2">
-                <Input value={values.licenseNumber} onChange={(e) => set("licenseNumber")(e.target.value)} placeholder="e.g. KE-DL-34120" />
+              <Field
+                label="Driving licence number"
+                error={errors.licenseNumber}
+                className="sm:col-span-2"
+              >
+                <Input
+                  value={values.licenseNumber}
+                  onChange={(e) => set("licenseNumber")(e.target.value)}
+                  placeholder="e.g. KE-DL-34120"
+                />
               </Field>
             </div>
           </section>
@@ -132,8 +158,8 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
                   Create a login for this driver
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Optional. Most drivers don't need one — the office manages their record. Only turn this on if the
-                  driver needs to sign in to their own dashboard.
+                  Optional. Most drivers don't need one — the office manages their record. Only turn
+                  this on if the driver needs to sign in to their own dashboard.
                 </p>
               </div>
               <Switch checked={values.wantsLogin} onCheckedChange={set("wantsLogin")} />
@@ -142,11 +168,19 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
             {values.wantsLogin ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Login email" error={errors.email}>
-                  <Input type="email" value={values.email} onChange={(e) => set("email")(e.target.value)} placeholder="name@dahaboglobal.com" />
+                  <Input
+                    type="email"
+                    value={values.email}
+                    onChange={(e) => set("email")(e.target.value)}
+                    placeholder="name@dahaboglobal.com"
+                  />
                 </Field>
                 <Field label="Temporary password" error={errors.password}>
                   <div className="flex gap-1.5">
-                    <Input value={values.password} onChange={(e) => set("password")(e.target.value)} />
+                    <Input
+                      value={values.password}
+                      onChange={(e) => set("password")(e.target.value)}
+                    />
                     <Button
                       type="button"
                       variant="outline"
@@ -176,50 +210,99 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
           </section>
 
           <section className="grid gap-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Optional details</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Optional details
+            </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Phone">
-                <Input value={values.phone} onChange={(e) => set("phone")(e.target.value)} placeholder="+254 7xx xxx xxx" />
+                <Input
+                  value={values.phone}
+                  onChange={(e) => set("phone")(e.target.value)}
+                  placeholder="+254 7xx xxx xxx"
+                />
               </Field>
               <Field label="Date of birth">
-                <Input type="date" value={values.dateOfBirth} onChange={(e) => set("dateOfBirth")(e.target.value)} />
+                <Input
+                  type="date"
+                  value={values.dateOfBirth}
+                  onChange={(e) => set("dateOfBirth")(e.target.value)}
+                />
               </Field>
               <Field label="Licence class">
-                <Select value={values.licenseClass} onValueChange={(v) => set("licenseClass")(v as LicenseClass)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <Select
+                  value={values.licenseClass}
+                  onValueChange={(v) => set("licenseClass")(v as LicenseClass)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {(Object.keys(LICENSE_CLASS_LABELS) as LicenseClass[]).map((k) => (
-                      <SelectItem key={k} value={k}>{LICENSE_CLASS_LABELS[k]}</SelectItem>
+                      <SelectItem key={k} value={k}>
+                        {LICENSE_CLASS_LABELS[k]}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
               <Field label="Licence expiry date">
-                <Input type="date" value={values.licenseExpiry} onChange={(e) => set("licenseExpiry")(e.target.value)} />
+                <Input
+                  type="date"
+                  value={values.licenseExpiry}
+                  onChange={(e) => set("licenseExpiry")(e.target.value)}
+                />
+              </Field>
+              <Field label="Mileage rate (KSh per km)">
+                <Input
+                  type="number"
+                  min={0}
+                  value={values.mileageRatePerKm ?? ""}
+                  onChange={(e) => set("mileageRatePerKm")(Number(e.target.value))}
+                  placeholder="e.g. 15"
+                />
               </Field>
               <Field label="Home address" className="sm:col-span-2">
-                <Input value={values.address} onChange={(e) => set("address")(e.target.value)} placeholder="Estate, town" />
+                <Input
+                  value={values.address}
+                  onChange={(e) => set("address")(e.target.value)}
+                  placeholder="Estate, town"
+                />
               </Field>
             </div>
           </section>
 
           <section className="grid gap-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Next of kin (optional)</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Next of kin (optional)
+            </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Full name">
-                <Input value={values.nextOfKinName} onChange={(e) => set("nextOfKinName")(e.target.value)} />
+                <Input
+                  value={values.nextOfKinName}
+                  onChange={(e) => set("nextOfKinName")(e.target.value)}
+                />
               </Field>
               <Field label="Phone number">
-                <Input value={values.nextOfKinPhone} onChange={(e) => set("nextOfKinPhone")(e.target.value)} placeholder="+254 7xx xxx xxx" />
+                <Input
+                  value={values.nextOfKinPhone}
+                  onChange={(e) => set("nextOfKinPhone")(e.target.value)}
+                  placeholder="+254 7xx xxx xxx"
+                />
               </Field>
             </div>
           </section>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>Cancel</Button>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <UserPlus className="size-4" />
+            )}
             Add driver
           </Button>
         </DialogFooter>

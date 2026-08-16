@@ -15,46 +15,23 @@ export type StaffRole =
   | "staff"
   | "driver";
 
-export type StaffStatus =
-  | "active"
-  | "suspended"
-  | "on_leave";
+export type StaffStatus = "active" | "suspended" | "on_leave";
 
 /* =========================================================
    DRIVER
    ========================================================= */
 
-export type DriverStatus =
-  | "available"
-  | "on_route"
-  | "off_duty"
-  | "suspended";
+export type DriverStatus = "available" | "on_route" | "off_duty" | "suspended";
 
-export type LicenseClass =
-  | "A"
-  | "B"
-  | "C"
-  | "D"
-  | "E"
-  | "CE"
-  | "BCE";
+export type LicenseClass = "A" | "B" | "C" | "D" | "E" | "CE" | "BCE";
 
 /* =========================================================
    ASSIGNMENTS
    ========================================================= */
 
-export type AssignmentType =
-  | "delivery"
-  | "pickup"
-  | "transfer"
-  | "maintenance_run"
-  | "other";
+export type AssignmentType = "delivery" | "pickup" | "transfer" | "maintenance_run" | "other";
 
-export type AssignmentStatus =
-  | "scheduled"
-  | "in_progress"
-  | "completed"
-  | "cancelled";
+export type AssignmentStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
 /* =========================================================
    VEHICLES
@@ -73,11 +50,7 @@ export type VehicleType =
   | "other";
 
 // Matches the public.vehicle_status enum in supabase/schema.sql exactly.
-export type VehicleStatus =
-  | "active"
-  | "idle"
-  | "maintenance"
-  | "decommissioned";
+export type VehicleStatus = "active" | "idle" | "maintenance" | "decommissioned";
 
 /* =========================================================
    LABELS
@@ -192,6 +165,7 @@ export type StaffMember = {
 export type NewStaffInput = {
   fullName: string;
   email: string;
+  password?: string | undefined;
   phone?: string | undefined;
   role: StaffRole;
   jobTitle?: string | undefined;
@@ -258,6 +232,8 @@ export type NewDriverInput = {
   address?: string | undefined;
   nextOfKinName?: string | undefined;
   nextOfKinPhone?: string | undefined;
+  /** KSh (or local currency) paid per km driven — used to auto-calculate mileage pay. */
+  mileageRatePerKm?: number | undefined;
 };
 
 /* =========================================================
@@ -358,11 +334,7 @@ export type Shipment = {
    ========================================================= */
 
 export type TransportOrderStatus =
-  | "pending"
-  | "assigned"
-  | "in_progress"
-  | "completed"
-  | "cancelled";
+  "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
 
 export const TRANSPORT_ORDER_STATUS_LABELS: Record<TransportOrderStatus, string> = {
   pending: "Pending",
@@ -546,7 +518,7 @@ export type Salary = {
   personName?: string | undefined;
   type: SalaryType;
   amount: number;
-  periodMonth: string; // first-of-month date, e.g. "2026-08-01"
+  periodMonth: string; // the exact date this payment covers, e.g. "2026-08-14"
   status: DriverPaymentStatus;
   paidAt?: string | undefined;
   notes?: string | undefined;
@@ -566,14 +538,7 @@ export type NewSalaryInput = {
    ========================================================= */
 
 export type ExpenseCategory =
-  | "toll"
-  | "parking"
-  | "permit"
-  | "insurance"
-  | "fine"
-  | "loading"
-  | "offloading"
-  | "other";
+  "toll" | "parking" | "permit" | "insurance" | "fine" | "loading" | "offloading" | "other";
 
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   toll: "Toll",

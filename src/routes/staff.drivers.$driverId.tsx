@@ -54,7 +54,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AssignWorkDialog } from "@/components/staff/AssignWorkDialog";
-import { getDriver, setDriverAccountStatus, editDriver, deleteDriver, type EditDriverInput } from "@/lib/api/drivers";
+import {
+  getDriver,
+  setDriverAccountStatus,
+  editDriver,
+  deleteDriver,
+  type EditDriverInput,
+} from "@/lib/api/drivers";
 import { listAssignmentsForDriver } from "@/lib/api/assignments";
 import { listAdvancesForDriver, giveAdvance } from "@/lib/api/driver-advances";
 import {
@@ -216,7 +222,9 @@ function Page() {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>
-                    {driver.accountStatus === "suspended" ? "Reactivate this account?" : "Deactivate this account?"}
+                    {driver.accountStatus === "suspended"
+                      ? "Reactivate this account?"
+                      : "Deactivate this account?"}
                   </AlertDialogTitle>
                   <AlertDialogDescription>
                     {driver.accountStatus === "suspended"
@@ -232,7 +240,11 @@ function Page() {
             </AlertDialog>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" className="text-destructive hover:text-destructive" disabled={deleting}>
+                <Button
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                  disabled={deleting}
+                >
                   <Trash2 className="size-4" /> Delete
                 </Button>
               </AlertDialogTrigger>
@@ -247,13 +259,20 @@ function Page() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
                     Delete permanently
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <AssignWorkDialog driverId={driver.id} driverName={driver.fullName} onCreated={(a) => setAssignments((s) => [a, ...s])} />
+            <AssignWorkDialog
+              driverId={driver.id}
+              driverName={driver.fullName}
+              onCreated={(a) => setAssignments((s) => [a, ...s])}
+            />
           </>
         }
       />
@@ -269,10 +288,14 @@ function Page() {
               </Avatar>
               <div className="min-w-0">
                 <p className="truncate text-lg font-bold">{driver.fullName}</p>
-                <p className="truncate text-sm text-muted-foreground">{driver.email || "No login account"}</p>
+                <p className="truncate text-sm text-muted-foreground">
+                  {driver.email || "No login account"}
+                </p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   <StatusPill status={DRIVER_STATUS_LABELS[driver.status]} />
-                  <StatusPill status={driver.accountStatus === "suspended" ? "Suspended" : "Active"} />
+                  <StatusPill
+                    status={driver.accountStatus === "suspended" ? "Suspended" : "Active"}
+                  />
                 </div>
               </div>
             </div>
@@ -320,11 +343,17 @@ function Page() {
               />
               <Row label="Date of birth" value={driver.dateOfBirth} />
               <Row label="Address" value={driver.address} />
+              <Row
+                label="Mileage rate"
+                value={driver.mileageRatePerKm ? `KSh ${driver.mileageRatePerKm}/km` : undefined}
+              />
             </dl>
           </Card>
 
           <Card className="gap-4 p-6 shadow-soft">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Next of kin</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              Next of kin
+            </h2>
             <dl className="grid gap-3 text-sm">
               <Row label="Full name" value={driver.nextOfKinName} />
               <Row label="Phone" value={driver.nextOfKinPhone} />
@@ -358,7 +387,10 @@ function Page() {
             <div className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
               <ClipboardList className="size-8" />
               <p className="text-sm">No work assigned yet.</p>
-              <p className="text-xs">Use "Assign work" above to give {driver.fullName.split(" ")[0]} a delivery, pickup, or other task.</p>
+              <p className="text-xs">
+                Use "Assign work" above to give {driver.fullName.split(" ")[0]} a delivery, pickup,
+                or other task.
+              </p>
             </div>
           ) : (
             <ul className="grid gap-3">
@@ -413,7 +445,8 @@ function Page() {
                     <div>
                       <p className="font-semibold">KES {a.amount.toLocaleString()}</p>
                       <p className="text-xs text-muted-foreground">
-                        {a.purpose || "No purpose noted"} · {new Date(a.givenAt).toLocaleDateString()}
+                        {a.purpose || "No purpose noted"} ·{" "}
+                        {new Date(a.givenAt).toLocaleDateString()}
                       </p>
                     </div>
                     <StatusPill status={a.status === "reported" ? "Delivered" : "Pending"} />
@@ -458,12 +491,15 @@ function EditDriverDialog({
         address: driver.address ?? "",
         nextOfKinName: driver.nextOfKinName ?? "",
         nextOfKinPhone: driver.nextOfKinPhone ?? "",
+        mileageRatePerKm: driver.mileageRatePerKm,
       });
     }
   }
 
-  const set = <K extends keyof EditDriverInput>(k: K) => (v: EditDriverInput[K]) =>
-    setValues((s) => ({ ...s, [k]: v }));
+  const set =
+    <K extends keyof EditDriverInput>(k: K) =>
+    (v: EditDriverInput[K]) =>
+      setValues((s) => ({ ...s, [k]: v }));
 
   async function handleSubmit() {
     if (!values.fullName?.trim() || !values.nationalId?.trim() || !values.licenseNumber?.trim()) {
@@ -501,7 +537,10 @@ function EditDriverDialog({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="mb-1.5 block text-sm">Full name</Label>
-              <Input value={values.fullName ?? ""} onChange={(e) => set("fullName")(e.target.value)} />
+              <Input
+                value={values.fullName ?? ""}
+                onChange={(e) => set("fullName")(e.target.value)}
+              />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Phone</Label>
@@ -511,53 +550,94 @@ function EditDriverDialog({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="mb-1.5 block text-sm">National ID number</Label>
-              <Input value={values.nationalId ?? ""} onChange={(e) => set("nationalId")(e.target.value)} />
+              <Input
+                value={values.nationalId ?? ""}
+                onChange={(e) => set("nationalId")(e.target.value)}
+              />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Driving licence number</Label>
-              <Input value={values.licenseNumber ?? ""} onChange={(e) => set("licenseNumber")(e.target.value)} />
+              <Input
+                value={values.licenseNumber ?? ""}
+                onChange={(e) => set("licenseNumber")(e.target.value)}
+              />
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="mb-1.5 block text-sm">Licence class</Label>
-              <Select value={values.licenseClass ?? "CE"} onValueChange={(v) => set("licenseClass")(v as LicenseClass)}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <Select
+                value={values.licenseClass ?? "CE"}
+                onValueChange={(v) => set("licenseClass")(v as LicenseClass)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {(Object.keys(LICENSE_CLASS_LABELS) as LicenseClass[]).map((k) => (
-                    <SelectItem key={k} value={k}>{LICENSE_CLASS_LABELS[k]}</SelectItem>
+                    <SelectItem key={k} value={k}>
+                      {LICENSE_CLASS_LABELS[k]}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Licence expiry date</Label>
-              <Input type="date" value={values.licenseExpiry ?? ""} onChange={(e) => set("licenseExpiry")(e.target.value)} />
+              <Input
+                type="date"
+                value={values.licenseExpiry ?? ""}
+                onChange={(e) => set("licenseExpiry")(e.target.value)}
+              />
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="mb-1.5 block text-sm">Date of birth</Label>
-              <Input type="date" value={values.dateOfBirth ?? ""} onChange={(e) => set("dateOfBirth")(e.target.value)} />
+              <Input
+                type="date"
+                value={values.dateOfBirth ?? ""}
+                onChange={(e) => set("dateOfBirth")(e.target.value)}
+              />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Home address</Label>
-              <Input value={values.address ?? ""} onChange={(e) => set("address")(e.target.value)} />
+              <Input
+                value={values.address ?? ""}
+                onChange={(e) => set("address")(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Mileage rate (KSh per km)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.mileageRatePerKm ?? 0}
+                onChange={(e) => set("mileageRatePerKm")(Number(e.target.value))}
+              />
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="mb-1.5 block text-sm">Next of kin name</Label>
-              <Input value={values.nextOfKinName ?? ""} onChange={(e) => set("nextOfKinName")(e.target.value)} />
+              <Input
+                value={values.nextOfKinName ?? ""}
+                onChange={(e) => set("nextOfKinName")(e.target.value)}
+              />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Next of kin phone</Label>
-              <Input value={values.nextOfKinPhone ?? ""} onChange={(e) => set("nextOfKinPhone")(e.target.value)} />
+              <Input
+                value={values.nextOfKinPhone ?? ""}
+                onChange={(e) => set("nextOfKinPhone")(e.target.value)}
+              />
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>Cancel</Button>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
             Save changes
@@ -588,7 +668,11 @@ function GiveAdvanceDialog({
     }
     setSubmitting(true);
     try {
-      const advance = await giveAdvance({ driverId, amount: value, purpose: purpose.trim() || undefined });
+      const advance = await giveAdvance({
+        driverId,
+        amount: value,
+        purpose: purpose.trim() || undefined,
+      });
       onGiven(advance);
       toast.success(`KES ${value.toLocaleString()} recorded`);
       setAmount("");
@@ -613,20 +697,36 @@ function GiveAdvanceDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Record a cash advance</DialogTitle>
-          <DialogDescription>The driver will see this on their dashboard and can report how it was used.</DialogDescription>
+          <DialogDescription>
+            The driver will see this on their dashboard and can report how it was used.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="adv-amount">Amount (KES)</Label>
-            <Input id="adv-amount" type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 5000" />
+            <Input
+              id="adv-amount"
+              type="number"
+              min={0}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="e.g. 5000"
+            />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="adv-purpose">Purpose (optional)</Label>
-            <Input id="adv-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="e.g. Fuel for Nairobi–Mombasa run" />
+            <Input
+              id="adv-purpose"
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
+              placeholder="e.g. Fuel for Nairobi–Mombasa run"
+            />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>Cancel</Button>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
             Record

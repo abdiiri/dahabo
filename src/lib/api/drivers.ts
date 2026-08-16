@@ -19,7 +19,8 @@ function seedDrivers(): Driver[] {
     address: undefined,
     nextOfKinName: undefined,
     nextOfKinPhone: undefined,
-    status: d.status === "On Route" ? "on_route" : d.status === "Off Duty" ? "off_duty" : "available",
+    status:
+      d.status === "On Route" ? "on_route" : d.status === "Off Duty" ? "off_duty" : "available",
     accountStatus: "active",
     hasLogin: false,
     mustChangePassword: false,
@@ -53,7 +54,11 @@ export function generateTempPassword(): string {
 
 export async function listDrivers(): Promise<Driver[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("drivers").select("*").is("deleted_at", null).order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("drivers")
+      .select("*")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapSupabaseDriver);
   }
@@ -62,7 +67,12 @@ export async function listDrivers(): Promise<Driver[]> {
 
 export async function getDriver(id: string): Promise<Driver | undefined> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("drivers").select("*").eq("id", id).is("deleted_at", null).maybeSingle();
+    const { data, error } = await supabase
+      .from("drivers")
+      .select("*")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
     if (error) throw error;
     return data ? mapSupabaseDriver(data) : undefined;
   }
@@ -78,7 +88,12 @@ export async function createDriver(input: NewDriverInput): Promise<Driver> {
     // configured on the server.
     if (input.wantsLogin && input.email && input.password) {
       const result = await createDriverAccount({
-        data: { email: input.email, password: input.password, fullName: input.fullName, phone: input.phone },
+        data: {
+          email: input.email,
+          password: input.password,
+          fullName: input.fullName,
+          phone: input.phone,
+        },
       });
       id = result.id;
     }
@@ -101,6 +116,7 @@ export async function createDriver(input: NewDriverInput): Promise<Driver> {
           address: input.address || null,
           next_of_kin_name: input.nextOfKinName || null,
           next_of_kin_phone: input.nextOfKinPhone || null,
+          mileage_rate_per_km: input.mileageRatePerKm ?? 0,
           has_login: Boolean(id),
         })
         .select("*")
@@ -138,7 +154,7 @@ export async function createDriver(input: NewDriverInput): Promise<Driver> {
     locationUpdatedAt: undefined,
     rating: 5,
     totalTrips: 0,
-    mileageRatePerKm: 0,
+    mileageRatePerKm: input.mileageRatePerKm ?? 0,
     dateJoined: new Date().toISOString().slice(0, 10),
     createdAt: new Date().toISOString(),
   };
@@ -158,6 +174,7 @@ export type EditDriverInput = Partial<
     | "address"
     | "nextOfKinName"
     | "nextOfKinPhone"
+    | "mileageRatePerKm"
   >
 >;
 
@@ -171,11 +188,20 @@ export async function editDriver(id: string, input: EditDriverInput): Promise<Dr
         ...(input.nationalId !== undefined ? { national_id: input.nationalId } : {}),
         ...(input.licenseNumber !== undefined ? { license_number: input.licenseNumber } : {}),
         ...(input.licenseClass !== undefined ? { license_class: input.licenseClass } : {}),
-        ...(input.licenseExpiry !== undefined ? { license_expiry: input.licenseExpiry || null } : {}),
+        ...(input.licenseExpiry !== undefined
+          ? { license_expiry: input.licenseExpiry || null }
+          : {}),
         ...(input.dateOfBirth !== undefined ? { date_of_birth: input.dateOfBirth || null } : {}),
         ...(input.address !== undefined ? { address: input.address || null } : {}),
-        ...(input.nextOfKinName !== undefined ? { next_of_kin_name: input.nextOfKinName || null } : {}),
-        ...(input.nextOfKinPhone !== undefined ? { next_of_kin_phone: input.nextOfKinPhone || null } : {}),
+        ...(input.nextOfKinName !== undefined
+          ? { next_of_kin_name: input.nextOfKinName || null }
+          : {}),
+        ...(input.nextOfKinPhone !== undefined
+          ? { next_of_kin_phone: input.nextOfKinPhone || null }
+          : {}),
+        ...(input.mileageRatePerKm !== undefined
+          ? { mileage_rate_per_km: input.mileageRatePerKm }
+          : {}),
       })
       .eq("id", id)
       .select("*")
@@ -199,7 +225,10 @@ export async function editDriver(id: string, input: EditDriverInput): Promise<Dr
 export async function deleteDriver(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     const driver = await getDriver(id);
-    const { error } = await supabase.from("drivers").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+    const { error } = await supabase
+      .from("drivers")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
     if (error) throw error;
     if (driver?.hasLogin) {
       await deleteAuthAccount({ data: { userId: id } }).catch(() => undefined);
@@ -220,7 +249,10 @@ export async function setDriverAccountStatus(id: string, active: boolean): Promi
       .eq("id", id);
     if (error) throw error;
     if (driver?.hasLogin) {
-      await supabase.from("profiles").update({ status: active ? "active" : "suspended" }).eq("id", id);
+      await supabase
+        .from("profiles")
+        .update({ status: active ? "active" : "suspended" })
+        .eq("id", id);
     }
     return;
   }
@@ -274,7 +306,10 @@ function mapSupabaseDriver(row: any): Driver {
   };
 }
 
-export async function setDriverMileageRate(id: string, ratePerKm: number): Promise<Driver | undefined> {
+export async function setDriverMileageRate(
+  id: string,
+  ratePerKm: number,
+): Promise<Driver | undefined> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
       .from("drivers")
