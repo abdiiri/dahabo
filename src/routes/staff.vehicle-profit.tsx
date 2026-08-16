@@ -109,7 +109,7 @@ function Page() {
       <PageHeader
         breadcrumb={["Staff", "Vehicle Profit"]}
         title="Vehicle Profit"
-        description="This month, per vehicle: revenue minus fuel, maintenance and mileage pay."
+        description="This month, per vehicle: revenue minus fuel, maintenance and mileage pay. Mileage pay only appears once a trip is completed (needs an end odometer reading to calculate distance)."
       />
 
       {rows === null ? (
