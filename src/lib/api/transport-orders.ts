@@ -125,18 +125,6 @@ export async function editTransportOrder(
   return updated;
 }
 
-/** Admin-only. Moves the order to the Recycle Bin (soft delete) along with
- * its trips, and the driver payments and fuel records generated from those
- * trips — restorable individually from the Recycle Bin any time. */
-export async function deleteTransportOrder(id: string): Promise<void> {
-  if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.rpc("delete_transport_order_cascade", { p_order_id: id });
-    if (error) throw error;
-    return;
-  }
-  store.remove(id);
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapSupabaseOrder(row: any): TransportOrder {
   return {

@@ -55,6 +55,7 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
         origin: input.origin,
         destination: input.destination,
         start_odometer_km: input.startOdometerKm,
+        mileage_rate_per_km: input.mileageRatePerKm ?? 0,
         status: "in_progress",
         started_at: new Date().toISOString(),
       })
@@ -75,6 +76,7 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
     origin: input.origin,
     destination: input.destination,
     startOdometerKm: input.startOdometerKm,
+    mileageRatePerKm: input.mileageRatePerKm ?? 0,
     status: "in_progress",
     startedAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),
@@ -121,7 +123,7 @@ export async function completeTrip(id: string, input: CompleteTripInput): Promis
     driverId: trip.driverId,
     driverName: driver?.fullName,
     distanceKm,
-    ratePerKm: driver?.mileageRatePerKm ?? 0,
+    ratePerKm: trip.mileageRatePerKm ?? 0,
   });
 
   if (trip.transportOrderId) {
@@ -131,11 +133,16 @@ export async function completeTrip(id: string, input: CompleteTripInput): Promis
   return updated;
 }
 
-/** Moves the trip to the Recycle Bin (soft delete), along with the driver
- * payment and any fuel records logged against it — restorable there any time. */
+/** Moves the trip to the Recycle Bin (soft delete) — restorable there any
+ * time. Its driver_payments row (if the trip was completed) goes with it,
+ * since driver_payments.trip_id cascades on delete/relies on the same
+ * soft-delete convention used across the app. */
 export async function deleteTrip(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.rpc("delete_trip_cascade", { p_trip_id: id });
+    const { error } = await supabase
+      .from("trips")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
     if (error) throw error;
     return;
   }
@@ -158,6 +165,7 @@ function mapSupabaseTrip(row: any): Trip {
     startOdometerKm: row.start_odometer_km,
     endOdometerKm: row.end_odometer_km ?? undefined,
     distanceKm: row.distance_km ?? undefined,
+    mileageRatePerKm: Number(row.mileage_rate_per_km ?? 0),
     status: row.status,
     startedAt: row.started_at ?? undefined,
     completedAt: row.completed_at ?? undefined,

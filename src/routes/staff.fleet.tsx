@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Loader2, MoreHorizontal, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -30,18 +30,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { AddVehicleDialog } from "@/components/staff/AddVehicleDialog";
-import { listVehicles, editVehicle, deleteVehicle, type EditVehicleInput } from "@/lib/api/vehicles";
+import { listVehicles, editVehicle, type EditVehicleInput } from "@/lib/api/vehicles";
 import {
   VEHICLE_TYPE_LABELS,
   VEHICLE_STATUS_LABELS,
@@ -71,8 +61,6 @@ export const Route = createFileRoute("/staff/fleet")({
 function Page() {
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [editing, setEditing] = useState<Vehicle | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -81,22 +69,6 @@ function Page() {
       active = false;
     };
   }, []);
-
-  async function handleDelete() {
-    if (!deletingId) return;
-    const vehicle = (vehicles ?? []).find((r) => r.id === deletingId);
-    setBusyId(deletingId);
-    try {
-      await deleteVehicle(deletingId);
-      setVehicles((rows) => (rows ?? []).filter((r) => r.id !== deletingId));
-      toast.success(`${vehicle?.plateNumber ?? "Vehicle"} was removed`);
-    } catch (err) {
-      toast.error("Couldn't delete this vehicle", { description: getErrorMessage(err) });
-    } finally {
-      setBusyId(null);
-      setDeletingId(null);
-    }
-  }
 
   const columns: Column<Vehicle>[] = [
     { key: "vehicleCode", header: "ID" },
@@ -121,7 +93,6 @@ function Page() {
               variant="ghost"
               size="icon"
               className="size-8"
-              disabled={busyId === r.id}
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="size-4" />
@@ -130,12 +101,6 @@ function Page() {
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
             <DropdownMenuItem onSelect={() => setEditing(r)}>
               <Pencil className="size-4" /> Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => setDeletingId(r.id)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="size-4" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -170,27 +135,6 @@ function Page() {
           setEditing(null);
         }}
       />
-
-      <AlertDialog open={deletingId !== null} onOpenChange={(open) => !open && setDeletingId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this vehicle?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This moves it to the Recycle Bin, where it can be restored later or permanently
-              deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

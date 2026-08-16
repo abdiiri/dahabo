@@ -85,19 +85,6 @@ export async function editFuelRecord(id: string, input: EditFuelRecordInput): Pr
   return updated;
 }
 
-/** Moves the fuel record to the Recycle Bin (soft delete) — restorable there any time. */
-export async function deleteFuelRecord(id: string): Promise<void> {
-  if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase
-      .from("fuel_records")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) throw error;
-    return;
-  }
-  store.remove(id);
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRow(row: any): FuelRecord {
   return {

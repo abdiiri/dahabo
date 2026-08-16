@@ -28,7 +28,6 @@ function seedDrivers(): Driver[] {
     locationUpdatedAt: undefined,
     rating: Number(d.rating),
     totalTrips: d.trips,
-    mileageRatePerKm: 0,
     dateJoined: "2024-01-01",
     createdAt: "2024-01-01T00:00:00Z",
   }));
@@ -116,7 +115,6 @@ export async function createDriver(input: NewDriverInput): Promise<Driver> {
           address: input.address || null,
           next_of_kin_name: input.nextOfKinName || null,
           next_of_kin_phone: input.nextOfKinPhone || null,
-          mileage_rate_per_km: input.mileageRatePerKm ?? 0,
           has_login: Boolean(id),
         })
         .select("*")
@@ -154,7 +152,6 @@ export async function createDriver(input: NewDriverInput): Promise<Driver> {
     locationUpdatedAt: undefined,
     rating: 5,
     totalTrips: 0,
-    mileageRatePerKm: input.mileageRatePerKm ?? 0,
     dateJoined: new Date().toISOString().slice(0, 10),
     createdAt: new Date().toISOString(),
   };
@@ -174,7 +171,6 @@ export type EditDriverInput = Partial<
     | "address"
     | "nextOfKinName"
     | "nextOfKinPhone"
-    | "mileageRatePerKm"
   >
 >;
 
@@ -198,9 +194,6 @@ export async function editDriver(id: string, input: EditDriverInput): Promise<Dr
           : {}),
         ...(input.nextOfKinPhone !== undefined
           ? { next_of_kin_phone: input.nextOfKinPhone || null }
-          : {}),
-        ...(input.mileageRatePerKm !== undefined
-          ? { mileage_rate_per_km: input.mileageRatePerKm }
           : {}),
       })
       .eq("id", id)
@@ -300,25 +293,7 @@ function mapSupabaseDriver(row: any): Driver {
     locationUpdatedAt: row.location_updated_at ?? undefined,
     rating: Number(row.rating ?? 5),
     totalTrips: row.total_trips ?? 0,
-    mileageRatePerKm: Number(row.mileage_rate_per_km ?? 0),
     dateJoined: row.created_at?.slice(0, 10) ?? "",
     createdAt: row.created_at,
   };
-}
-
-export async function setDriverMileageRate(
-  id: string,
-  ratePerKm: number,
-): Promise<Driver | undefined> {
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from("drivers")
-      .update({ mileage_rate_per_km: ratePerKm })
-      .eq("id", id)
-      .select("*")
-      .single();
-    if (error) throw error;
-    return mapSupabaseDriver(data);
-  }
-  return store.update(id, { mileageRatePerKm: ratePerKm });
 }

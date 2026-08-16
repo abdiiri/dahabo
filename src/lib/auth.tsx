@@ -7,7 +7,7 @@ import { STAFF_ROLE_LABELS, type StaffRole } from "@/lib/api/types";
 /** After this many milliseconds with no mouse/keyboard/touch/scroll activity,
  * a signed-in session is auto-locked (see /lock) and needs the password
  * re-entered to resume. Change this single constant to adjust the timeout. */
-const IDLE_LOCK_MS = 50_000;
+const IDLE_LOCK_MS = 30 * 60 * 1000;
 
 export type AuthProfile = {
   id: string;

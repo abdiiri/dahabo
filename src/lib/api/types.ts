@@ -199,8 +199,6 @@ export type Driver = {
   locationUpdatedAt?: string | undefined;
   rating: number;
   totalTrips: number;
-  /** KSh (or local currency) paid per km driven — used to auto-calculate mileage pay. */
-  mileageRatePerKm: number;
   dateJoined: string;
   createdAt: string;
 };
@@ -232,8 +230,6 @@ export type NewDriverInput = {
   address?: string | undefined;
   nextOfKinName?: string | undefined;
   nextOfKinPhone?: string | undefined;
-  /** KSh (or local currency) paid per km driven — used to auto-calculate mileage pay. */
-  mileageRatePerKm?: number | undefined;
 };
 
 /* =========================================================
@@ -395,6 +391,8 @@ export type Trip = {
   startOdometerKm: number;
   endOdometerKm?: number | undefined;
   distanceKm?: number | undefined;
+  /** KSh (or local currency) paid per km driven on this trip — set when the trip is created, used to auto-calculate mileage pay once it's completed. */
+  mileageRatePerKm: number;
   status: TripStatus;
   startedAt?: string | undefined;
   completedAt?: string | undefined;
@@ -409,6 +407,8 @@ export type NewTripInput = {
   origin: string;
   destination: string;
   startOdometerKm: number;
+  /** KSh (or local currency) paid per km driven — used to auto-calculate mileage pay once this trip is completed. */
+  mileageRatePerKm: number;
 };
 
 export type CompleteTripInput = {

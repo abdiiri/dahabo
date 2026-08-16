@@ -252,15 +252,6 @@ export function AddDriverDialog({ onCreated }: { onCreated?: (driver: Driver) =>
                   onChange={(e) => set("licenseExpiry")(e.target.value)}
                 />
               </Field>
-              <Field label="Mileage rate (KSh per km)">
-                <Input
-                  type="number"
-                  min={0}
-                  value={values.mileageRatePerKm ?? ""}
-                  onChange={(e) => set("mileageRatePerKm")(Number(e.target.value))}
-                  placeholder="e.g. 15"
-                />
-              </Field>
               <Field label="Home address" className="sm:col-span-2">
                 <Input
                   value={values.address}

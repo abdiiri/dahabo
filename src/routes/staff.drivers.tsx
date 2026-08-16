@@ -282,7 +282,6 @@ function EditDriverDialog({
         address: driver.address ?? "",
         nextOfKinName: driver.nextOfKinName ?? "",
         nextOfKinPhone: driver.nextOfKinPhone ?? "",
-        mileageRatePerKm: driver.mileageRatePerKm,
       });
     }
   }, [driver]);
@@ -368,15 +367,6 @@ function EditDriverDialog({
                 type="date"
                 value={values.licenseExpiry ?? ""}
                 onChange={(e) => set("licenseExpiry")(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label className="mb-1.5 block text-sm">Mileage rate (KSh per km)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={values.mileageRatePerKm ?? 0}
-                onChange={(e) => set("mileageRatePerKm")(Number(e.target.value))}
               />
             </div>
             <div className="sm:col-span-2">

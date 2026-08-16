@@ -33,6 +33,7 @@ const empty: NewTripInput = {
   origin: "",
   destination: "",
   startOdometerKm: 0,
+  mileageRatePerKm: 0,
   transportOrderId: undefined,
 };
 
@@ -124,7 +125,7 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
                 <SelectTrigger className="w-full"><SelectValue placeholder="Select a driver" /></SelectTrigger>
                 <SelectContent>
                   {drivers.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>{d.fullName}{d.mileageRatePerKm ? ` (KSh ${d.mileageRatePerKm}/km)` : ""}</SelectItem>
+                    <SelectItem key={d.id} value={d.id}>{d.fullName}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -141,15 +142,27 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
             </div>
           </div>
           {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
-          <div>
-            <Label className="mb-1.5 block text-sm">Starting odometer (km)</Label>
-            <Input
-              type="number"
-              min={0}
-              value={values.startOdometerKm}
-              onChange={(e) => set("startOdometerKm")(Number(e.target.value))}
-              placeholder="e.g. 125400"
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-sm">Starting odometer (km)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.startOdometerKm}
+                onChange={(e) => set("startOdometerKm")(Number(e.target.value))}
+                placeholder="e.g. 125400"
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Mileage rate (KSh per km)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.mileageRatePerKm ?? ""}
+                onChange={(e) => set("mileageRatePerKm")(Number(e.target.value))}
+                placeholder="e.g. 15"
+              />
+            </div>
           </div>
         </div>
 

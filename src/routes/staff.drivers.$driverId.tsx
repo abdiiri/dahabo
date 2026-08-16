@@ -343,10 +343,6 @@ function Page() {
               />
               <Row label="Date of birth" value={driver.dateOfBirth} />
               <Row label="Address" value={driver.address} />
-              <Row
-                label="Mileage rate"
-                value={driver.mileageRatePerKm ? `KSh ${driver.mileageRatePerKm}/km` : undefined}
-              />
             </dl>
           </Card>
 
@@ -491,7 +487,6 @@ function EditDriverDialog({
         address: driver.address ?? "",
         nextOfKinName: driver.nextOfKinName ?? "",
         nextOfKinPhone: driver.nextOfKinPhone ?? "",
-        mileageRatePerKm: driver.mileageRatePerKm,
       });
     }
   }
@@ -605,15 +600,6 @@ function EditDriverDialog({
               <Input
                 value={values.address ?? ""}
                 onChange={(e) => set("address")(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label className="mb-1.5 block text-sm">Mileage rate (KSh per km)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={values.mileageRatePerKm ?? 0}
-                onChange={(e) => set("mileageRatePerKm")(Number(e.target.value))}
               />
             </div>
           </div>
