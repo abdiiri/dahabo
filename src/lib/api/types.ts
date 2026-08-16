@@ -132,6 +132,12 @@ export type Vehicle = {
   nextServiceDate?: string | undefined;
   branch?: string | undefined;
   createdAt: string;
+  /** When true, this vehicle is skipped when calculating this month's
+   * profit totals (Vehicle Profit page and the Dashboard's net profit
+   * figure) — set from the Vehicle Profit page's delete button. The
+   * vehicle itself is untouched: it still appears in Fleet, and its trips,
+   * fuel and maintenance history are unaffected. */
+  excludedFromProfit?: boolean | undefined;
 };
 
 export type NewVehicleInput = {

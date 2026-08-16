@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, MoreHorizontal, Trash2 } from "lucide-react";
+import { Loader2, MoreHorizontal, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { listVehicleProfitThisMonth } from "@/lib/api/vehicle-profit";
-import { isDismissed, dismissVehicleProfitRow } from "@/lib/api/vehicle-profit-dismissals";
+import { setVehicleProfitExclusion } from "@/lib/api/vehicles";
 import type { VehicleProfitMonth } from "@/lib/api/types";
 
 export const Route = createFileRoute("/staff/vehicle-profit")({
@@ -39,25 +40,30 @@ const money = (n: number) => `KSh ${n.toLocaleString()}`;
 
 function Page() {
   const [rows, setRows] = useState<VehicleProfitMonth[] | null>(null);
-  const [deleting, setDeleting] = useState<VehicleProfitMonth | null>(null);
+  const [removing, setRemoving] = useState<VehicleProfitMonth | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    listVehicleProfitThisMonth().then((r) => {
-      if (!active) return;
-      setRows(r.filter((row) => !isDismissed(row.vehicleId, row.periodMonth)));
-    });
+    listVehicleProfitThisMonth().then((r) => active && setRows(r));
     return () => {
       active = false;
     };
   }, []);
 
-  function handleDelete() {
-    if (!deleting) return;
-    dismissVehicleProfitRow(deleting.vehicleId, deleting.periodMonth);
-    setRows((r) => (r ?? []).filter((row) => row.id !== deleting.id));
-    toast.success(`${deleting.vehicleCode} removed from this view`);
-    setDeleting(null);
+  async function handleRemove() {
+    if (!removing) return;
+    setBusyId(removing.vehicleId);
+    try {
+      await setVehicleProfitExclusion(removing.vehicleId, true);
+      setRows((r) => (r ?? []).filter((row) => row.vehicleId !== removing.vehicleId));
+      toast.success(`${removing.vehicleCode} removed from this month's profit totals`);
+    } catch (err) {
+      toast.error("Couldn't update this vehicle", { description: getErrorMessage(err) });
+    } finally {
+      setBusyId(null);
+      setRemoving(null);
+    }
   }
 
   const columns: Column<VehicleProfitMonth>[] = [
@@ -86,6 +92,7 @@ function Page() {
               variant="ghost"
               size="icon"
               className="size-8"
+              disabled={busyId === r.vehicleId}
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="size-4" />
@@ -93,10 +100,10 @@ function Page() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
             <DropdownMenuItem
-              onSelect={() => setDeleting(r)}
+              onSelect={() => setRemoving(r)}
               className="text-destructive focus:text-destructive"
             >
-              <Trash2 className="size-4" /> Delete
+              <EyeOff className="size-4" /> Remove from profit
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -109,7 +116,7 @@ function Page() {
       <PageHeader
         breadcrumb={["Staff", "Vehicle Profit"]}
         title="Vehicle Profit"
-        description="This month, per vehicle: revenue minus fuel, maintenance and mileage pay. Mileage pay only appears once a trip is completed (needs an end odometer reading to calculate distance)."
+        description="This month, per vehicle: revenue minus fuel, maintenance and mileage pay."
       />
 
       {rows === null ? (
@@ -120,22 +127,24 @@ function Page() {
         <DataTable data={rows} columns={columns} searchPlaceholder="Search vehicles…" />
       )}
 
-      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+      <AlertDialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove {deleting?.vehicleCode} from this view?</AlertDialogTitle>
+            <AlertDialogTitle>Remove {removing?.vehicleCode} from this month's profit?</AlertDialogTitle>
             <AlertDialogDescription>
-              This only removes it from the Vehicle Profit list — the vehicle itself stays in
-              Fleet and everywhere else, untouched.
+              This takes it out of this list and out of the Dashboard's net profit total for this
+              month. It does <strong>not</strong> delete the vehicle — it stays in the Fleet tab, and
+              its trips, fuel and maintenance history are unaffected. You can bring it back into
+              profit totals any time from the Fleet tab.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={handleRemove}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

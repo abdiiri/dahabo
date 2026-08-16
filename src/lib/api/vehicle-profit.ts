@@ -47,7 +47,9 @@ export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]
     listDriverPayments(),
   ]);
 
-  return vehicles.map((v) => {
+  return vehicles
+    .filter((v) => !v.excludedFromProfit)
+    .map((v) => {
     const vehicleTrips = trips.filter((t) => t.vehicleId === v.id && t.status === "completed" && t.completedAt && monthKey(t.completedAt) === thisMonth);
     const revenue = vehicleTrips.reduce((sum, t) => {
       const order = orders.find((o) => o.id === t.transportOrderId);

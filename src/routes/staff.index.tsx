@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Fuel,
   AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
@@ -53,13 +54,14 @@ function Page() {
   const [orders, setOrders] = useState<TransportOrder[] | null>(null);
   const [profit, setProfit] = useState<VehicleProfitMonth[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+  function load(onlyIfActive: () => boolean) {
+    setError(null);
     // Promise.allSettled so one failing call can't leave the page stuck
     // spinning forever — every section gets its own real value or an empty
     // fallback, and any failure is shown instead of hidden.
-    Promise.allSettled([
+    return Promise.allSettled([
       listDrivers(),
       listStaff(),
       listVehicles(),
@@ -67,7 +69,7 @@ function Page() {
       listTransportOrders(),
       listVehicleProfitThisMonth(),
     ]).then(([d, s, v, t, o, p]) => {
-      if (!active) return;
+      if (!onlyIfActive()) return;
       setDrivers(d.status === "fulfilled" ? d.value : []);
       setStaff(s.status === "fulfilled" ? s.value : []);
       setVehicles(v.status === "fulfilled" ? v.value : []);
@@ -77,10 +79,20 @@ function Page() {
       const failed = [d, s, v, t, o, p].find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
       if (failed) setError(getErrorMessage(failed.reason, "Some dashboard data couldn't be loaded."));
     });
+  }
+
+  useEffect(() => {
+    let active = true;
+    load(() => active);
     return () => {
       active = false;
     };
   }, []);
+
+  function handleManualRefresh() {
+    setRefreshing(true);
+    load(() => true).finally(() => setRefreshing(false));
+  }
 
   const loading = drivers === null || staff === null || vehicles === null || trips === null || orders === null || profit === null;
 
@@ -105,7 +117,17 @@ function Page() {
 
   return (
     <>
-      <PageHeader breadcrumb={["Staff"]} title="Dashboard" description="Your fleet and team at a glance." />
+      <PageHeader
+        breadcrumb={["Staff"]}
+        title="Dashboard"
+        description="Your fleet and team at a glance."
+        actions={
+          <Button size="sm" variant="outline" onClick={handleManualRefresh} disabled={refreshing}>
+            {refreshing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+            Refresh
+          </Button>
+        }
+      />
 
       {error ? (
         <Card className="mb-6 flex-row items-center gap-3 border-destructive/30 bg-destructive/5 p-4 shadow-soft">

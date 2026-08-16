@@ -28,18 +28,6 @@ export async function updateDriverPaymentStatus(id: string, status: DriverPaymen
   return store.update(id, { status, paidAt: status === "paid" ? new Date().toISOString() : undefined });
 }
 
-export async function deleteDriverPayment(id: string): Promise<void> {
-  if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase
-      .from("driver_payments")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) throw error;
-    return;
-  }
-  store.remove(id);
-}
-
 /**
  * Local/demo-mode only — called from trips.completeTrip() to mirror the
  * Supabase trigger (trips_sync_driver_payment) that runs automatically when

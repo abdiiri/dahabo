@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Loader2, MoreHorizontal, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -9,6 +9,7 @@ import { StatusPill } from "@/components/common/StatusPill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -30,18 +31,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { AddVehicleDialog } from "@/components/staff/AddVehicleDialog";
-import { listVehicles, editVehicle, deleteVehicle, type EditVehicleInput } from "@/lib/api/vehicles";
+import { listVehicles, editVehicle, type EditVehicleInput } from "@/lib/api/vehicles";
 import {
   VEHICLE_TYPE_LABELS,
   VEHICLE_STATUS_LABELS,
@@ -71,8 +62,6 @@ export const Route = createFileRoute("/staff/fleet")({
 function Page() {
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [editing, setEditing] = useState<Vehicle | null>(null);
-  const [deleting, setDeleting] = useState<Vehicle | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -81,21 +70,6 @@ function Page() {
       active = false;
     };
   }, []);
-
-  async function handleDelete() {
-    if (!deleting) return;
-    setBusyId(deleting.id);
-    try {
-      await deleteVehicle(deleting.id);
-      setVehicles((rows) => (rows ?? []).filter((r) => r.id !== deleting.id));
-      toast.success(`${deleting.vehicleCode} was removed`);
-    } catch (err) {
-      toast.error("Couldn't delete this vehicle", { description: getErrorMessage(err) });
-    } finally {
-      setBusyId(null);
-      setDeleting(null);
-    }
-  }
 
   const columns: Column<Vehicle>[] = [
     { key: "vehicleCode", header: "ID" },
@@ -120,7 +94,6 @@ function Page() {
               variant="ghost"
               size="icon"
               className="size-8"
-              disabled={busyId === r.id}
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="size-4" />
@@ -129,12 +102,6 @@ function Page() {
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
             <DropdownMenuItem onSelect={() => setEditing(r)}>
               <Pencil className="size-4" /> Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => setDeleting(r)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="size-4" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -169,27 +136,6 @@ function Page() {
           setEditing(null);
         }}
       />
-
-      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {deleting?.vehicleCode}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This moves the vehicle to the Recycle Bin. It can be restored from there, or
-              permanently removed later.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
@@ -215,6 +161,7 @@ function EditVehicleDialog({
         status: vehicle.status,
         odometerKm: vehicle.odometerKm,
         nextServiceDate: vehicle.nextServiceDate ?? "",
+        excludedFromProfit: vehicle.excludedFromProfit ?? false,
       });
     }
   }, [vehicle]);
@@ -318,6 +265,19 @@ function EditVehicleDialog({
                 onChange={(e) => set("nextServiceDate")(e.target.value)}
               />
             </div>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+            <div>
+              <p className="text-sm font-medium">Included in profit totals</p>
+              <p className="text-xs text-muted-foreground">
+                Turn off to leave this vehicle out of Vehicle Profit and the Dashboard's net profit
+                figure, without touching its trips, fuel or maintenance history.
+              </p>
+            </div>
+            <Switch
+              checked={!(values.excludedFromProfit ?? false)}
+              onCheckedChange={(checked) => set("excludedFromProfit")(!checked)}
+            />
           </div>
         </div>
         <DialogFooter>

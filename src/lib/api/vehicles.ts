@@ -95,6 +95,7 @@ export type EditVehicleInput = Partial<{
   odometerKm: number;
   nextServiceDate: string;
   branch: string;
+  excludedFromProfit: boolean;
 }>;
 
 export async function editVehicle(id: string, input: EditVehicleInput): Promise<Vehicle> {
@@ -111,6 +112,9 @@ export async function editVehicle(id: string, input: EditVehicleInput): Promise<
           ? { next_service_date: input.nextServiceDate || null }
           : {}),
         ...(input.branch !== undefined ? { branch_id: input.branch || null } : {}),
+        ...(input.excludedFromProfit !== undefined
+          ? { excluded_from_profit: input.excludedFromProfit }
+          : {}),
       })
       .eq("id", id)
       .select("*")
@@ -124,16 +128,26 @@ export async function editVehicle(id: string, input: EditVehicleInput): Promise<
   return updated;
 }
 
-export async function deleteVehicle(id: string): Promise<void> {
+/** Excludes (or re-includes) this vehicle from this month's profit totals —
+ * used by the Vehicle Profit page's delete button. This is deliberately
+ * NOT the same as deleting the vehicle: Fleet, and this vehicle's trips,
+ * fuel and maintenance records, are all untouched. Only what shows up in
+ * Vehicle Profit and the Dashboard's net profit figure changes. */
+export async function setVehicleProfitExclusion(id: string, excluded: boolean): Promise<Vehicle> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("vehicles")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", id);
+      .update({ excluded_from_profit: excluded })
+      .eq("id", id)
+      .select("*")
+      .single();
     if (error) throw error;
-    return;
+    return mapSupabaseVehicle(data);
   }
-  store.remove(id);
+
+  const updated = store.update(id, { excludedFromProfit: excluded });
+  if (!updated) throw new Error("Vehicle not found");
+  return updated;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -149,5 +163,6 @@ function mapSupabaseVehicle(row: any): Vehicle {
     nextServiceDate: row.next_service_date ?? undefined,
     branch: row.branch_id ?? undefined,
     createdAt: row.created_at,
+    excludedFromProfit: row.excluded_from_profit ?? false,
   };
 }

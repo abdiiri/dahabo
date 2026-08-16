@@ -251,11 +251,8 @@ function EditTripDialog({
         <DialogHeader>
           <DialogTitle>Edit trip {trip?.tripCode}</DialogTitle>
           <DialogDescription>
-            Vehicle and driver can't be changed here. Changing the mileage rate on a completed
-            trip recalculates its driver pay and vehicle profit automatically. On a trip that's
-            still in progress, the rate is saved but no payment appears until you complete the
-            trip — distance (and mileage pay) can only be calculated once there's an end
-            odometer reading.
+            Vehicle and driver can't be changed here. Changing the mileage rate on a completed trip
+            recalculates its driver pay and vehicle profit automatically.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 py-2">

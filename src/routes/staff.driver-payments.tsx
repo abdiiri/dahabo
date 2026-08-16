@@ -1,29 +1,13 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, MoreHorizontal, Trash2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusPill } from "@/components/common/StatusPill";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { listDriverPayments, updateDriverPaymentStatus, deleteDriverPayment } from "@/lib/api/driver-payments";
+import { listDriverPayments, updateDriverPaymentStatus } from "@/lib/api/driver-payments";
 import { DRIVER_PAYMENT_STATUS_LABELS, type DriverPayment } from "@/lib/api/types";
 
 export const Route = createFileRoute("/staff/driver-payments")({
@@ -38,8 +22,6 @@ export const Route = createFileRoute("/staff/driver-payments")({
 
 function Page() {
   const [payments, setPayments] = useState<DriverPayment[] | null>(null);
-  const [deleting, setDeleting] = useState<DriverPayment | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   function refresh() {
     listDriverPayments().then(setPayments);
@@ -63,21 +45,6 @@ function Page() {
     }
   }
 
-  async function handleDelete() {
-    if (!deleting) return;
-    setBusyId(deleting.id);
-    try {
-      await deleteDriverPayment(deleting.id);
-      setPayments((rows) => (rows ?? []).filter((r) => r.id !== deleting.id));
-      toast.success(`Payment for ${deleting.tripCode ?? "trip"} was removed`);
-    } catch (err) {
-      toast.error("Couldn't delete this payment", { description: getErrorMessage(err) });
-    } finally {
-      setBusyId(null);
-      setDeleting(null);
-    }
-  }
-
   const columns: Column<DriverPayment>[] = [
     { key: "tripCode", header: "Trip", render: (r) => r.tripCode ?? "—" },
     { key: "driverName", header: "Driver", render: (r) => r.driverName ?? "—" },
@@ -88,31 +55,12 @@ function Page() {
     {
       key: "id",
       header: "",
-      className: "w-10",
-      render: (r) => (
-        <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-          {r.status !== "paid" ? (
-            <Button size="sm" variant="outline" onClick={() => markPaid(r.id)}>
-              Mark paid
-            </Button>
-          ) : null}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8" disabled={busyId === r.id}>
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onSelect={() => setDeleting(r)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="size-4" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      ),
+      render: (r) =>
+        r.status !== "paid" ? (
+          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); markPaid(r.id); }}>
+            Mark paid
+          </Button>
+        ) : null,
     },
   ];
 
@@ -131,27 +79,6 @@ function Page() {
       ) : (
         <DataTable data={payments} columns={columns} searchPlaceholder="Search payments…" />
       )}
-
-      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this payment?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This moves the payment record to the Recycle Bin. It can be restored from there, or
-              permanently removed later. The trip itself is not affected.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
