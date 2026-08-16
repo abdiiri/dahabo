@@ -1,5 +1,12 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { ArrowUpDown, ChevronLeft, ChevronRight, Search, Settings2 } from "lucide-react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
+import {
+  ArrowUpDown,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Settings2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,6 +34,7 @@ export function DataTable<T extends { id: string }>({
   pageSize = 8,
   toolbar,
   onRowClick,
+  renderExpanded,
 }: {
   data: T[];
   columns: Column<T>[];
@@ -34,27 +42,41 @@ export function DataTable<T extends { id: string }>({
   pageSize?: number;
   toolbar?: ReactNode;
   onRowClick?: (row: T) => void;
+  /** If provided, each row gets a chevron that expands it in place to show
+   * this content (e.g. a breakdown of what makes up the row's numbers).
+   * Return null/undefined for a given row to render it without a chevron. */
+  renderExpanded?: (row: T) => ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
   const [hidden, setHidden] = useState<string[]>([]);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  function toggleExpanded(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const visibleColumns = columns.filter((c) => !hidden.includes(c.key));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = q
-      ? data.filter((row) =>
-          Object.values(row).some((v) => String(v).toLowerCase().includes(q)),
-        )
+      ? data.filter((row) => Object.values(row).some((v) => String(v).toLowerCase().includes(q)))
       : data;
     if (!sortKey) return base;
     return [...base].sort((a, b) => {
       const av = String(a[sortKey as keyof T] ?? "");
       const bv = String(b[sortKey as keyof T] ?? "");
-      return sortAsc ? av.localeCompare(bv, undefined, { numeric: true }) : bv.localeCompare(av, undefined, { numeric: true });
+      return sortAsc
+        ? av.localeCompare(bv, undefined, { numeric: true })
+        : bv.localeCompare(av, undefined, { numeric: true });
     });
   }, [data, query, sortKey, sortAsc]);
 
@@ -108,6 +130,7 @@ export function DataTable<T extends { id: string }>({
         <table className="w-full min-w-[720px] text-sm">
           <thead className="sticky top-0 z-10 bg-surface">
             <tr className="text-left">
+              {renderExpanded ? <th className="w-8 px-2 py-3" /> : null}
               {visibleColumns.map((c) => (
                 <th
                   key={c.key}
@@ -131,26 +154,59 @@ export function DataTable<T extends { id: string }>({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.id}
-                onClick={() => onRowClick?.(row)}
-                className={cn(
-                  "border-t border-border transition-colors hover:bg-secondary/60",
-                  onRowClick && "cursor-pointer",
-                )}
-              >
-                {visibleColumns.map((c) => (
-                  <td key={c.key} className={cn("px-4 py-3 align-middle", c.className)}>
-                    {c.render ? c.render(row) : String(row[c.key] ?? "—")}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {rows.map((row) => {
+              const expandContent = renderExpanded?.(row);
+              const isOpen = expanded.has(row.id);
+              return (
+                <Fragment key={row.id}>
+                  <tr
+                    onClick={() => onRowClick?.(row)}
+                    className={cn(
+                      "border-t border-border transition-colors hover:bg-secondary/60",
+                      onRowClick && "cursor-pointer",
+                    )}
+                  >
+                    {renderExpanded ? (
+                      <td className="px-2 py-3 align-middle">
+                        {expandContent ? (
+                          <button
+                            type="button"
+                            aria-label={isOpen ? "Collapse row" : "Expand row"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleExpanded(row.id);
+                            }}
+                            className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                          >
+                            {isOpen ? (
+                              <ChevronDown className="size-4" />
+                            ) : (
+                              <ChevronRight className="size-4" />
+                            )}
+                          </button>
+                        ) : null}
+                      </td>
+                    ) : null}
+                    {visibleColumns.map((c) => (
+                      <td key={c.key} className={cn("px-4 py-3 align-middle", c.className)}>
+                        {c.render ? c.render(row) : String(row[c.key] ?? "—")}
+                      </td>
+                    ))}
+                  </tr>
+                  {renderExpanded && isOpen && expandContent ? (
+                    <tr className="border-t border-border bg-secondary/30">
+                      <td colSpan={visibleColumns.length + 1} className="px-4 py-3">
+                        {expandContent}
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={visibleColumns.length}
+                  colSpan={visibleColumns.length + (renderExpanded ? 1 : 0)}
                   className="px-4 py-14 text-center text-sm text-muted-foreground"
                 >
                   No records match your search.

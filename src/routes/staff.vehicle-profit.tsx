@@ -30,7 +30,11 @@ export const Route = createFileRoute("/staff/vehicle-profit")({
   head: () => ({
     meta: [
       { title: "Vehicle Profit | Dahabo Staff Portal" },
-      { name: "description", content: "Revenue minus fuel, maintenance and mileage pay, per vehicle, for the current month." },
+      {
+        name: "description",
+        content:
+          "Revenue minus fuel, maintenance and mileage pay, per vehicle, for the current month.",
+      },
     ],
   }),
   component: Page,
@@ -70,13 +74,25 @@ function Page() {
     { key: "vehicleCode", header: "Vehicle", render: (r) => `${r.vehicleCode} · ${r.plateNumber}` },
     { key: "revenue", header: "Revenue", render: (r) => money(r.revenue) },
     { key: "fuelCost", header: "Fuel", render: (r) => `− ${money(r.fuelCost)}` },
-    { key: "maintenanceCost", header: "Maintenance", render: (r) => `− ${money(r.maintenanceCost)}` },
-    { key: "mileagePayments", header: "Mileage pay", render: (r) => `− ${money(r.mileagePayments)}` },
+    {
+      key: "maintenanceCost",
+      header: "Maintenance",
+      render: (r) => `− ${money(r.maintenanceCost)}`,
+    },
+    {
+      key: "mileagePayments",
+      header: "Mileage pay",
+      render: (r) => `− ${money(r.mileagePayments)}`,
+    },
     {
       key: "netProfit",
       header: "Net profit",
       render: (r) => (
-        <span className={r.netProfit >= 0 ? "font-semibold text-success" : "font-semibold text-destructive"}>
+        <span
+          className={
+            r.netProfit >= 0 ? "font-semibold text-success" : "font-semibold text-destructive"
+          }
+        >
           {money(r.netProfit)}
         </span>
       ),
@@ -124,17 +140,84 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable data={rows} columns={columns} searchPlaceholder="Search vehicles…" />
+        <DataTable
+          data={rows}
+          columns={columns}
+          searchPlaceholder="Search vehicles…"
+          renderExpanded={(r) =>
+            r.trips.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  {r.trips.length} trip{r.trips.length > 1 ? "s" : ""} this month · fuel and
+                  maintenance below aren&apos;t tied to a specific trip, so they stay as one shared
+                  cost for the vehicle
+                </p>
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full min-w-[560px] text-sm">
+                    <thead className="bg-surface">
+                      <tr className="text-left">
+                        <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Date
+                        </th>
+                        <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Route
+                        </th>
+                        <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Revenue
+                        </th>
+                        <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Mileage pay
+                        </th>
+                        <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Trip net
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {r.trips.map((t) => (
+                        <tr key={t.tripId} className="border-t border-border">
+                          <td className="whitespace-nowrap px-3 py-2">
+                            {new Date(t.completedAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-3 py-2">
+                            {t.tripCode ? <span className="font-medium">{t.tripCode}</span> : null}
+                            <span className="text-muted-foreground">
+                              {t.tripCode ? " · " : ""}
+                              {t.origin} → {t.destination}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-2">{money(t.revenue)}</td>
+                          <td className="whitespace-nowrap px-3 py-2">
+                            − {money(t.mileagePayment)}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-2 font-semibold">
+                            {money(t.revenue - t.mileagePayment)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No completed trips for this vehicle this month.
+              </p>
+            )
+          }
+        />
       )}
 
       <AlertDialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove {removing?.vehicleCode} from this month's profit?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Remove {removing?.vehicleCode} from this month's profit?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               This takes it out of this list and out of the Dashboard's net profit total for this
-              month. It does <strong>not</strong> delete the vehicle — it stays in the Fleet tab, and
-              its trips, fuel and maintenance history are unaffected. You can bring it back into
+              month. It does <strong>not</strong> delete the vehicle — it stays in the Fleet tab,
+              and its trips, fuel and maintenance history are unaffected. You can bring it back into
               profit totals any time from the Fleet tab.
             </AlertDialogDescription>
           </AlertDialogHeader>

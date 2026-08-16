@@ -582,6 +582,22 @@ export type NewOtherExpenseInput = {
    VEHICLE PROFIT (from public.vehicle_profit_monthly view)
    ========================================================= */
 
+/** One completed trip's contribution to its vehicle's monthly profit row.
+ * Revenue and mileage pay are exact, trip-linked figures. Fuel and
+ * maintenance are NOT included here — they're logged against the vehicle
+ * and a date, not against a specific trip, so they stay as a single shared
+ * cost on the parent VehicleProfitMonth rather than being guessed/split
+ * per trip. */
+export type VehicleProfitTrip = {
+  tripId: string;
+  tripCode?: string | undefined;
+  origin: string;
+  destination: string;
+  completedAt: string;
+  revenue: number;
+  mileagePayment: number;
+};
+
 export type VehicleProfitMonth = {
   id: string;
   vehicleId: string;
@@ -594,4 +610,6 @@ export type VehicleProfitMonth = {
   mileagePayments: number;
   otherCost: number;
   netProfit: number;
+  /** Trips that made up this vehicle's revenue/mileage-pay figures this month. */
+  trips: VehicleProfitTrip[];
 };
