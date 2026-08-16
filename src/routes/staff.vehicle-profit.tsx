@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, MoreHorizontal, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { listVehicleProfitThisMonth } from "@/lib/api/vehicle-profit";
-import { deleteVehicle } from "@/lib/api/vehicles";
+import { isDismissed, dismissVehicleProfitRow } from "@/lib/api/vehicle-profit-dismissals";
 import type { VehicleProfitMonth } from "@/lib/api/types";
 
 export const Route = createFileRoute("/staff/vehicle-profit")({
@@ -41,29 +40,24 @@ const money = (n: number) => `KSh ${n.toLocaleString()}`;
 function Page() {
   const [rows, setRows] = useState<VehicleProfitMonth[] | null>(null);
   const [deleting, setDeleting] = useState<VehicleProfitMonth | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    listVehicleProfitThisMonth().then((r) => active && setRows(r));
+    listVehicleProfitThisMonth().then((r) => {
+      if (!active) return;
+      setRows(r.filter((row) => !isDismissed(row.vehicleId, row.periodMonth)));
+    });
     return () => {
       active = false;
     };
   }, []);
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!deleting) return;
-    setBusyId(deleting.vehicleId);
-    try {
-      await deleteVehicle(deleting.vehicleId);
-      setRows((r) => (r ?? []).filter((row) => row.vehicleId !== deleting.vehicleId));
-      toast.success(`${deleting.vehicleCode} was removed`);
-    } catch (err) {
-      toast.error("Couldn't delete this vehicle", { description: getErrorMessage(err) });
-    } finally {
-      setBusyId(null);
-      setDeleting(null);
-    }
+    dismissVehicleProfitRow(deleting.vehicleId, deleting.periodMonth);
+    setRows((r) => (r ?? []).filter((row) => row.id !== deleting.id));
+    toast.success(`${deleting.vehicleCode} removed from this view`);
+    setDeleting(null);
   }
 
   const columns: Column<VehicleProfitMonth>[] = [
@@ -92,7 +86,6 @@ function Page() {
               variant="ghost"
               size="icon"
               className="size-8"
-              disabled={busyId === r.vehicleId}
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="size-4" />
@@ -130,10 +123,10 @@ function Page() {
       <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {deleting?.vehicleCode}?</AlertDialogTitle>
+            <AlertDialogTitle>Remove {deleting?.vehicleCode} from this view?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the vehicle (and its profit row) from every list and moves it to the
-              Recycle Bin. It can be restored from there, or permanently removed later.
+              This only removes it from the Vehicle Profit list — the vehicle itself stays in
+              Fleet and everywhere else, untouched.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
