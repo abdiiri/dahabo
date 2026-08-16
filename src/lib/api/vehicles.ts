@@ -124,6 +124,18 @@ export async function editVehicle(id: string, input: EditVehicleInput): Promise<
   return updated;
 }
 
+export async function deleteVehicle(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from("vehicles")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  store.remove(id);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapSupabaseVehicle(row: any): Vehicle {
   return {
