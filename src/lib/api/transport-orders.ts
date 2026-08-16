@@ -125,6 +125,20 @@ export async function editTransportOrder(
   return updated;
 }
 
+/** Moves the transport order to the Recycle Bin (soft delete) — restorable
+ * there any time. Doesn't touch any trip already linked to it. */
+export async function deleteTransportOrder(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from("transport_orders")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  store.remove(id);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapSupabaseOrder(row: any): TransportOrder {
   return {

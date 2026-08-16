@@ -133,6 +133,69 @@ export async function completeTrip(id: string, input: CompleteTripInput): Promis
   return updated;
 }
 
+/**
+ * Edits a trip's own details — origin, destination, starting odometer, and
+ * the mileage rate. Editing the mileage rate on a trip that's already
+ * completed recalculates its driver payment (and therefore vehicle profit)
+ * automatically:
+ *  - in Supabase, the trips_sync_driver_payment trigger re-fires on this
+ *    update the same way it does when the trip is first completed
+ *  - in local/demo mode, right here, so the app behaves the same either way
+ * This is what lets an older trip that was created before mileage rates
+ * existed — or was given the wrong rate — be corrected after the fact.
+ */
+export type EditTripInput = Partial<{
+  origin: string;
+  destination: string;
+  startOdometerKm: number;
+  mileageRatePerKm: number;
+}>;
+
+export async function editTrip(id: string, input: EditTripInput): Promise<Trip> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("trips")
+      .update({
+        ...(input.origin !== undefined ? { origin: input.origin } : {}),
+        ...(input.destination !== undefined ? { destination: input.destination } : {}),
+        ...(input.startOdometerKm !== undefined ? { start_odometer_km: input.startOdometerKm } : {}),
+        ...(input.mileageRatePerKm !== undefined
+          ? { mileage_rate_per_km: input.mileageRatePerKm }
+          : {}),
+      })
+      .eq("id", id)
+      .select(SELECT)
+      .single();
+    if (error) throw error;
+    return mapSupabaseTrip(data);
+  }
+
+  const existing = store.get(id);
+  if (!existing) throw new Error("Trip not found");
+  const updated = store.update(id, input as Partial<Trip>);
+  if (!updated) throw new Error("Trip not found");
+
+  // Trip already completed and the rate changed — recalculate its pending
+  // driver payment the same way completeTrip() does.
+  if (
+    input.mileageRatePerKm !== undefined &&
+    updated.distanceKm != null &&
+    updated.status === "completed"
+  ) {
+    const driver = await getDriver(updated.driverId);
+    syncLocalDriverPayment({
+      tripId: updated.id,
+      tripCode: updated.tripCode,
+      driverId: updated.driverId,
+      driverName: driver?.fullName,
+      distanceKm: updated.distanceKm,
+      ratePerKm: updated.mileageRatePerKm ?? 0,
+    });
+  }
+
+  return updated;
+}
+
 /** Moves the trip to the Recycle Bin (soft delete) — restorable there any
  * time. Its driver_payments row (if the trip was completed) goes with it,
  * since driver_payments.trip_id cascades on delete/relies on the same

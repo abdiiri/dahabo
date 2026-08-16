@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, FlagTriangleRight, MoreHorizontal, Trash2 } from "lucide-react";
+import { Loader2, FlagTriangleRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusPill } from "@/components/common/StatusPill";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { StartTripDialog } from "@/components/staff/StartTripDialog";
 import { CompleteTripDialog } from "@/components/staff/CompleteTripDialog";
-import { listTrips, deleteTrip } from "@/lib/api/trips";
+import { listTrips, deleteTrip, editTrip, type EditTripInput } from "@/lib/api/trips";
 import { TRIP_STATUS_LABELS, type Trip } from "@/lib/api/types";
 
 export const Route = createFileRoute("/staff/trips")({
@@ -41,6 +51,7 @@ export const Route = createFileRoute("/staff/trips")({
 function Page() {
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [completing, setCompleting] = useState<Trip | null>(null);
+  const [editing, setEditing] = useState<Trip | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -107,6 +118,9 @@ function Page() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuItem onSelect={() => setEditing(r)}>
+              <Pencil className="size-4" /> Edit
+            </DropdownMenuItem>
             {r.status !== "completed" && r.status !== "cancelled" ? (
               <DropdownMenuItem onSelect={() => setCompleting(r)}>
                 <FlagTriangleRight className="size-4" /> Complete
@@ -148,6 +162,15 @@ function Page() {
         onCompleted={() => refresh()}
       />
 
+      <EditTripDialog
+        trip={editing}
+        onClose={() => setEditing(null)}
+        onSaved={(updated) => {
+          setTrips((rows) => (rows ?? []).map((r) => (r.id === updated.id ? updated : r)));
+          setEditing(null);
+        }}
+      />
+
       <AlertDialog open={deletingId !== null} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -169,5 +192,115 @@ function Page() {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+function EditTripDialog({
+  trip,
+  onClose,
+  onSaved,
+}: {
+  trip: Trip | null;
+  onClose: () => void;
+  onSaved: (trip: Trip) => void;
+}) {
+  const [values, setValues] = useState<EditTripInput>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (trip) {
+      setValues({
+        origin: trip.origin,
+        destination: trip.destination,
+        startOdometerKm: trip.startOdometerKm,
+        mileageRatePerKm: trip.mileageRatePerKm,
+      });
+    }
+  }, [trip]);
+
+  const set =
+    <K extends keyof EditTripInput>(k: K) =>
+    (v: EditTripInput[K]) =>
+      setValues((s) => ({ ...s, [k]: v }));
+
+  async function handleSubmit() {
+    if (!trip) return;
+    if (!values.origin?.trim() || !values.destination?.trim()) {
+      toast.error("Origin and destination are required");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const updated = await editTrip(trip.id, values);
+      toast.success(
+        trip.status === "completed" && values.mileageRatePerKm !== trip.mileageRatePerKm
+          ? "Trip updated — mileage pay and vehicle profit recalculated"
+          : "Trip updated",
+      );
+      onSaved(updated);
+    } catch (err) {
+      toast.error("Couldn't save changes", { description: getErrorMessage(err) });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={trip !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit trip {trip?.tripCode}</DialogTitle>
+          <DialogDescription>
+            Vehicle and driver can't be changed here. Changing the mileage rate on a completed trip
+            recalculates its driver pay and vehicle profit automatically.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 py-2">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-sm">Origin</Label>
+              <Input value={values.origin ?? ""} onChange={(e) => set("origin")(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Destination</Label>
+              <Input
+                value={values.destination ?? ""}
+                onChange={(e) => set("destination")(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-sm">Starting odometer (km)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.startOdometerKm ?? 0}
+                onChange={(e) => set("startOdometerKm")(Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Mileage rate (KSh per km)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.mileageRatePerKm ?? 0}
+                onChange={(e) => set("mileageRatePerKm")(Number(e.target.value))}
+                placeholder="e.g. 15"
+              />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={submitting}>
+            {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
+            Save changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
