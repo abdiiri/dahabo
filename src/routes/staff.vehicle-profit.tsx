@@ -57,7 +57,13 @@ function Page() {
 
   useEffect(() => {
     let active = true;
-    listVehicleProfitThisMonth().then((r) => active && setRows(r));
+    listVehicleProfitThisMonth()
+      .then((r) => active && setRows(r))
+      .catch((err) => {
+        if (!active) return;
+        toast.error("Couldn't load vehicle profit", { description: getErrorMessage(err) });
+        setRows([]);
+      });
     return () => {
       active = false;
     };

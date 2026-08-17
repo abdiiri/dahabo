@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { localStore, nextTableRef, renumberFleetCodes } from "./local-store";
 import { getDriver } from "./drivers";
 import { syncLocalDriverPayment } from "./driver-payments";
-import { updateTransportOrderStatus } from "./transport-orders";
+import { getTransportOrder, updateTransportOrderStatus } from "./transport-orders";
 import type { Trip, NewTripInput, CompleteTripInput } from "./types";
 
 const store = localStore<Trip>("trips", []);
@@ -109,6 +109,17 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
     driverName: driver?.fullName,
     amount: created.mileageAmount,
   });
+
+  // Mirrors the trips_sync_transport_order trigger (migration 027): a trip
+  // always starts as "in_progress", so its linked order should too — unless
+  // that order's already completed or cancelled, which a brand-new trip
+  // should never move backwards.
+  if (created.transportOrderId) {
+    const order = await getTransportOrder(created.transportOrderId);
+    if (order && order.status !== "completed" && order.status !== "cancelled") {
+      await updateTransportOrderStatus(created.transportOrderId, "in_progress").catch(() => undefined);
+    }
+  }
 
   return created;
 }

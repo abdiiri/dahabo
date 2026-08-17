@@ -49,8 +49,18 @@ import {
   deleteTransportOrder,
   type EditTransportOrderInput,
 } from "@/lib/api/transport-orders";
+import { listTrips } from "@/lib/api/trips";
 import { listCustomers } from "@/lib/api/customers";
-import { TRANSPORT_ORDER_STATUS_LABELS, type TransportOrder, type Customer } from "@/lib/api/types";
+import { TRANSPORT_ORDER_STATUS_LABELS, type TransportOrder, type Customer, type Trip } from "@/lib/api/types";
+
+/** A trip still on the road for this order — the reason "Mark complete"
+ * gets blocked. Cancelled trips don't count: a cancelled trip shouldn't
+ * stop staff from completing the order some other way. */
+function findBlockingTrip(orderId: string, trips: Trip[]): Trip | undefined {
+  return trips.find(
+    (t) => t.transportOrderId === orderId && (t.status === "in_progress" || t.status === "scheduled"),
+  );
+}
 
 export const Route = createFileRoute("/staff/transport-orders")({
   head: () => ({
@@ -67,19 +77,32 @@ export const Route = createFileRoute("/staff/transport-orders")({
 
 function Page() {
   const [orders, setOrders] = useState<TransportOrder[] | null>(null);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editing, setEditing] = useState<TransportOrder | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [blockedOrder, setBlockedOrder] = useState<{ order: TransportOrder; trip: Trip } | null>(null);
 
   useEffect(() => {
     let active = true;
     listTransportOrders().then((rows) => active && setOrders(rows));
+    listTrips().then((rows) => active && setTrips(rows));
     return () => {
       active = false;
     };
   }, []);
 
   async function markComplete(order: TransportOrder) {
+    // An order's own trip is what actually earns the money — completing the
+    // order while that trip is still on the road would mark the job "done"
+    // even though it isn't, and the revenue wouldn't show up on Vehicle
+    // Profit until the trip itself is completed anyway. So this order stays
+    // blocked here until its trip is finished (or was never started).
+    const blocking = findBlockingTrip(order.id, trips);
+    if (blocking) {
+      setBlockedOrder({ order, trip: blocking });
+      return;
+    }
     setBusyId(order.id);
     try {
       await updateTransportOrderStatus(order.id, "completed");
@@ -147,7 +170,9 @@ function Page() {
               <Pencil className="size-4" /> Edit
             </DropdownMenuItem>
             {r.status !== "completed" && r.status !== "cancelled" ? (
-              <DropdownMenuItem onSelect={() => markComplete(r)}>Mark complete</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => markComplete(r)}>
+                {findBlockingTrip(r.id, trips) ? "Mark complete…" : "Mark complete"}
+              </DropdownMenuItem>
             ) : null}
             <DropdownMenuItem
               onSelect={() => setDeletingId(r.id)}
@@ -206,6 +231,24 @@ function Page() {
             >
               Delete
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={blockedOrder !== null} onOpenChange={(open) => !open && setBlockedOrder(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Can't mark {blockedOrder?.order.orderCode} complete yet</AlertDialogTitle>
+            <AlertDialogDescription>
+              Trip {blockedOrder?.trip.tripCode ?? ""} for this order is still{" "}
+              {blockedOrder?.trip.status === "in_progress" ? "in progress" : "scheduled"} — it hasn't
+              finished. Completing the order now would mark the job done while the trip (and its
+              revenue on Vehicle Profit) still isn't. Complete the trip from the Trips page first, and
+              this order will complete automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setBlockedOrder(null)}>Got it</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
