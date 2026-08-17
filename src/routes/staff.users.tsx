@@ -43,6 +43,7 @@ import {
 import { AddStaffDialog } from "@/components/staff/AddStaffDialog";
 import { listStaff, editStaff, deleteStaff, setStaffAccountStatus, type EditStaffInput } from "@/lib/api/staff";
 import { STAFF_ROLE_LABELS, type StaffMember, type StaffRole } from "@/lib/api/types";
+import { usePermissions } from "@/lib/permissions";
 
 export const Route = createFileRoute("/staff/users")({
   head: () => ({
@@ -66,6 +67,10 @@ const ASSIGNABLE_ROLES: StaffRole[] = [
 ];
 
 function Page() {
+  const { can } = usePermissions();
+  const canCreate = can("staff", "create");
+  const canEdit = can("staff", "edit");
+  const canDelete = can("staff", "delete");
   const [staff, setStaff] = useState<StaffMember[] | null>(null);
   const [editing, setEditing] = useState<StaffMember | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -101,6 +106,11 @@ function Page() {
 
   async function handleDelete() {
     if (!deletingId) return;
+    if (!canDelete) {
+      toast.error("You don't have permission to delete staff members");
+      setDeletingId(null);
+      return;
+    }
     const member = (staff ?? []).find((r) => r.id === deletingId);
     setBusyId(deletingId);
     try {
@@ -140,16 +150,20 @@ function Page() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onSelect={() => setEditing(r)}>
-              <Pencil className="size-4" /> Edit
-            </DropdownMenuItem>
+            {canEdit ? (
+              <DropdownMenuItem onSelect={() => setEditing(r)}>
+                <Pencil className="size-4" /> Edit
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuItem onSelect={() => toggleStatus(r)}>
               {r.status === "suspended" ? <Unlock className="size-4" /> : <Lock className="size-4" />}
               {r.status === "suspended" ? "Activate account" : "Deactivate account"}
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setDeletingId(r.id)} className="text-destructive focus:text-destructive">
-              <Trash2 className="size-4" /> Delete
-            </DropdownMenuItem>
+            {canDelete ? (
+              <DropdownMenuItem onSelect={() => setDeletingId(r.id)} className="text-destructive focus:text-destructive">
+                <Trash2 className="size-4" /> Delete
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -162,7 +176,7 @@ function Page() {
         breadcrumb={["Staff", "Administration", "Staff"]}
         title="Staff"
         description="Accounts, roles and account status."
-        actions={<AddStaffDialog onCreated={(m) => setStaff((rows) => [m, ...(rows ?? [])])} />}
+        actions={canCreate ? <AddStaffDialog onCreated={(m) => setStaff((rows) => [m, ...(rows ?? [])])} /> : null}
       />
 
       {staff === null ? (

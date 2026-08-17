@@ -12,6 +12,7 @@ import { type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { ThemeProvider, themeInitScript } from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth";
+import { PermissionsProvider } from "@/lib/permissions";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -125,9 +126,11 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <Toaster position="top-right" richColors />
+          <PermissionsProvider>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <Toaster position="top-right" richColors />
+          </PermissionsProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

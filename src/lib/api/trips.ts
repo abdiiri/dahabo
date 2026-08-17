@@ -1,21 +1,24 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { localStore } from "./local-store";
+import { localStore, nextFleetRef, extractRefNumber } from "./local-store";
 import { getDriver } from "./drivers";
 import { syncLocalDriverPayment } from "./driver-payments";
-import { updateTransportOrderStatus } from "./transport-orders";
+import { updateTransportOrderStatus, getTransportOrder } from "./transport-orders";
 import type { Trip, NewTripInput, CompleteTripInput } from "./types";
 
 const store = localStore<Trip>("trips", []);
 
-function generateTripCode(existing: Trip[]): string {
-  const max = existing.reduce((m, t) => {
-    const n = Number(t.tripCode.replace(/\D/g, ""));
-    return Number.isFinite(n) ? Math.max(m, n) : m;
-  }, 5000);
-  return `TRIP-${max + 1}`;
-}
-
 const SELECT = "*, vehicles(vehicle_code, plate_number), drivers(full_name)";
+
+/** Looks up a single trip by id — used to resolve a linked trip's reference
+ * number when creating a fuel record against it. */
+export async function getTrip(id: string): Promise<Trip | undefined> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from("trips").select(SELECT).eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data ? mapSupabaseTrip(data) : undefined;
+  }
+  return store.get(id);
+}
 
 export async function listTrips(): Promise<Trip[]> {
   if (isSupabaseConfigured && supabase) {
@@ -43,11 +46,19 @@ export async function listTripsForVehicle(vehicleId: string): Promise<Trip[]> {
 
 export async function createTrip(input: NewTripInput): Promise<Trip> {
   if (isSupabaseConfigured && supabase) {
-    const tripCode = `TRIP-${Date.now().toString().slice(-6)}`;
+    // trip_code is assigned by the trips_set_code trigger in the database
+    // (migration 015): it reuses the linked transport order's number so a
+    // trip made from order TO-4 becomes TRIP-4, and only draws a fresh
+    // sequential number when the trip has no linked order. Intentionally
+    // not sent from here.
+    //
+    // mileage_amount is the flat driver pay agreed for this trip. The
+    // trips_sync_driver_payment trigger (migration 016) creates the
+    // driver_payments row for it right away, on insert — no distance or
+    // rate calculation involved.
     const { data, error } = await supabase
       .from("trips")
       .insert({
-        trip_code: tripCode,
         transport_order_id: input.transportOrderId ?? null,
         vehicle_id: input.vehicleId,
         driver_id: input.driverId,
@@ -55,7 +66,7 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
         origin: input.origin,
         destination: input.destination,
         start_odometer_km: input.startOdometerKm,
-        mileage_rate_per_km: input.mileageRatePerKm ?? 0,
+        mileage_amount: input.mileageAmount ?? 0,
         status: "in_progress",
         started_at: new Date().toISOString(),
       })
@@ -65,10 +76,23 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
     return mapSupabaseTrip(data);
   }
 
+  // Reuse the linked transport order's reference number (order TO-4 -> trip
+  // TRIP-4) so the pair reads as one job. Falls back to a fresh number if
+  // there's no linked order, or if that number is somehow already taken by
+  // another trip (e.g. a second trip against the same order).
   const existing = store.list();
+  let ref: number | undefined;
+  if (input.transportOrderId) {
+    const order = await getTransportOrder(input.transportOrderId);
+    ref = extractRefNumber(order?.orderCode);
+  }
+  if (ref === undefined || existing.some((t) => t.tripCode === `TRIP-${ref}`)) {
+    ref = nextFleetRef();
+  }
+
   const trip: Trip = {
     id: `local-${crypto.randomUUID()}`,
-    tripCode: generateTripCode(existing),
+    tripCode: `TRIP-${ref}`,
     transportOrderId: input.transportOrderId,
     vehicleId: input.vehicleId,
     driverId: input.driverId,
@@ -76,26 +100,40 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
     origin: input.origin,
     destination: input.destination,
     startOdometerKm: input.startOdometerKm,
-    mileageRatePerKm: input.mileageRatePerKm ?? 0,
+    mileageAmount: input.mileageAmount ?? 0,
     status: "in_progress",
     startedAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),
   };
-  return store.insert(trip);
+  const created = store.insert(trip);
+
+  // Mirrors the trips_sync_driver_payment trigger (migration 016), which
+  // now fires on insert: the flat mileage amount is known as soon as the
+  // trip is created, no need to wait for completion.
+  const driver = await getDriver(created.driverId);
+  syncLocalDriverPayment({
+    tripId: created.id,
+    tripCode: created.tripCode,
+    driverId: created.driverId,
+    driverName: driver?.fullName,
+    amount: created.mileageAmount,
+  });
+
+  return created;
 }
 
 /**
- * Completing a trip sets the end odometer reading. The distance and the
- * driver's mileage payment are then calculated automatically:
- *  - in Supabase, by the trips_sync_driver_payment trigger (see migration 004)
- *  - in local/demo mode, right here, so the app behaves the same either way
+ * Completes a trip. The mileage payment was already set (and recorded in
+ * driver_payments) when the trip was created, so completing it just marks
+ * it done — the ending odometer is optional, kept only as a record of
+ * distance travelled, and plays no part in the payment.
  */
 export async function completeTrip(id: string, input: CompleteTripInput): Promise<Trip | undefined> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
       .from("trips")
       .update({
-        end_odometer_km: input.endOdometerKm,
+        end_odometer_km: input.endOdometerKm ?? null,
         status: "completed",
         completed_at: new Date().toISOString(),
       })
@@ -108,22 +146,13 @@ export async function completeTrip(id: string, input: CompleteTripInput): Promis
 
   const trip = store.get(id);
   if (!trip) return undefined;
-  const distanceKm = Math.max(input.endOdometerKm - trip.startOdometerKm, 0);
+  const distanceKm =
+    input.endOdometerKm != null ? Math.max(input.endOdometerKm - trip.startOdometerKm, 0) : undefined;
   const updated = store.update(id, {
     endOdometerKm: input.endOdometerKm,
     distanceKm,
     status: "completed",
     completedAt: new Date().toISOString(),
-  });
-
-  const driver = await getDriver(trip.driverId);
-  syncLocalDriverPayment({
-    tripId: trip.id,
-    tripCode: trip.tripCode,
-    driverId: trip.driverId,
-    driverName: driver?.fullName,
-    distanceKm,
-    ratePerKm: trip.mileageRatePerKm ?? 0,
   });
 
   if (trip.transportOrderId) {
@@ -135,20 +164,20 @@ export async function completeTrip(id: string, input: CompleteTripInput): Promis
 
 /**
  * Edits a trip's own details — origin, destination, starting odometer, and
- * the mileage rate. Editing the mileage rate on a trip that's already
- * completed recalculates its driver payment (and therefore vehicle profit)
- * automatically:
+ * the flat mileage amount. Editing the mileage amount updates its driver
+ * payment (and therefore vehicle profit) automatically, whether or not the
+ * trip has been completed yet:
  *  - in Supabase, the trips_sync_driver_payment trigger re-fires on this
- *    update the same way it does when the trip is first completed
+ *    update the same way it does when the trip is first created
  *  - in local/demo mode, right here, so the app behaves the same either way
- * This is what lets an older trip that was created before mileage rates
- * existed — or was given the wrong rate — be corrected after the fact.
+ * This is what lets a trip's agreed amount be corrected after the fact if
+ * it was entered wrong.
  */
 export type EditTripInput = Partial<{
   origin: string;
   destination: string;
   startOdometerKm: number;
-  mileageRatePerKm: number;
+  mileageAmount: number;
 }>;
 
 export async function editTrip(id: string, input: EditTripInput): Promise<Trip> {
@@ -159,9 +188,7 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
         ...(input.origin !== undefined ? { origin: input.origin } : {}),
         ...(input.destination !== undefined ? { destination: input.destination } : {}),
         ...(input.startOdometerKm !== undefined ? { start_odometer_km: input.startOdometerKm } : {}),
-        ...(input.mileageRatePerKm !== undefined
-          ? { mileage_rate_per_km: input.mileageRatePerKm }
-          : {}),
+        ...(input.mileageAmount !== undefined ? { mileage_amount: input.mileageAmount } : {}),
       })
       .eq("id", id)
       .select(SELECT)
@@ -175,21 +202,16 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
   const updated = store.update(id, input as Partial<Trip>);
   if (!updated) throw new Error("Trip not found");
 
-  // Trip already completed and the rate changed — recalculate its pending
-  // driver payment the same way completeTrip() does.
-  if (
-    input.mileageRatePerKm !== undefined &&
-    updated.distanceKm != null &&
-    updated.status === "completed"
-  ) {
+  // The agreed amount changed — recalculate its pending driver payment,
+  // same as when the trip is first created.
+  if (input.mileageAmount !== undefined) {
     const driver = await getDriver(updated.driverId);
     syncLocalDriverPayment({
       tripId: updated.id,
       tripCode: updated.tripCode,
       driverId: updated.driverId,
       driverName: driver?.fullName,
-      distanceKm: updated.distanceKm,
-      ratePerKm: updated.mileageRatePerKm ?? 0,
+      amount: updated.mileageAmount,
     });
   }
 
@@ -228,7 +250,7 @@ function mapSupabaseTrip(row: any): Trip {
     startOdometerKm: row.start_odometer_km,
     endOdometerKm: row.end_odometer_km ?? undefined,
     distanceKm: row.distance_km ?? undefined,
-    mileageRatePerKm: Number(row.mileage_rate_per_km ?? 0),
+    mileageAmount: Number(row.mileage_amount ?? 0),
     status: row.status,
     startedAt: row.started_at ?? undefined,
     completedAt: row.completed_at ?? undefined,

@@ -48,6 +48,7 @@ import {
   type EditCustomerInput,
 } from "@/lib/api/customers";
 import type { Customer } from "@/lib/api/types";
+import { usePermissions } from "@/lib/permissions";
 
 export const Route = createFileRoute("/staff/customers")({
   head: () => ({
@@ -68,6 +69,10 @@ export const Route = createFileRoute("/staff/customers")({
 });
 
 function Page() {
+  const { can } = usePermissions();
+  const canCreate = can("customers", "create");
+  const canEdit = can("customers", "edit");
+  const canDelete = can("customers", "delete");
   const [customers, setCustomers] = useState<Customer[] | null>(null);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -83,6 +88,11 @@ function Page() {
 
   async function handleDelete() {
     if (!deletingId) return;
+    if (!canDelete) {
+      toast.error("You don't have permission to delete customers");
+      setDeletingId(null);
+      return;
+    }
     const customer = (customers ?? []).find((r) => r.id === deletingId);
     setBusyId(deletingId);
     try {
@@ -127,15 +137,19 @@ function Page() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onSelect={() => setEditing(r)}>
-              <Pencil className="size-4" /> Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => setDeletingId(r.id)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="size-4" /> Delete
-            </DropdownMenuItem>
+            {canEdit ? (
+              <DropdownMenuItem onSelect={() => setEditing(r)}>
+                <Pencil className="size-4" /> Edit
+              </DropdownMenuItem>
+            ) : null}
+            {canDelete ? (
+              <DropdownMenuItem
+                onSelect={() => setDeletingId(r.id)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="size-4" /> Delete
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -149,7 +163,9 @@ function Page() {
         title="Customers"
         description="Accounts and billing contacts."
         actions={
-          <AddCustomerDialog onCreated={(c) => setCustomers((rows) => [c, ...(rows ?? [])])} />
+          canCreate ? (
+            <AddCustomerDialog onCreated={(c) => setCustomers((rows) => [c, ...(rows ?? [])])} />
+          ) : null
         }
       />
 

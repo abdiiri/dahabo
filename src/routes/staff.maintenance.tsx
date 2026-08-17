@@ -228,7 +228,7 @@ function EditMaintenanceRecordDialog({
               <Input
                 type="number"
                 min={0}
-                value={values.cost ?? 0}
+                value={values.cost || ""}
                 onChange={(e) => set("cost")(Number(e.target.value))}
               />
             </div>

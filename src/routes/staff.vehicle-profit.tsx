@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, MoreHorizontal, EyeOff } from "lucide-react";
+import { Loader2, MoreHorizontal, EyeOff, Fuel } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -16,6 +16,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +53,7 @@ function Page() {
   const [rows, setRows] = useState<VehicleProfitMonth[] | null>(null);
   const [removing, setRemoving] = useState<VehicleProfitMonth | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [fuelBreakdownFor, setFuelBreakdownFor] = useState<VehicleProfitMonth | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -73,7 +81,29 @@ function Page() {
   const columns: Column<VehicleProfitMonth>[] = [
     { key: "vehicleCode", header: "Vehicle", render: (r) => `${r.vehicleCode} · ${r.plateNumber}` },
     { key: "revenue", header: "Revenue", render: (r) => money(r.revenue) },
-    { key: "fuelCost", header: "Fuel", render: (r) => `− ${money(r.fuelCost)}` },
+    {
+      key: "fuelCost",
+      header: "Fuel",
+      render: (r) => (
+        <div className="flex flex-col gap-0.5">
+          <span>− {money(r.fuelCost)}</span>
+          {r.fuelEntries.length > 0 ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFuelBreakdownFor(r);
+              }}
+              className="text-left text-xs font-medium text-primary underline-offset-2 hover:underline"
+            >
+              {r.fuelEntries.length > 1
+                ? `View breakdown (${r.fuelEntries.length} fill-ups)`
+                : "View breakdown"}
+            </button>
+          ) : null}
+        </div>
+      ),
+    },
     {
       key: "maintenanceCost",
       header: "Maintenance",
@@ -144,69 +174,291 @@ function Page() {
           data={rows}
           columns={columns}
           searchPlaceholder="Search vehicles…"
-          renderExpanded={(r) =>
-            r.trips.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  {r.trips.length} trip{r.trips.length > 1 ? "s" : ""} this month · fuel and
-                  maintenance below aren&apos;t tied to a specific trip, so they stay as one shared
-                  cost for the vehicle
+          renderExpanded={(r) => {
+            const hasAnything =
+              r.trips.length > 0 || r.fuelEntries.length > 0 || r.maintenanceEntries.length > 0;
+            if (!hasAnything) {
+              return (
+                <p className="text-sm text-muted-foreground">
+                  No trips, fuel or maintenance recorded for this vehicle this month.
                 </p>
-                <div className="overflow-x-auto rounded-md border border-border">
-                  <table className="w-full min-w-[560px] text-sm">
-                    <thead className="bg-surface">
-                      <tr className="text-left">
-                        <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          Date
-                        </th>
-                        <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          Route
-                        </th>
-                        <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          Revenue
-                        </th>
-                        <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          Mileage pay
-                        </th>
-                        <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          Trip net
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {r.trips.map((t) => (
-                        <tr key={t.tripId} className="border-t border-border">
-                          <td className="whitespace-nowrap px-3 py-2">
-                            {new Date(t.completedAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-3 py-2">
-                            {t.tripCode ? <span className="font-medium">{t.tripCode}</span> : null}
-                            <span className="text-muted-foreground">
-                              {t.tripCode ? " · " : ""}
-                              {t.origin} → {t.destination}
-                            </span>
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-2">{money(t.revenue)}</td>
-                          <td className="whitespace-nowrap px-3 py-2">
-                            − {money(t.mileagePayment)}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-2 font-semibold">
-                            {money(t.revenue - t.mileagePayment)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              );
+            }
+            return (
+              <div className="space-y-5">
+                {r.trips.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      {r.trips.length} trip{r.trips.length > 1 ? "s" : ""} this month · revenue
+                      earned and mileage pay deducted
+                    </p>
+                    <div className="overflow-x-auto rounded-md border border-border">
+                      <table className="w-full min-w-[560px] text-sm">
+                        <thead className="bg-surface">
+                          <tr className="text-left">
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Date
+                            </th>
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Trip
+                            </th>
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Revenue
+                            </th>
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Mileage pay
+                            </th>
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Trip net
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {r.trips.map((t) => (
+                            <tr key={t.tripId} className="border-t border-border">
+                              <td className="whitespace-nowrap px-3 py-2">
+                                {new Date(t.completedAt).toLocaleDateString()}
+                              </td>
+                              <td className="px-3 py-2">
+                                {t.tripCode ? (
+                                  <span className="font-medium">{t.tripCode}</span>
+                                ) : null}
+                                <span className="text-muted-foreground">
+                                  {t.tripCode ? " · " : ""}
+                                  {t.origin} → {t.destination}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2 text-success">
+                                + {money(t.revenue)}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2 text-destructive">
+                                − {money(t.mileagePayment)}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2 font-semibold">
+                                {money(t.revenue - t.mileagePayment)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {r.fuelEntries.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      {r.fuelEntries.length} fuel purchase
+                      {r.fuelEntries.length > 1 ? "s" : ""} this month · each fill-up shown
+                      separately, not combined
+                    </p>
+                    <div className="overflow-x-auto rounded-md border border-border">
+                      <table className="w-full min-w-[560px] text-sm">
+                        <thead className="bg-surface">
+                          <tr className="text-left">
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Date
+                            </th>
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Fuel #
+                            </th>
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Trip
+                            </th>
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Liters
+                            </th>
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Cost
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {r.fuelEntries.map((f) => (
+                            <tr key={f.fuelRecordId} className="border-t border-border">
+                              <td className="whitespace-nowrap px-3 py-2">
+                                {new Date(f.filledAt).toLocaleDateString()}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2 font-medium">
+                                {f.fuelCode ?? "—"}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
+                                {f.tripCode ?? "—"}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2">
+                                {f.liters.toLocaleString()} L
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2 text-destructive">
+                                − {money(f.cost)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t border-border bg-surface">
+                            <td colSpan={4} className="px-3 py-2 text-right font-semibold">
+                              Total fuel deducted
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-2 font-semibold text-destructive">
+                              − {money(r.fuelCost)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {r.maintenanceEntries.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      {r.maintenanceEntries.length} maintenance job
+                      {r.maintenanceEntries.length > 1 ? "s" : ""} this month
+                    </p>
+                    <div className="overflow-x-auto rounded-md border border-border">
+                      <table className="w-full min-w-[560px] text-sm">
+                        <thead className="bg-surface">
+                          <tr className="text-left">
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Date
+                            </th>
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Description
+                            </th>
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Vendor
+                            </th>
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Cost
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {r.maintenanceEntries.map((m) => (
+                            <tr key={m.maintenanceRecordId} className="border-t border-border">
+                              <td className="whitespace-nowrap px-3 py-2">
+                                {new Date(m.serviceDate).toLocaleDateString()}
+                              </td>
+                              <td className="px-3 py-2">{m.description}</td>
+                              <td className="px-3 py-2 text-muted-foreground">
+                                {m.vendor ?? "—"}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2 text-destructive">
+                                − {money(m.cost)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-1 border-t border-border pt-3 text-sm">
+                  <span className="text-muted-foreground">
+                    Revenue <span className="font-semibold text-success">{money(r.revenue)}</span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    − Fuel{" "}
+                    <span className="font-semibold text-destructive">{money(r.fuelCost)}</span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    − Maintenance{" "}
+                    <span className="font-semibold text-destructive">
+                      {money(r.maintenanceCost)}
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    − Mileage pay{" "}
+                    <span className="font-semibold text-destructive">
+                      {money(r.mileagePayments)}
+                    </span>
+                  </span>
+                  <span>
+                    = Net{" "}
+                    <span
+                      className={
+                        r.netProfit >= 0
+                          ? "font-bold text-success"
+                          : "font-bold text-destructive"
+                      }
+                    >
+                      {money(r.netProfit)}
+                    </span>
+                  </span>
                 </div>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No completed trips for this vehicle this month.
-              </p>
-            )
-          }
+            );
+          }}
         />
       )}
+
+      <Dialog open={fuelBreakdownFor !== null} onOpenChange={(open) => !open && setFuelBreakdownFor(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Fuel className="size-4" />
+              Fuel breakdown — {fuelBreakdownFor?.vehicleCode} · {fuelBreakdownFor?.plateNumber}
+            </DialogTitle>
+            <DialogDescription>
+              {fuelBreakdownFor?.fuelEntries.length ?? 0} fill-up
+              {(fuelBreakdownFor?.fuelEntries.length ?? 0) > 1 ? "s" : ""} this month, shown
+              separately so it's clear how the total fuel figure was reached.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-x-auto rounded-md border border-border">
+            <table className="w-full min-w-[520px] text-sm">
+              <thead className="bg-surface">
+                <tr className="text-left">
+                  <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Date
+                  </th>
+                  <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Fuel #
+                  </th>
+                  <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Trip
+                  </th>
+                  <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Liters
+                  </th>
+                  <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Cost
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {fuelBreakdownFor?.fuelEntries.map((f) => (
+                  <tr key={f.fuelRecordId} className="border-t border-border">
+                    <td className="whitespace-nowrap px-3 py-2">
+                      {new Date(f.filledAt).toLocaleDateString()}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 font-medium">{f.fuelCode ?? "—"}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
+                      {f.tripCode ?? "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2">{f.liters.toLocaleString()} L</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-destructive">
+                      − {money(f.cost)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-border bg-surface">
+                  <td colSpan={4} className="px-3 py-2 text-right font-semibold">
+                    Total fuel deducted
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 font-semibold text-destructive">
+                    − {money(fuelBreakdownFor?.fuelCost ?? 0)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
         <AlertDialogContent>

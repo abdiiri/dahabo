@@ -397,8 +397,8 @@ export type Trip = {
   startOdometerKm: number;
   endOdometerKm?: number | undefined;
   distanceKm?: number | undefined;
-  /** KSh (or local currency) paid per km driven on this trip — set when the trip is created, used to auto-calculate mileage pay once it's completed. */
-  mileageRatePerKm: number;
+  /** Flat mileage pay agreed for this trip (KSh or local currency) — entered when the trip is created, no distance calculation involved. */
+  mileageAmount: number;
   status: TripStatus;
   startedAt?: string | undefined;
   completedAt?: string | undefined;
@@ -413,12 +413,13 @@ export type NewTripInput = {
   origin: string;
   destination: string;
   startOdometerKm: number;
-  /** KSh (or local currency) paid per km driven — used to auto-calculate mileage pay once this trip is completed. */
-  mileageRatePerKm: number;
+  /** Flat mileage pay agreed for this trip (KSh or local currency) — no distance calculation involved. */
+  mileageAmount: number;
 };
 
 export type CompleteTripInput = {
-  endOdometerKm: number;
+  /** Optional — kept only as a record of distance travelled, no longer needed to calculate mileage pay. */
+  endOdometerKm?: number | undefined;
 };
 
 /* =========================================================
@@ -439,6 +440,7 @@ export type DriverPayment = {
   tripCode?: string | undefined;
   driverId: string;
   driverName?: string | undefined;
+  /** Legacy fields from when pay was distance × rate; no longer used to derive `amount`, which is now the flat mileage agreement entered on the trip. */
   distanceKm: number;
   ratePerKm: number;
   amount: number;
@@ -453,6 +455,10 @@ export type DriverPayment = {
 
 export type FuelRecord = {
   id: string;
+  /** Reference number, e.g. "FUEL-4" — reuses the linked trip's number
+   * (and, through the trip, the transport order's number) when the fuel
+   * record is tied to a trip; otherwise gets its own sequential number. */
+  fuelCode: string;
   vehicleId: string;
   vehicleLabel?: string | undefined;
   tripId?: string | undefined;
@@ -583,11 +589,7 @@ export type NewOtherExpenseInput = {
    ========================================================= */
 
 /** One completed trip's contribution to its vehicle's monthly profit row.
- * Revenue and mileage pay are exact, trip-linked figures. Fuel and
- * maintenance are NOT included here — they're logged against the vehicle
- * and a date, not against a specific trip, so they stay as a single shared
- * cost on the parent VehicleProfitMonth rather than being guessed/split
- * per trip. */
+ * Revenue and mileage pay are exact, trip-linked figures. */
 export type VehicleProfitTrip = {
   tripId: string;
   tripCode?: string | undefined;
@@ -596,6 +598,31 @@ export type VehicleProfitTrip = {
   completedAt: string;
   revenue: number;
   mileagePayment: number;
+};
+
+/** One fuel purchase counted against this vehicle's monthly fuel cost.
+ * Carries its own date, liters and cost so a vehicle fuelled up several
+ * times in the month shows each fill-up separately instead of one blended
+ * total. When the fill-up was logged against a trip, tripCode links it back
+ * to that trip's row above. */
+export type VehicleProfitFuelEntry = {
+  fuelRecordId: string;
+  fuelCode?: string | undefined;
+  tripId?: string | undefined;
+  tripCode?: string | undefined;
+  liters: number;
+  cost: number;
+  filledAt: string;
+};
+
+/** One maintenance job counted against this vehicle's monthly maintenance
+ * cost, shown individually rather than combined into one total. */
+export type VehicleProfitMaintenanceEntry = {
+  maintenanceRecordId: string;
+  description: string;
+  vendor?: string | undefined;
+  cost: number;
+  serviceDate: string;
 };
 
 export type VehicleProfitMonth = {
@@ -612,4 +639,8 @@ export type VehicleProfitMonth = {
   netProfit: number;
   /** Trips that made up this vehicle's revenue/mileage-pay figures this month. */
   trips: VehicleProfitTrip[];
+  /** Every fuel purchase that made up fuelCost this month, itemized. */
+  fuelEntries: VehicleProfitFuelEntry[];
+  /** Every maintenance job that made up maintenanceCost this month, itemized. */
+  maintenanceEntries: VehicleProfitMaintenanceEntry[];
 };

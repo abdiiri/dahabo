@@ -37,16 +37,16 @@ export function CompleteTripDialog({
 
   async function handleSubmit() {
     if (!trip) return;
-    if (endOdometer < trip.startOdometerKm) {
+    if (endOdometer && endOdometer < trip.startOdometerKm) {
       setError(`Ending odometer must be at or above the starting reading (${trip.startOdometerKm.toLocaleString()} km).`);
       return;
     }
     setError(null);
     setSubmitting(true);
     try {
-      const updated = await completeTrip(trip.id, { endOdometerKm: endOdometer });
+      const updated = await completeTrip(trip.id, { endOdometerKm: endOdometer || undefined });
       if (updated) {
-        toast.success(`Trip ${updated.tripCode} completed — ${distance.toLocaleString()} km logged`);
+        toast.success(`Trip ${updated.tripCode} completed`);
         onCompleted?.(updated);
       }
       setEndOdometer(0);
@@ -66,13 +66,13 @@ export function CompleteTripDialog({
         <DialogHeader>
           <DialogTitle>Complete trip {trip.tripCode}</DialogTitle>
           <DialogDescription>
-            Starting odometer was {trip.startOdometerKm.toLocaleString()} km. Enter the ending reading — distance and driver pay are calculated automatically.
+            Mileage pay of KSh {trip.mileageAmount.toLocaleString()} was already agreed when this trip started. Ending odometer is optional — just a record of distance, not used for pay.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-3 py-2">
           <div>
-            <Label className="mb-1.5 block text-sm">Ending odometer (km)</Label>
+            <Label className="mb-1.5 block text-sm">Ending odometer (km) — optional</Label>
             <Input
               type="number"
               min={trip.startOdometerKm}

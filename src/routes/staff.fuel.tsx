@@ -90,6 +90,7 @@ function Page() {
   }
 
   const columns: Column<FuelRecord>[] = [
+    { key: "fuelCode", header: "Fuel #", render: (r) => r.fuelCode ?? "—" },
     { key: "vehicleLabel", header: "Vehicle", render: (r) => r.vehicleLabel ?? "—" },
     { key: "liters", header: "Liters", render: (r) => r.liters.toLocaleString() },
     { key: "cost", header: "Cost", render: (r) => `KSh ${r.cost.toLocaleString()}` },
@@ -263,7 +264,7 @@ function EditFuelRecordDialog({
               <Input
                 type="number"
                 min={0}
-                value={values.liters ?? 0}
+                value={values.liters || ""}
                 onChange={(e) => set("liters")(Number(e.target.value))}
               />
             </div>
@@ -272,7 +273,7 @@ function EditFuelRecordDialog({
               <Input
                 type="number"
                 min={0}
-                value={values.cost ?? 0}
+                value={values.cost || ""}
                 onChange={(e) => set("cost")(Number(e.target.value))}
               />
             </div>
@@ -281,7 +282,7 @@ function EditFuelRecordDialog({
               <Input
                 type="number"
                 min={0}
-                value={values.odometerKm ?? 0}
+                value={values.odometerKm || ""}
                 onChange={(e) => set("odometerKm")(Number(e.target.value))}
               />
             </div>

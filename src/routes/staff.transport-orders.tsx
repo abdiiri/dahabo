@@ -310,7 +310,7 @@ function EditTransportOrderDialog({
             <Input
               type="number"
               min={0}
-              value={values.agreedAmount ?? 0}
+              value={values.agreedAmount || ""}
               onChange={(e) => set("agreedAmount")(Number(e.target.value))}
             />
           </div>

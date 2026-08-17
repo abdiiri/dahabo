@@ -14,7 +14,7 @@ export const Route = createFileRoute("/staff/driver-payments")({
   head: () => ({
     meta: [
       { title: "Driver Payments | Dahabo Staff Portal" },
-      { name: "description", content: "Mileage-based driver payments, calculated automatically from completed trips." },
+      { name: "description", content: "Mileage-based driver payments — the flat agreement amount entered when each trip started." },
     ],
   }),
   component: Page,
@@ -48,8 +48,6 @@ function Page() {
   const columns: Column<DriverPayment>[] = [
     { key: "tripCode", header: "Trip", render: (r) => r.tripCode ?? "—" },
     { key: "driverName", header: "Driver", render: (r) => r.driverName ?? "—" },
-    { key: "distanceKm", header: "Distance", render: (r) => `${r.distanceKm.toLocaleString()} km` },
-    { key: "ratePerKm", header: "Rate", render: (r) => `KSh ${r.ratePerKm}/km` },
     { key: "amount", header: "Amount", render: (r) => `KSh ${r.amount.toLocaleString()}` },
     { key: "status", header: "Status", render: (r) => <StatusPill status={DRIVER_PAYMENT_STATUS_LABELS[r.status]} /> },
     {
@@ -69,7 +67,7 @@ function Page() {
       <PageHeader
         breadcrumb={["Staff", "Driver Payments"]}
         title="Driver Payments"
-        description="Mileage pay, calculated automatically when a trip is completed — distance × the driver's rate per km."
+        description="Mileage pay — the flat agreement amount entered when each trip was started."
       />
 
       {payments === null ? (

@@ -33,7 +33,7 @@ const empty: NewTripInput = {
   origin: "",
   destination: "",
   startOdometerKm: 0,
-  mileageRatePerKm: 0,
+  mileageAmount: 0,
   transportOrderId: undefined,
 };
 
@@ -88,7 +88,7 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Start a trip</DialogTitle>
-          <DialogDescription>Mileage pay is calculated automatically once you complete this trip.</DialogDescription>
+          <DialogDescription>Enter the agreed mileage pay for this trip — no distance calculation needed.</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-3 py-2">
@@ -148,19 +148,19 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
               <Input
                 type="number"
                 min={0}
-                value={values.startOdometerKm}
+                value={values.startOdometerKm || ""}
                 onChange={(e) => set("startOdometerKm")(Number(e.target.value))}
                 placeholder="e.g. 125400"
               />
             </div>
             <div>
-              <Label className="mb-1.5 block text-sm">Mileage rate (KSh per km)</Label>
+              <Label className="mb-1.5 block text-sm">Mileage agreement (KSh)</Label>
               <Input
                 type="number"
                 min={0}
-                value={values.mileageRatePerKm ?? ""}
-                onChange={(e) => set("mileageRatePerKm")(Number(e.target.value))}
-                placeholder="e.g. 15"
+                value={values.mileageAmount ?? ""}
+                onChange={(e) => set("mileageAmount")(Number(e.target.value))}
+                placeholder="e.g. 5000"
               />
             </div>
           </div>

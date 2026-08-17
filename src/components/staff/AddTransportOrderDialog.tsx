@@ -112,7 +112,7 @@ export function AddTransportOrderDialog({ onCreated }: { onCreated?: (order: Tra
             <Input
               type="number"
               min={0}
-              value={values.agreedAmount}
+              value={values.agreedAmount || ""}
               onChange={(e) => set("agreedAmount")(Number(e.target.value))}
               placeholder="e.g. 40000"
             />

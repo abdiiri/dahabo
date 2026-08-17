@@ -24,7 +24,7 @@ export const RECYCLE_BIN_TABLES: { table: RecycleBinTable; label: string; labelF
   { table: "shipments", label: "Shipments", labelField: "shipment_code" },
   { table: "transport_orders", label: "Transport orders", labelField: "order_code" },
   { table: "trips", label: "Trips", labelField: "trip_code" },
-  { table: "fuel_records", label: "Fuel records", labelField: "id" },
+  { table: "fuel_records", label: "Fuel records", labelField: "fuel_code" },
   { table: "maintenance_records", label: "Maintenance records", labelField: "description" },
   { table: "driver_payments", label: "Driver payments", labelField: "id" },
   { table: "salaries", label: "Salaries & payments", labelField: "id" },

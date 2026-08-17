@@ -40,6 +40,7 @@ import {
   type VehicleType,
   type VehicleStatus,
 } from "@/lib/api/types";
+import { usePermissions } from "@/lib/permissions";
 
 export const Route = createFileRoute("/staff/fleet")({
   head: () => ({
@@ -60,6 +61,9 @@ export const Route = createFileRoute("/staff/fleet")({
 });
 
 function Page() {
+  const { can } = usePermissions();
+  const canCreate = can("vehicles", "create");
+  const canEdit = can("vehicles", "edit");
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [editing, setEditing] = useState<Vehicle | null>(null);
 
@@ -100,9 +104,13 @@ function Page() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onSelect={() => setEditing(r)}>
-              <Pencil className="size-4" /> Edit
-            </DropdownMenuItem>
+            {canEdit ? (
+              <DropdownMenuItem onSelect={() => setEditing(r)}>
+                <Pencil className="size-4" /> Edit
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem disabled>No actions available</DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -116,7 +124,9 @@ function Page() {
         title="Fleet"
         description="Vehicle register and maintenance schedule."
         actions={
-          <AddVehicleDialog onCreated={(v) => setVehicles((rows) => [v, ...(rows ?? [])])} />
+          canCreate ? (
+            <AddVehicleDialog onCreated={(v) => setVehicles((rows) => [v, ...(rows ?? [])])} />
+          ) : null
         }
       />
 
@@ -253,7 +263,7 @@ function EditVehicleDialog({
               <Input
                 type="number"
                 min={0}
-                value={values.odometerKm ?? 0}
+                value={values.odometerKm || ""}
                 onChange={(e) => set("odometerKm")(Number(e.target.value))}
               />
             </div>

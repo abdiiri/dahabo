@@ -1,16 +1,8 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { localStore } from "./local-store";
+import { localStore, nextFleetRef } from "./local-store";
 import type { TransportOrder, NewTransportOrderInput } from "./types";
 
 const store = localStore<TransportOrder>("transport_orders", []);
-
-function generateOrderCode(existing: TransportOrder[]): string {
-  const max = existing.reduce((m, o) => {
-    const n = Number(o.orderCode.replace(/\D/g, ""));
-    return Number.isFinite(n) ? Math.max(m, n) : m;
-  }, 1000);
-  return `TO-${max + 1}`;
-}
 
 export async function listTransportOrders(): Promise<TransportOrder[]> {
   if (isSupabaseConfigured && supabase) {
@@ -40,11 +32,12 @@ export async function getTransportOrder(id: string): Promise<TransportOrder | un
 
 export async function createTransportOrder(input: NewTransportOrderInput): Promise<TransportOrder> {
   if (isSupabaseConfigured && supabase) {
-    const orderCode = `TO-${Date.now().toString().slice(-6)}`;
+    // order_code is assigned by the transport_orders_set_code trigger in the
+    // database (migration 015) — it always starts a new sequential number
+    // (TO-1, TO-2, TO-3…), so it's intentionally not sent from here.
     const { data, error } = await supabase
       .from("transport_orders")
       .insert({
-        order_code: orderCode,
         customer_id: input.customerId ?? null,
         branch_id: input.branch ?? null,
         pickup_location: input.pickupLocation,
@@ -58,10 +51,9 @@ export async function createTransportOrder(input: NewTransportOrderInput): Promi
     return mapSupabaseOrder(data);
   }
 
-  const existing = store.list();
   const order: TransportOrder = {
     id: `local-${crypto.randomUUID()}`,
-    orderCode: generateOrderCode(existing),
+    orderCode: `TO-${nextFleetRef()}`,
     customerId: input.customerId,
     branch: input.branch,
     pickupLocation: input.pickupLocation,

@@ -28,6 +28,51 @@ function write<T>(key: string, value: T[]) {
   }
 }
 
+const SEQ_KEY = "fleet_ref_seq";
+
+function readSeq(): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    const raw = window.localStorage.getItem(PREFIX + SEQ_KEY);
+    return raw ? Number(raw) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeSeq(n: number) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PREFIX + SEQ_KEY, String(n));
+  } catch {
+    // ignore quota / private-mode errors — demo mode only
+  }
+}
+
+/**
+ * Single shared reference-number counter used by transport orders, trips,
+ * and fuel records — starts at 1 and counts 1, 2, 3, 4… across all three,
+ * instead of each table keeping its own independent sequence. Call this
+ * whenever a brand-new number is needed. A record that belongs to a parent
+ * (a trip made from a transport order, a fuel record made against a trip)
+ * should reuse the parent's number instead — see extractRefNumber below —
+ * so the whole chain (order → trip → fuel) shows the same number.
+ */
+export function nextFleetRef(): number {
+  const next = readSeq() + 1;
+  writeSeq(next);
+  return next;
+}
+
+/** Pulls the numeric part out of a reference code, e.g. "TO-42" -> 42. */
+export function extractRefNumber(code: string | undefined | null): number | undefined {
+  if (!code) return undefined;
+  const digits = code.replace(/\D/g, "");
+  if (!digits) return undefined;
+  const n = Number(digits);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 export function localStore<T extends { id: string }>(key: string, seed: T[]) {
   return {
     list(): T[] {

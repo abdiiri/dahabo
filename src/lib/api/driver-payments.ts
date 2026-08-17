@@ -29,23 +29,22 @@ export async function updateDriverPaymentStatus(id: string, status: DriverPaymen
 }
 
 /**
- * Local/demo-mode only — called from trips.completeTrip() to mirror the
- * Supabase trigger (trips_sync_driver_payment) that runs automatically when
- * a real database is connected.
+ * Local/demo-mode only — called from trips.createTrip()/editTrip() to
+ * mirror the Supabase trigger (trips_sync_driver_payment) that runs
+ * automatically when a real database is connected. The amount is the flat
+ * mileage agreement entered on the trip — no distance or rate involved.
  */
 export function syncLocalDriverPayment(params: {
   tripId: string;
   tripCode: string;
   driverId: string;
   driverName?: string | undefined;
-  distanceKm: number;
-  ratePerKm: number;
+  amount: number;
 }) {
   const existing = store.list().find((p) => p.tripId === params.tripId);
-  const amount = params.distanceKm * params.ratePerKm;
   if (existing) {
     if (existing.status !== "pending") return; // don't clobber an approved/paid figure
-    store.update(existing.id, { distanceKm: params.distanceKm, ratePerKm: params.ratePerKm, amount });
+    store.update(existing.id, { amount: params.amount });
     return;
   }
   store.insert({
@@ -54,9 +53,9 @@ export function syncLocalDriverPayment(params: {
     tripCode: params.tripCode,
     driverId: params.driverId,
     driverName: params.driverName,
-    distanceKm: params.distanceKm,
-    ratePerKm: params.ratePerKm,
-    amount,
+    distanceKm: 0,
+    ratePerKm: 0,
+    amount: params.amount,
     status: "pending",
     createdAt: new Date().toISOString(),
   });

@@ -1,19 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, KeyRound, UserCircle } from "lucide-react";
+import { Loader2, KeyRound, UserCircle, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { roles, integrations } from "@/data/mock";
+import { integrations } from "@/data/mock";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import {
+  PERMISSION_MODULES,
+  CONFIGURABLE_ROLES,
+  listAllRolePermissions,
+  setRolePermission,
+  getEffective,
+  type RolePermissionRow,
+  type PermissionAction,
+} from "@/lib/api/permissions";
+import { STAFF_ROLE_LABELS } from "@/lib/api/types";
 
 export const Route = createFileRoute("/staff/settings")({
   head: () => ({
@@ -50,14 +59,8 @@ function Page() {
             ))}
           </Card>
         </TabsContent>
-        <TabsContent value="Roles" className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {roles.map((r) => (
-            <Card key={r.role} className="gap-2 p-5 shadow-soft">
-              <h3 className="font-bold">{r.role}</h3>
-              <p className="text-sm text-muted-foreground">{r.scope}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">{r.permissions.map((p) => <Badge key={p} variant="secondary">{p}</Badge>)}</div>
-            </Card>
-          ))}
+        <TabsContent value="Roles" className="mt-4">
+          <RolesPermissionsTab />
         </TabsContent>
         <TabsContent value="Integrations" className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {integrations.map((i) => (
@@ -166,6 +169,129 @@ function AccountTab() {
           Change password
         </Button>
       </Card>
+    </div>
+  );
+}
+
+function RolesPermissionsTab() {
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === "admin";
+  const [rows, setRows] = useState<RolePermissionRow[] | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    listAllRolePermissions().then((r) => active && setRows(r));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function toggle(role: (typeof CONFIGURABLE_ROLES)[number], moduleKey: string, action: PermissionAction, next: boolean) {
+    const key = `${role}:${moduleKey}:${action}`;
+    setBusyKey(key);
+    // Optimistic update so the switch feels instant.
+    setRows((prev) => {
+      const list = prev ?? [];
+      const idx = list.findIndex((r) => r.role === role && r.module === moduleKey);
+      if (idx === -1) {
+        return [
+          ...list,
+          {
+            id: `${role}:${moduleKey}`,
+            role,
+            module: moduleKey,
+            canCreate: action === "create" ? next : true,
+            canEdit: action === "edit" ? next : true,
+            canDelete: action === "delete" ? next : true,
+          },
+        ];
+      }
+      const copy = [...list];
+      const row = { ...copy[idx] };
+      if (action === "create") row.canCreate = next;
+      if (action === "edit") row.canEdit = next;
+      if (action === "delete") row.canDelete = next;
+      copy[idx] = row;
+      return copy;
+    });
+    try {
+      await setRolePermission(role, moduleKey, action, next);
+    } catch (err) {
+      toast.error("Couldn't update permission", { description: getErrorMessage(err) });
+      // Roll back by re-fetching the real state.
+      listAllRolePermissions().then(setRows);
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  if (!isAdmin) {
+    return (
+      <Card className="flex-row items-start gap-3 p-5 shadow-soft">
+        <ShieldAlert className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+        <div>
+          <p className="font-semibold">Only admins can change this</p>
+          <p className="text-sm text-muted-foreground">
+            Ask an admin to update what each role is allowed to create, edit or delete.
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      <p className="text-sm text-muted-foreground">
+        Turn a switch off to stop everyone with that role from doing it — anywhere in the portal.
+        Admin accounts always keep full access. A switch left on keeps today's behaviour.
+      </p>
+      {CONFIGURABLE_ROLES.map((role) => (
+        <Card key={role} className="gap-3 p-5 shadow-soft">
+          <h3 className="font-bold">{STAFF_ROLE_LABELS[role]}</h3>
+          {rows === null ? (
+            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> Loading…
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[420px] text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="py-2 pr-2">Module</th>
+                    <th className="px-2 py-2 text-center">Create</th>
+                    <th className="px-2 py-2 text-center">Edit</th>
+                    <th className="px-2 py-2 text-center">Delete</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PERMISSION_MODULES.map((m) => {
+                    const eff = getEffective(rows, role, m.key);
+                    return (
+                      <tr key={m.key} className="border-b border-border last:border-0">
+                        <td className="py-2 pr-2 font-medium">{m.label}</td>
+                        {(["create", "edit", "delete"] as PermissionAction[]).map((action) => {
+                          const checked = action === "create" ? eff.canCreate : action === "edit" ? eff.canEdit : eff.canDelete;
+                          const key = `${role}:${m.key}:${action}`;
+                          return (
+                            <td key={action} className="px-2 py-2 text-center">
+                              <Switch
+                                checked={checked}
+                                disabled={busyKey === key}
+                                onCheckedChange={(v) => toggle(role, m.key, action, v)}
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      ))}
     </div>
   );
 }

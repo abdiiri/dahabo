@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { localStore } from "./local-store";
+import { localStore, nextFleetRef, extractRefNumber } from "./local-store";
+import { getTrip } from "./trips";
 import type { FuelRecord, NewFuelRecordInput } from "./types";
 
 const store = localStore<FuelRecord>("fuel_records", []);
@@ -20,6 +21,10 @@ export async function listFuelRecords(): Promise<FuelRecord[]> {
 
 export async function createFuelRecord(input: NewFuelRecordInput): Promise<FuelRecord> {
   if (isSupabaseConfigured && supabase) {
+    // fuel_code is assigned by the fuel_records_set_code trigger in the
+    // database (migration 015): it reuses the linked trip's number (so a
+    // fill-up against TRIP-4 becomes FUEL-4), or draws a fresh sequential
+    // number when there's no linked trip. Intentionally not sent from here.
     const { data, error } = await supabase
       .from("fuel_records")
       .insert({
@@ -38,8 +43,23 @@ export async function createFuelRecord(input: NewFuelRecordInput): Promise<FuelR
     return mapRow(data);
   }
 
+  // Reuse the linked trip's reference number (and, through it, the
+  // transport order's number) so a fill-up on TRIP-4 shows as FUEL-4.
+  // Falls back to a fresh number if there's no linked trip. Unlike orders
+  // and trips, several fuel records can share one number — a trip is
+  // commonly refuelled more than once.
+  let ref: number | undefined;
+  if (input.tripId) {
+    const trip = await getTrip(input.tripId);
+    ref = extractRefNumber(trip?.tripCode);
+  }
+  if (ref === undefined) {
+    ref = nextFleetRef();
+  }
+
   const record: FuelRecord = {
     id: `local-${crypto.randomUUID()}`,
+    fuelCode: `FUEL-${ref}`,
     vehicleId: input.vehicleId,
     tripId: input.tripId,
     branch: input.branch,
@@ -102,6 +122,7 @@ export async function deleteFuelRecord(id: string): Promise<void> {
 function mapRow(row: any): FuelRecord {
   return {
     id: row.id,
+    fuelCode: row.fuel_code,
     vehicleId: row.vehicle_id,
     vehicleLabel: row.vehicles
       ? `${row.vehicles.vehicle_code} · ${row.vehicles.plate_number}`

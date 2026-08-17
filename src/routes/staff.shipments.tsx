@@ -33,6 +33,7 @@ import {
 import { AddShipmentDialog } from "@/components/staff/AddShipmentDialog";
 import { listShipments, editShipment, type EditShipmentInput } from "@/lib/api/shipments";
 import type { Shipment } from "@/lib/api/types";
+import { usePermissions } from "@/lib/permissions";
 
 export const Route = createFileRoute("/staff/shipments")({
   head: () => ({
@@ -64,6 +65,9 @@ const SHIPMENT_STATUSES: [string, string][] = [
 ];
 
 function Page() {
+  const { can } = usePermissions();
+  const canCreate = can("shipments", "create");
+  const canEdit = can("shipments", "edit");
   const [shipments, setShipments] = useState<Shipment[] | null>(null);
   const [editing, setEditing] = useState<Shipment | null>(null);
 
@@ -101,9 +105,13 @@ function Page() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onSelect={() => setEditing(r)}>
-              <Pencil className="size-4" /> Edit
-            </DropdownMenuItem>
+            {canEdit ? (
+              <DropdownMenuItem onSelect={() => setEditing(r)}>
+                <Pencil className="size-4" /> Edit
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem disabled>No actions available</DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -117,7 +125,9 @@ function Page() {
         title="Shipments"
         description="Every consignment across the network."
         actions={
-          <AddShipmentDialog onCreated={(s) => setShipments((rows) => [s, ...(rows ?? [])])} />
+          canCreate ? (
+            <AddShipmentDialog onCreated={(s) => setShipments((rows) => [s, ...(rows ?? [])])} />
+          ) : null
         }
       />
 

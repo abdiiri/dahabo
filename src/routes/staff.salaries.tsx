@@ -233,7 +233,7 @@ function EditSalaryDialog({
               <Input
                 type="number"
                 min={0}
-                value={values.amount ?? 0}
+                value={values.amount || ""}
                 onChange={(e) => set("amount")(Number(e.target.value))}
               />
             </div>

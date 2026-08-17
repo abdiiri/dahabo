@@ -49,6 +49,7 @@ import {
   type EditDriverInput,
 } from "@/lib/api/drivers";
 import { LICENSE_CLASS_LABELS, type Driver, type LicenseClass } from "@/lib/api/types";
+import { usePermissions } from "@/lib/permissions";
 
 export const Route = createFileRoute("/staff/drivers")({
   head: () => ({
@@ -72,6 +73,10 @@ const LICENSE_CLASSES: LicenseClass[] = Object.keys(LICENSE_CLASS_LABELS) as Lic
 
 function Page() {
   const navigate = useNavigate();
+  const { can } = usePermissions();
+  const canCreate = can("drivers", "create");
+  const canEdit = can("drivers", "edit");
+  const canDelete = can("drivers", "delete");
   const [drivers, setDrivers] = useState<Driver[] | null>(null);
   const [editing, setEditing] = useState<Driver | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -109,6 +114,11 @@ function Page() {
 
   async function handleDelete() {
     if (!deletingId) return;
+    if (!canDelete) {
+      toast.error("You don't have permission to delete drivers");
+      setDeletingId(null);
+      return;
+    }
     const driver = (drivers ?? []).find((r) => r.id === deletingId);
     setBusyId(deletingId);
     try {
@@ -171,9 +181,11 @@ function Page() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onSelect={() => setEditing(r)}>
-              <Pencil className="size-4" /> Edit
-            </DropdownMenuItem>
+            {canEdit ? (
+              <DropdownMenuItem onSelect={() => setEditing(r)}>
+                <Pencil className="size-4" /> Edit
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuItem onSelect={() => toggleStatus(r)}>
               {r.accountStatus === "suspended" ? (
                 <Unlock className="size-4" />
@@ -182,12 +194,14 @@ function Page() {
               )}
               {r.accountStatus === "suspended" ? "Activate driver" : "Deactivate driver"}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => setDeletingId(r.id)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="size-4" /> Delete
-            </DropdownMenuItem>
+            {canDelete ? (
+              <DropdownMenuItem
+                onSelect={() => setDeletingId(r.id)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="size-4" /> Delete
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -200,7 +214,7 @@ function Page() {
         breadcrumb={["Staff", "Drivers"]}
         title="Drivers"
         description="Roster, licences, work assignments and cash advances."
-        actions={<AddDriverDialog onCreated={(d) => setDrivers((rows) => [d, ...(rows ?? [])])} />}
+        actions={canCreate ? <AddDriverDialog onCreated={(d) => setDrivers((rows) => [d, ...(rows ?? [])])} /> : null}
       />
 
       {drivers === null ? (

@@ -105,7 +105,7 @@ export function AddVehicleDialog({ onCreated }: { onCreated?: (vehicle: Vehicle)
               <Input
                 type="number"
                 min={0}
-                value={values.odometerKm ?? 0}
+                value={values.odometerKm || ""}
                 onChange={(e) => set("odometerKm")(Number(e.target.value))}
               />
             </div>

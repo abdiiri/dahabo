@@ -9,8 +9,12 @@ import type {
   Trip,
   TransportOrder,
   DriverPayment,
+  FuelRecord,
+  MaintenanceRecord,
   VehicleProfitMonth,
   VehicleProfitTrip,
+  VehicleProfitFuelEntry,
+  VehicleProfitMaintenanceEntry,
 } from "./types";
 
 function monthKey(iso: string): string {
@@ -18,8 +22,7 @@ function monthKey(iso: string): string {
 }
 
 /** Builds the per-trip breakdown (exact revenue + mileage pay per trip) for
- * one vehicle in one month, from trips/orders/payments already in memory.
- * Fuel and maintenance are deliberately left out here — see VehicleProfitTrip. */
+ * one vehicle in one month, from trips/orders/payments already in memory. */
 function tripBreakdownFor(
   vehicleId: string,
   monthOf: string,
@@ -51,12 +54,62 @@ function tripBreakdownFor(
     .sort((a, b) => a.completedAt.localeCompare(b.completedAt));
 }
 
-/** Vehicle profit for the current calendar month, per vehicle. Real data, computed either from Supabase or from local/demo records — same formula either way. Each row also carries a per-trip breakdown so a vehicle with several trips in the month doesn't get flattened into one blended number. */
+/** Every fuel purchase for one vehicle in one month, kept as separate
+ * entries (not summed) so two fill-ups on the same vehicle both show up
+ * with their own date and cost. Linked back to a trip code when the fuel
+ * record has a trip_id, so it's clear which trip a fill-up belongs to. */
+function fuelBreakdownFor(
+  vehicleId: string,
+  monthOf: string,
+  fuel: FuelRecord[],
+  trips: Trip[],
+): VehicleProfitFuelEntry[] {
+  return fuel
+    .filter((f) => f.vehicleId === vehicleId && monthKey(f.filledAt) === monthOf)
+    .map((f) => {
+      const trip = f.tripId ? trips.find((t) => t.id === f.tripId) : undefined;
+      return {
+        fuelRecordId: f.id,
+        fuelCode: f.fuelCode,
+        tripId: f.tripId,
+        tripCode: trip?.tripCode,
+        liters: f.liters,
+        cost: f.cost,
+        filledAt: f.filledAt,
+      };
+    })
+    .sort((a, b) => a.filledAt.localeCompare(b.filledAt));
+}
+
+/** Every maintenance job for one vehicle in one month, kept as separate
+ * entries rather than summed into one figure. */
+function maintenanceBreakdownFor(
+  vehicleId: string,
+  monthOf: string,
+  maintenance: MaintenanceRecord[],
+): VehicleProfitMaintenanceEntry[] {
+  return maintenance
+    .filter((m) => m.vehicleId === vehicleId && monthKey(m.serviceDate) === monthOf)
+    .map((m) => ({
+      maintenanceRecordId: m.id,
+      description: m.description,
+      vendor: m.vendor,
+      cost: m.cost,
+      serviceDate: m.serviceDate,
+    }))
+    .sort((a, b) => a.serviceDate.localeCompare(b.serviceDate));
+}
+
+/** Vehicle profit for the current calendar month, per vehicle. Real data,
+ * computed either from Supabase or from local/demo records — same formula
+ * either way. Each row also carries a per-trip, per-fuel-purchase, and
+ * per-maintenance-job breakdown so nothing gets flattened into one blended
+ * number — every KSh deducted is traceable to a specific date and record. */
 export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]> {
   const thisMonth = monthKey(new Date().toISOString());
 
   if (isSupabaseConfigured && supabase) {
-    const [{ data, error }, trips, orders, payments] = await Promise.all([
+    const [{ data, error }, trips, orders, payments, fuel, maintenance] = await Promise.all([
       supabase
         .from("vehicle_profit_monthly")
         .select("*")
@@ -65,6 +118,8 @@ export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]
       listTrips(),
       listTransportOrders(),
       listDriverPayments(),
+      listFuelRecords(),
+      listMaintenanceRecords(),
     ]);
     if (error) throw error;
     return (data ?? []).map((row) => ({
@@ -80,6 +135,8 @@ export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]
       otherCost: Number(row.other_cost) || 0,
       netProfit: Number(row.net_profit) || 0,
       trips: tripBreakdownFor(row.vehicle_id, thisMonth, trips, orders, payments),
+      fuelEntries: fuelBreakdownFor(row.vehicle_id, thisMonth, fuel, trips),
+      maintenanceEntries: maintenanceBreakdownFor(row.vehicle_id, thisMonth, maintenance),
     }));
   }
 
@@ -97,14 +154,13 @@ export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]
     .filter((v) => !v.excludedFromProfit)
     .map((v) => {
       const vehicleTrips = tripBreakdownFor(v.id, thisMonth, trips, orders, payments);
+      const vehicleFuel = fuelBreakdownFor(v.id, thisMonth, fuel, trips);
+      const vehicleMaintenance = maintenanceBreakdownFor(v.id, thisMonth, maintenance);
+
       const revenue = vehicleTrips.reduce((sum, t) => sum + t.revenue, 0);
       const mileagePayments = vehicleTrips.reduce((sum, t) => sum + t.mileagePayment, 0);
-      const fuelCost = fuel
-        .filter((f) => f.vehicleId === v.id && monthKey(f.filledAt) === thisMonth)
-        .reduce((sum, f) => sum + f.cost, 0);
-      const maintenanceCost = maintenance
-        .filter((m) => m.vehicleId === v.id && monthKey(m.serviceDate) === thisMonth)
-        .reduce((sum, m) => sum + m.cost, 0);
+      const fuelCost = vehicleFuel.reduce((sum, f) => sum + f.cost, 0);
+      const maintenanceCost = vehicleMaintenance.reduce((sum, m) => sum + m.cost, 0);
 
       return {
         id: `${v.id}-${thisMonth}`,
@@ -119,6 +175,8 @@ export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]
         otherCost: 0,
         netProfit: revenue - fuelCost - maintenanceCost - mileagePayments,
         trips: vehicleTrips,
+        fuelEntries: vehicleFuel,
+        maintenanceEntries: vehicleMaintenance,
       };
     });
 }

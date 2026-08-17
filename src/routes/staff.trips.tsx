@@ -95,9 +95,9 @@ function Page() {
       render: (r) => (r.distanceKm != null ? `${r.distanceKm.toLocaleString()} km` : "—"),
     },
     {
-      key: "mileageRatePerKm",
-      header: "Mileage rate",
-      render: (r) => (r.mileageRatePerKm ? `KSh ${r.mileageRatePerKm}/km` : "—"),
+      key: "mileageAmount",
+      header: "Mileage pay",
+      render: (r) => (r.mileageAmount ? `KSh ${r.mileageAmount.toLocaleString()}` : "—"),
     },
     { key: "status", header: "Status", render: (r) => <StatusPill status={TRIP_STATUS_LABELS[r.status]} /> },
     {
@@ -143,7 +143,7 @@ function Page() {
       <PageHeader
         breadcrumb={["Staff", "Trips"]}
         title="Trips"
-        description="Start a trip against a vehicle and driver; complete it with the ending odometer to auto-calculate mileage pay."
+        description="Start a trip against a vehicle and driver, entering the agreed mileage pay up front — no distance calculation needed."
         actions={<StartTripDialog onCreated={() => refresh()} />}
       />
 
@@ -213,7 +213,7 @@ function EditTripDialog({
         origin: trip.origin,
         destination: trip.destination,
         startOdometerKm: trip.startOdometerKm,
-        mileageRatePerKm: trip.mileageRatePerKm,
+        mileageAmount: trip.mileageAmount,
       });
     }
   }, [trip]);
@@ -233,7 +233,7 @@ function EditTripDialog({
     try {
       const updated = await editTrip(trip.id, values);
       toast.success(
-        trip.status === "completed" && values.mileageRatePerKm !== trip.mileageRatePerKm
+        values.mileageAmount !== trip.mileageAmount
           ? "Trip updated — mileage pay and vehicle profit recalculated"
           : "Trip updated",
       );
@@ -251,8 +251,8 @@ function EditTripDialog({
         <DialogHeader>
           <DialogTitle>Edit trip {trip?.tripCode}</DialogTitle>
           <DialogDescription>
-            Vehicle and driver can't be changed here. Changing the mileage rate on a completed trip
-            recalculates its driver pay and vehicle profit automatically.
+            Vehicle and driver can't be changed here. Changing the mileage amount recalculates
+            driver pay and vehicle profit automatically.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 py-2">
@@ -275,18 +275,18 @@ function EditTripDialog({
               <Input
                 type="number"
                 min={0}
-                value={values.startOdometerKm ?? 0}
+                value={values.startOdometerKm || ""}
                 onChange={(e) => set("startOdometerKm")(Number(e.target.value))}
               />
             </div>
             <div>
-              <Label className="mb-1.5 block text-sm">Mileage rate (KSh per km)</Label>
+              <Label className="mb-1.5 block text-sm">Mileage agreement (KSh)</Label>
               <Input
                 type="number"
                 min={0}
-                value={values.mileageRatePerKm ?? 0}
-                onChange={(e) => set("mileageRatePerKm")(Number(e.target.value))}
-                placeholder="e.g. 15"
+                value={values.mileageAmount || ""}
+                onChange={(e) => set("mileageAmount")(Number(e.target.value))}
+                placeholder="e.g. 5000"
               />
             </div>
           </div>
