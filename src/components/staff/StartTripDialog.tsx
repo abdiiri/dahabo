@@ -32,7 +32,6 @@ const empty: NewTripInput = {
   driverId: "",
   origin: "",
   destination: "",
-  startOdometerKm: 0,
   mileageAmount: 0,
   transportOrderId: undefined,
 };
@@ -142,28 +141,19 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
             </div>
           </div>
           {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label className="mb-1.5 block text-sm">Starting odometer (km)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={values.startOdometerKm || ""}
-                onChange={(e) => set("startOdometerKm")(Number(e.target.value))}
-                placeholder="e.g. 125400"
-              />
-            </div>
-            <div>
-              <Label className="mb-1.5 block text-sm">Mileage agreement (KSh)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={values.mileageAmount ?? ""}
-                onChange={(e) => set("mileageAmount")(Number(e.target.value))}
-                placeholder="e.g. 5000"
-              />
-            </div>
+          <div>
+            <Label className="mb-1.5 block text-sm">Mileage agreement (KSh)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={values.mileageAmount ?? ""}
+              onChange={(e) => set("mileageAmount")(Number(e.target.value))}
+              placeholder="e.g. 5000"
+            />
           </div>
+          <p className="text-xs text-muted-foreground">
+            The start date and time are recorded automatically the moment this trip is created.
+          </p>
         </div>
 
         <DialogFooter>

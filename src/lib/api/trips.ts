@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { localStore, nextFleetRef, extractRefNumber } from "./local-store";
+import { localStore, nextTableRef, extractRefNumber, renumberFleetCodes } from "./local-store";
 import { getDriver } from "./drivers";
 import { syncLocalDriverPayment } from "./driver-payments";
 import { updateTransportOrderStatus, getTransportOrder } from "./transport-orders";
@@ -65,7 +65,6 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
         branch_id: input.branch ?? null,
         origin: input.origin,
         destination: input.destination,
-        start_odometer_km: input.startOdometerKm,
         mileage_amount: input.mileageAmount ?? 0,
         status: "in_progress",
         started_at: new Date().toISOString(),
@@ -87,7 +86,7 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
     ref = extractRefNumber(order?.orderCode);
   }
   if (ref === undefined || existing.some((t) => t.tripCode === `TRIP-${ref}`)) {
-    ref = nextFleetRef();
+    ref = nextTableRef(existing.map((t) => t.tripCode));
   }
 
   const trip: Trip = {
@@ -99,7 +98,6 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
     branch: input.branch,
     origin: input.origin,
     destination: input.destination,
-    startOdometerKm: input.startOdometerKm,
     mileageAmount: input.mileageAmount ?? 0,
     status: "in_progress",
     startedAt: new Date().toISOString(),
@@ -125,15 +123,14 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
 /**
  * Completes a trip. The mileage payment was already set (and recorded in
  * driver_payments) when the trip was created, so completing it just marks
- * it done — the ending odometer is optional, kept only as a record of
- * distance travelled, and plays no part in the payment.
+ * it done and records the completion date/time automatically — no
+ * odometer reading needed.
  */
-export async function completeTrip(id: string, input: CompleteTripInput): Promise<Trip | undefined> {
+export async function completeTrip(id: string, _input: CompleteTripInput = {}): Promise<Trip | undefined> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
       .from("trips")
       .update({
-        end_odometer_km: input.endOdometerKm ?? null,
         status: "completed",
         completed_at: new Date().toISOString(),
       })
@@ -146,11 +143,7 @@ export async function completeTrip(id: string, input: CompleteTripInput): Promis
 
   const trip = store.get(id);
   if (!trip) return undefined;
-  const distanceKm =
-    input.endOdometerKm != null ? Math.max(input.endOdometerKm - trip.startOdometerKm, 0) : undefined;
   const updated = store.update(id, {
-    endOdometerKm: input.endOdometerKm,
-    distanceKm,
     status: "completed",
     completedAt: new Date().toISOString(),
   });
@@ -176,7 +169,6 @@ export async function completeTrip(id: string, input: CompleteTripInput): Promis
 export type EditTripInput = Partial<{
   origin: string;
   destination: string;
-  startOdometerKm: number;
   mileageAmount: number;
 }>;
 
@@ -187,7 +179,6 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
       .update({
         ...(input.origin !== undefined ? { origin: input.origin } : {}),
         ...(input.destination !== undefined ? { destination: input.destination } : {}),
-        ...(input.startOdometerKm !== undefined ? { start_odometer_km: input.startOdometerKm } : {}),
         ...(input.mileageAmount !== undefined ? { mileage_amount: input.mileageAmount } : {}),
       })
       .eq("id", id)
@@ -232,8 +223,8 @@ export async function deleteTrip(id: string): Promise<void> {
     return;
   }
   store.remove(id);
+  renumberFleetCodes();
 }
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapSupabaseTrip(row: any): Trip {
   return {
@@ -247,9 +238,6 @@ function mapSupabaseTrip(row: any): Trip {
     branch: row.branch_id ?? undefined,
     origin: row.origin,
     destination: row.destination,
-    startOdometerKm: row.start_odometer_km,
-    endOdometerKm: row.end_odometer_km ?? undefined,
-    distanceKm: row.distance_km ?? undefined,
     mileageAmount: Number(row.mileage_amount ?? 0),
     status: row.status,
     startedAt: row.started_at ?? undefined,

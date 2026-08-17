@@ -178,7 +178,7 @@ function Page() {
                     <p className="truncate text-xs text-muted-foreground">
                       {t.tripCode}
                       {t.driverName ? ` · ${t.driverName}` : ""}
-                      {t.distanceKm != null ? ` · ${t.distanceKm.toLocaleString()} km` : ""}
+                      {t.startedAt ? ` · Started ${new Date(t.startedAt).toLocaleDateString()}` : ""}
                     </p>
                   </div>
                   <StatusPill status={TRIP_STATUS_LABELS[t.status]} />

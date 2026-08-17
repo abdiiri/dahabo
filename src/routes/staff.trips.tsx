@@ -90,9 +90,14 @@ function Page() {
     { key: "origin", header: "Origin" },
     { key: "destination", header: "Destination" },
     {
-      key: "distanceKm",
-      header: "Distance",
-      render: (r) => (r.distanceKm != null ? `${r.distanceKm.toLocaleString()} km` : "—"),
+      key: "startedAt",
+      header: "Started",
+      render: (r) => (r.startedAt ? new Date(r.startedAt).toLocaleString() : "—"),
+    },
+    {
+      key: "completedAt",
+      header: "Completed",
+      render: (r) => (r.completedAt ? new Date(r.completedAt).toLocaleString() : "—"),
     },
     {
       key: "mileageAmount",
@@ -212,7 +217,6 @@ function EditTripDialog({
       setValues({
         origin: trip.origin,
         destination: trip.destination,
-        startOdometerKm: trip.startOdometerKm,
         mileageAmount: trip.mileageAmount,
       });
     }
@@ -269,26 +273,15 @@ function EditTripDialog({
               />
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label className="mb-1.5 block text-sm">Starting odometer (km)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={values.startOdometerKm || ""}
-                onChange={(e) => set("startOdometerKm")(Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <Label className="mb-1.5 block text-sm">Mileage agreement (KSh)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={values.mileageAmount || ""}
-                onChange={(e) => set("mileageAmount")(Number(e.target.value))}
-                placeholder="e.g. 5000"
-              />
-            </div>
+          <div>
+            <Label className="mb-1.5 block text-sm">Mileage agreement (KSh)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={values.mileageAmount || ""}
+              onChange={(e) => set("mileageAmount")(Number(e.target.value))}
+              placeholder="e.g. 5000"
+            />
           </div>
         </div>
         <DialogFooter>

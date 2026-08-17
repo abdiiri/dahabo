@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { localStore, nextFleetRef } from "./local-store";
+import { localStore, nextTableRef, renumberFleetCodes } from "./local-store";
 import type { TransportOrder, NewTransportOrderInput } from "./types";
 
 const store = localStore<TransportOrder>("transport_orders", []);
@@ -51,9 +51,10 @@ export async function createTransportOrder(input: NewTransportOrderInput): Promi
     return mapSupabaseOrder(data);
   }
 
+  const existing = store.list();
   const order: TransportOrder = {
     id: `local-${crypto.randomUUID()}`,
-    orderCode: `TO-${nextFleetRef()}`,
+    orderCode: `TO-${nextTableRef(existing.map((o) => o.orderCode))}`,
     customerId: input.customerId,
     branch: input.branch,
     pickupLocation: input.pickupLocation,
@@ -129,6 +130,7 @@ export async function deleteTransportOrder(id: string): Promise<void> {
     return;
   }
   store.remove(id);
+  renumberFleetCodes();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

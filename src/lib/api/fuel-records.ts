@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { localStore, nextFleetRef, extractRefNumber } from "./local-store";
+import { localStore, nextTableRef, extractRefNumber, renumberFleetCodes } from "./local-store";
 import { getTrip } from "./trips";
 import type { FuelRecord, NewFuelRecordInput } from "./types";
 
@@ -54,7 +54,7 @@ export async function createFuelRecord(input: NewFuelRecordInput): Promise<FuelR
     ref = extractRefNumber(trip?.tripCode);
   }
   if (ref === undefined) {
-    ref = nextFleetRef();
+    ref = nextTableRef(store.list().map((f) => f.fuelCode));
   }
 
   const record: FuelRecord = {
@@ -116,6 +116,7 @@ export async function deleteFuelRecord(id: string): Promise<void> {
     return;
   }
   store.remove(id);
+  renumberFleetCodes();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

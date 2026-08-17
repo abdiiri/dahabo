@@ -28,42 +28,6 @@ function write<T>(key: string, value: T[]) {
   }
 }
 
-const SEQ_KEY = "fleet_ref_seq";
-
-function readSeq(): number {
-  if (typeof window === "undefined") return 0;
-  try {
-    const raw = window.localStorage.getItem(PREFIX + SEQ_KEY);
-    return raw ? Number(raw) || 0 : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function writeSeq(n: number) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(PREFIX + SEQ_KEY, String(n));
-  } catch {
-    // ignore quota / private-mode errors — demo mode only
-  }
-}
-
-/**
- * Single shared reference-number counter used by transport orders, trips,
- * and fuel records — starts at 1 and counts 1, 2, 3, 4… across all three,
- * instead of each table keeping its own independent sequence. Call this
- * whenever a brand-new number is needed. A record that belongs to a parent
- * (a trip made from a transport order, a fuel record made against a trip)
- * should reuse the parent's number instead — see extractRefNumber below —
- * so the whole chain (order → trip → fuel) shows the same number.
- */
-export function nextFleetRef(): number {
-  const next = readSeq() + 1;
-  writeSeq(next);
-  return next;
-}
-
 /** Pulls the numeric part out of a reference code, e.g. "TO-42" -> 42. */
 export function extractRefNumber(code: string | undefined | null): number | undefined {
   if (!code) return undefined;
@@ -71,6 +35,87 @@ export function extractRefNumber(code: string | undefined | null): number | unde
   if (!digits) return undefined;
   const n = Number(digits);
   return Number.isFinite(n) ? n : undefined;
+}
+
+/**
+ * Next reference number for a table, computed from the highest number
+ * already used in that table's own codes — NOT a counter shared across
+ * transport orders, trips, and fuel records. Pass in that table's current
+ * codes (e.g. existing trips' tripCode values) and this returns the next
+ * dense number: 6 existing rows numbered 1-6 always yields 7 next, never a
+ * number borrowed from how many orders or fuel records happen to exist.
+ * A record that belongs to a parent (a trip made from a transport order, a
+ * fuel record made against a trip) should still reuse the parent's number
+ * directly via extractRefNumber instead of calling this.
+ */
+export function nextTableRef(codes: Array<string | undefined | null>): number {
+  const max = codes.reduce((best, code) => {
+    const n = extractRefNumber(code);
+    return n !== undefined && n > best ? n : best;
+  }, 0);
+  return max + 1;
+}
+
+type CodedRow = { id: string; createdAt: string; [key: string]: unknown };
+
+function sortByCreated<T extends CodedRow>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+/**
+ * Keeps transport order, trip, and fuel record reference numbers dense
+ * (1, 2, 3… with no gaps) after a delete in demo mode — mirrors the
+ * database renumbering trigger used once Supabase is connected, so a
+ * table with 7 rows always shows 1-7, and deleting one drops it straight
+ * to 1-6 with the next new row becoming 7. Reads and rewrites the three
+ * tables' own localStorage entries directly so it can be called from any
+ * of the three api modules without a circular import between them.
+ */
+export function renumberFleetCodes(): void {
+  if (typeof window === "undefined") return;
+
+  const orders = sortByCreated(read<CodedRow>("transport_orders", []));
+  const orderNumberById = new Map<string, number>();
+  orders.forEach((order, i) => {
+    const n = i + 1;
+    orderNumberById.set(order.id, n);
+    order.orderCode = `TO-${n}`;
+  });
+  write("transport_orders", orders);
+
+  const trips = sortByCreated(read<CodedRow>("trips", []));
+  const usedTripNumbers = new Set<number>();
+  let tripCounter = orders.length;
+  trips.forEach((trip) => {
+    const orderId = trip.transportOrderId as string | undefined;
+    let n = orderId ? orderNumberById.get(orderId) : undefined;
+    if (n === undefined || usedTripNumbers.has(n)) {
+      tripCounter += 1;
+      n = tripCounter;
+    }
+    usedTripNumbers.add(n);
+    trip.tripCode = `TRIP-${n}`;
+  });
+  write("trips", trips);
+
+  const tripNumberById = new Map<string, number>();
+  trips.forEach((trip) => {
+    const n = extractRefNumber(trip.tripCode as string);
+    if (n !== undefined) tripNumberById.set(trip.id, n);
+  });
+
+  const fuels = sortByCreated(read<CodedRow>("fuel_records", []));
+  let fuelCounter = Math.max(orders.length, tripCounter);
+  fuels.forEach((fuel) => {
+    const tripId = fuel.tripId as string | undefined;
+    let n = tripId ? tripNumberById.get(tripId) : undefined;
+    if (n === undefined) {
+      fuelCounter += 1;
+      n = fuelCounter;
+    }
+    fuel.fuelCode = `FUEL-${n}`;
+  });
+  write("fuel_records", fuels);
 }
 
 export function localStore<T extends { id: string }>(key: string, seed: T[]) {

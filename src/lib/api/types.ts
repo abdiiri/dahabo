@@ -394,13 +394,12 @@ export type Trip = {
   branch?: string | undefined;
   origin: string;
   destination: string;
-  startOdometerKm: number;
-  endOdometerKm?: number | undefined;
-  distanceKm?: number | undefined;
   /** Flat mileage pay agreed for this trip (KSh or local currency) — entered when the trip is created, no distance calculation involved. */
   mileageAmount: number;
   status: TripStatus;
+  /** Recorded automatically when the trip is started. */
   startedAt?: string | undefined;
+  /** Recorded automatically when the trip is marked complete. */
   completedAt?: string | undefined;
   createdAt: string;
 };
@@ -412,15 +411,11 @@ export type NewTripInput = {
   branch?: string | undefined;
   origin: string;
   destination: string;
-  startOdometerKm: number;
   /** Flat mileage pay agreed for this trip (KSh or local currency) — no distance calculation involved. */
   mileageAmount: number;
 };
 
-export type CompleteTripInput = {
-  /** Optional — kept only as a record of distance travelled, no longer needed to calculate mileage pay. */
-  endOdometerKm?: number | undefined;
-};
+export type CompleteTripInput = Record<string, never>;
 
 /* =========================================================
    DRIVER PAYMENTS (mileage pay)

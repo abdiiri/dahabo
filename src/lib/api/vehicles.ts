@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { localStore } from "./local-store";
+import { localStore, nextTableRef } from "./local-store";
 import { fleetData } from "@/data/mock";
 import type { Vehicle, NewVehicleInput, VehicleType, VehicleStatus } from "./types";
 
@@ -31,12 +31,14 @@ function seedVehicles(): Vehicle[] {
 
 const store = localStore<Vehicle>("vehicles", seedVehicles());
 
-function generateVehicleCode(existing: Vehicle[]): string {
-  const max = existing.reduce((m, v) => {
-    const n = Number(v.vehicleCode.replace(/\D/g, ""));
-    return Number.isFinite(n) ? Math.max(m, n) : m;
-  }, 2200);
-  return `VEH-${max + 1}`;
+/** Keeps demo-mode vehicle codes dense (1, 2, 3… with no gaps) after a
+ * delete — mirrors the vehicles_renumber database trigger used once
+ * Supabase is connected (migration 024). */
+function renumberVehicleCodes(): void {
+  const rows = [...store.list()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  rows.forEach((v, i) => {
+    store.update(v.id, { vehicleCode: `VEH-${i + 1}` });
+  });
 }
 
 export async function listVehicles(): Promise<Vehicle[]> {
@@ -54,11 +56,13 @@ export async function listVehicles(): Promise<Vehicle[]> {
 
 export async function createVehicle(input: NewVehicleInput): Promise<Vehicle> {
   if (isSupabaseConfigured && supabase) {
-    const vehicleCode = `VEH-${Date.now().toString().slice(-6)}`;
+    // vehicle_code is assigned by the vehicles_set_code trigger in the
+    // database (migration 024) — it always hands out the next dense
+    // number after the highest active vehicle (VEH-1, VEH-2, VEH-3…), so
+    // it's intentionally not sent from here.
     const { data, error } = await supabase
       .from("vehicles")
       .insert({
-        vehicle_code: vehicleCode,
         plate_number: input.plateNumber,
         type: input.type,
         capacity: input.capacity ?? null,
@@ -74,7 +78,7 @@ export async function createVehicle(input: NewVehicleInput): Promise<Vehicle> {
   const existing = store.list();
   const vehicle: Vehicle = {
     id: `local-${crypto.randomUUID()}`,
-    vehicleCode: generateVehicleCode(existing),
+    vehicleCode: `VEH-${nextTableRef(existing.map((v) => v.vehicleCode))}`,
     plateNumber: input.plateNumber,
     type: input.type,
     capacity: input.capacity,
@@ -85,6 +89,22 @@ export async function createVehicle(input: NewVehicleInput): Promise<Vehicle> {
     createdAt: new Date().toISOString(),
   };
   return store.insert(vehicle);
+}
+
+/** Moves the vehicle to the Recycle Bin (soft delete) — restorable there
+ * any time. Remaining vehicles' codes renumber down to stay dense
+ * (1, 2, 3… with no gaps), matching Transport Orders / Trips / Fuel. */
+export async function deleteVehicle(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from("vehicles")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  store.remove(id);
+  renumberVehicleCodes();
 }
 
 export type EditVehicleInput = Partial<{
