@@ -50,7 +50,7 @@ export function AddVehicleDialog({ onCreated }: { onCreated?: (vehicle: Vehicle)
     setSubmitting(true);
     try {
       const vehicle = await createVehicle(values);
-      toast.success(`${vehicle.plateNumber} added as ${vehicle.vehicleCode}`);
+      toast.success(`${vehicle.plateNumber} added`);
       onCreated?.(vehicle);
       setValues(empty);
       setOpen(false);

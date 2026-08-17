@@ -252,7 +252,7 @@ function EditFuelRecordDialog({
               <SelectContent>
                 {vehicles.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
-                    {v.vehicleCode} · {v.plateNumber}
+                    {v.plateNumber}
                   </SelectItem>
                 ))}
               </SelectContent>

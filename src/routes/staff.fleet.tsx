@@ -76,7 +76,6 @@ function Page() {
   }, []);
 
   const columns: Column<Vehicle>[] = [
-    { key: "vehicleCode", header: "ID" },
     { key: "plateNumber", header: "Plate" },
     { key: "type", header: "Type", render: (r) => VEHICLE_TYPE_LABELS[r.type] },
     { key: "capacity", header: "Capacity" },
@@ -135,7 +134,7 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable data={vehicles} columns={columns} />
+        <DataTable data={vehicles} columns={columns} pageSize={100} />
       )}
 
       <EditVehicleDialog

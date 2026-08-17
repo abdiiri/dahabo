@@ -69,7 +69,7 @@ function Page() {
     try {
       await setVehicleProfitExclusion(removing.vehicleId, true);
       setRows((r) => (r ?? []).filter((row) => row.vehicleId !== removing.vehicleId));
-      toast.success(`${removing.vehicleCode} removed from this month's profit totals`);
+      toast.success(`${removing.plateNumber} removed from this month's profit totals`);
     } catch (err) {
       toast.error("Couldn't update this vehicle", { description: getErrorMessage(err) });
     } finally {
@@ -79,7 +79,7 @@ function Page() {
   }
 
   const columns: Column<VehicleProfitMonth>[] = [
-    { key: "vehicleCode", header: "Vehicle", render: (r) => `${r.vehicleCode} · ${r.plateNumber}` },
+    { key: "plateNumber", header: "Vehicle", render: (r) => r.plateNumber },
     { key: "revenue", header: "Revenue", render: (r) => money(r.revenue) },
     {
       key: "fuelCost",
@@ -398,7 +398,7 @@ function Page() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Fuel className="size-4" />
-              Fuel breakdown — {fuelBreakdownFor?.vehicleCode} · {fuelBreakdownFor?.plateNumber}
+              Fuel breakdown — {fuelBreakdownFor?.plateNumber}
             </DialogTitle>
             <DialogDescription>
               {fuelBreakdownFor?.fuelEntries.length ?? 0} fill-up
@@ -464,7 +464,7 @@ function Page() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Remove {removing?.vehicleCode} from this month's profit?
+              Remove {removing?.plateNumber} from this month's profit?
             </AlertDialogTitle>
             <AlertDialogDescription>
               This takes it out of this list and out of the Dashboard's net profit total for this

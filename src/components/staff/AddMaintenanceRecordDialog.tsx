@@ -81,7 +81,7 @@ export function AddMaintenanceRecordDialog({ onCreated }: { onCreated?: (record:
               <SelectTrigger className="w-full"><SelectValue placeholder="Select a vehicle" /></SelectTrigger>
               <SelectContent>
                 {vehicles.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>{v.vehicleCode} · {v.plateNumber}</SelectItem>
+                  <SelectItem key={v.id} value={v.id}>{v.plateNumber}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

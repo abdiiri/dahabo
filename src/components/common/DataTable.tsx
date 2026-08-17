@@ -31,7 +31,7 @@ export function DataTable<T extends { id: string }>({
   data,
   columns,
   searchPlaceholder = "Search records…",
-  pageSize = 8,
+  pageSize = 50,
   toolbar,
   onRowClick,
   renderExpanded,
@@ -221,29 +221,31 @@ export function DataTable<T extends { id: string }>({
         <p className="text-xs text-muted-foreground">
           Showing {rows.length} of {filtered.length} records
         </p>
-        <div className="flex items-center gap-2">
-          <Button
-            size="icon"
-            variant="outline"
-            disabled={current === 0}
-            onClick={() => setPage(current - 1)}
-            aria-label="Previous page"
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-xs font-semibold tabular-nums">
-            Page {current + 1} / {pageCount}
-          </span>
-          <Button
-            size="icon"
-            variant="outline"
-            disabled={current >= pageCount - 1}
-            onClick={() => setPage(current + 1)}
-            aria-label="Next page"
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
+        {pageCount > 1 ? (
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              variant="outline"
+              disabled={current === 0}
+              onClick={() => setPage(current - 1)}
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <span className="text-xs font-semibold tabular-nums">
+              Page {current + 1} / {pageCount}
+            </span>
+            <Button
+              size="icon"
+              variant="outline"
+              disabled={current >= pageCount - 1}
+              onClick={() => setPage(current + 1)}
+              aria-label="Next page"
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        ) : null}
       </div>
     </Card>
   );
