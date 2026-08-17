@@ -125,9 +125,7 @@ function mapRow(row: any): FuelRecord {
     id: row.id,
     fuelCode: row.fuel_code,
     vehicleId: row.vehicle_id,
-    vehicleLabel: row.vehicles
-      ? `${row.vehicles.vehicle_code} · ${row.vehicles.plate_number}`
-      : undefined,
+    vehicleLabel: row.vehicles ? row.vehicles.plate_number : undefined,
     tripId: row.trip_id ?? undefined,
     branch: row.branch_id ?? undefined,
     liters: Number(row.liters) || 0,

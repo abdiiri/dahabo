@@ -1,8 +1,8 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { localStore, nextTableRef, extractRefNumber, renumberFleetCodes } from "./local-store";
+import { localStore, nextTableRef, renumberFleetCodes } from "./local-store";
 import { getDriver } from "./drivers";
 import { syncLocalDriverPayment } from "./driver-payments";
-import { updateTransportOrderStatus, getTransportOrder } from "./transport-orders";
+import { updateTransportOrderStatus } from "./transport-orders";
 import type { Trip, NewTripInput, CompleteTripInput } from "./types";
 
 const store = localStore<Trip>("trips", []);
@@ -47,10 +47,11 @@ export async function listTripsForVehicle(vehicleId: string): Promise<Trip[]> {
 export async function createTrip(input: NewTripInput): Promise<Trip> {
   if (isSupabaseConfigured && supabase) {
     // trip_code is assigned by the trips_set_code trigger in the database
-    // (migration 015): it reuses the linked transport order's number so a
-    // trip made from order TO-4 becomes TRIP-4, and only draws a fresh
-    // sequential number when the trip has no linked order. Intentionally
-    // not sent from here.
+    // (migration 025): trips get their own dense sequential number,
+    // exactly like transport orders (TRIP-1, TRIP-2, TRIP-3…) — the oldest
+    // trip is always TRIP-1 and a new trip always gets the next number,
+    // regardless of which order (if any) it's linked to. Intentionally not
+    // sent from here.
     //
     // mileage_amount is the flat driver pay agreed for this trip. The
     // trips_sync_driver_payment trigger (migration 016) creates the
@@ -75,19 +76,11 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
     return mapSupabaseTrip(data);
   }
 
-  // Reuse the linked transport order's reference number (order TO-4 -> trip
-  // TRIP-4) so the pair reads as one job. Falls back to a fresh number if
-  // there's no linked order, or if that number is somehow already taken by
-  // another trip (e.g. a second trip against the same order).
+  // Trips get their own dense sequential number, same as transport orders —
+  // the oldest trip is TRIP-1 and a new trip always gets the next number in
+  // the trips table, regardless of which order (if any) it's linked to.
   const existing = store.list();
-  let ref: number | undefined;
-  if (input.transportOrderId) {
-    const order = await getTransportOrder(input.transportOrderId);
-    ref = extractRefNumber(order?.orderCode);
-  }
-  if (ref === undefined || existing.some((t) => t.tripCode === `TRIP-${ref}`)) {
-    ref = nextTableRef(existing.map((t) => t.tripCode));
-  }
+  const ref = nextTableRef(existing.map((t) => t.tripCode));
 
   const trip: Trip = {
     id: `local-${crypto.randomUUID()}`,
@@ -232,7 +225,7 @@ function mapSupabaseTrip(row: any): Trip {
     tripCode: row.trip_code,
     transportOrderId: row.transport_order_id ?? undefined,
     vehicleId: row.vehicle_id,
-    vehicleLabel: row.vehicles ? `${row.vehicles.vehicle_code} · ${row.vehicles.plate_number}` : undefined,
+    vehicleLabel: row.vehicles ? row.vehicles.plate_number : undefined,
     driverId: row.driver_id,
     driverName: row.drivers?.full_name ?? undefined,
     branch: row.branch_id ?? undefined,

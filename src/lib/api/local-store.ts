@@ -70,31 +70,24 @@ function sortByCreated<T extends CodedRow>(rows: T[]): T[] {
  * to 1-6 with the next new row becoming 7. Reads and rewrites the three
  * tables' own localStorage entries directly so it can be called from any
  * of the three api modules without a circular import between them.
+ *
+ * Transport orders and trips each get their own dense 1, 2, 3… counter by
+ * creation order — a trip no longer borrows its linked order's number, so
+ * the oldest trip is always TRIP-1 and a brand-new trip always lands on
+ * whatever number comes next in the trips table, same as orders.
  */
 export function renumberFleetCodes(): void {
   if (typeof window === "undefined") return;
 
   const orders = sortByCreated(read<CodedRow>("transport_orders", []));
-  const orderNumberById = new Map<string, number>();
   orders.forEach((order, i) => {
-    const n = i + 1;
-    orderNumberById.set(order.id, n);
-    order.orderCode = `TO-${n}`;
+    order.orderCode = `TO-${i + 1}`;
   });
   write("transport_orders", orders);
 
   const trips = sortByCreated(read<CodedRow>("trips", []));
-  const usedTripNumbers = new Set<number>();
-  let tripCounter = orders.length;
-  trips.forEach((trip) => {
-    const orderId = trip.transportOrderId as string | undefined;
-    let n = orderId ? orderNumberById.get(orderId) : undefined;
-    if (n === undefined || usedTripNumbers.has(n)) {
-      tripCounter += 1;
-      n = tripCounter;
-    }
-    usedTripNumbers.add(n);
-    trip.tripCode = `TRIP-${n}`;
+  trips.forEach((trip, i) => {
+    trip.tripCode = `TRIP-${i + 1}`;
   });
   write("trips", trips);
 
@@ -105,7 +98,7 @@ export function renumberFleetCodes(): void {
   });
 
   const fuels = sortByCreated(read<CodedRow>("fuel_records", []));
-  let fuelCounter = Math.max(orders.length, tripCounter);
+  let fuelCounter = fuels.length ? Math.max(orders.length, trips.length) : 0;
   fuels.forEach((fuel) => {
     const tripId = fuel.tripId as string | undefined;
     let n = tripId ? tripNumberById.get(tripId) : undefined;

@@ -105,9 +105,7 @@ function mapRow(row: any): MaintenanceRecord {
   return {
     id: row.id,
     vehicleId: row.vehicle_id,
-    vehicleLabel: row.vehicles
-      ? `${row.vehicles.vehicle_code} · ${row.vehicles.plate_number}`
-      : undefined,
+    vehicleLabel: row.vehicles ? row.vehicles.plate_number : undefined,
     branch: row.branch_id ?? undefined,
     description: row.description,
     vendor: row.vendor ?? undefined,
