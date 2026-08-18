@@ -21,6 +21,7 @@ const map: Record<string, string> = {
   Idle: "bg-muted text-muted-foreground ring-border",
   "Off Duty": "bg-muted text-muted-foreground ring-border",
   Extra: "bg-chart-4/15 text-chart-4 ring-chart-4/25",
+  Upfront: "bg-primary/12 text-primary ring-primary/25",
   Delayed: "bg-destructive/12 text-destructive ring-destructive/25",
   Overdue: "bg-destructive/12 text-destructive ring-destructive/25",
   Outstanding: "bg-destructive/12 text-destructive ring-destructive/25",

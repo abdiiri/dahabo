@@ -323,17 +323,20 @@ export type Customer = {
 
 /** "debt": money the customer owes us (credit we extended).
  * "extra": money the customer gave beyond what they owed — an advance or
- * over-payment, logged for the record but not netted against outstanding. */
-export type CustomerTransactionType = "debt" | "extra";
+ * over-payment, logged for the record but not netted against outstanding.
+ * "upfront": money the customer paid in advance that matches the exact
+ * price of an order — not extra, not a debt, just paid ahead of time. */
+export type CustomerTransactionType = "debt" | "extra" | "upfront";
 
 export type CustomerTransactionMode = "mpesa" | "bank_transfer" | "cash" | "cheque" | "card";
 
 /** Derived, not stored — see getTransactionStatus() in customer-transactions.ts. */
-export type CustomerTransactionStatus = "outstanding" | "partial" | "settled" | "extra";
+export type CustomerTransactionStatus = "outstanding" | "partial" | "settled" | "extra" | "upfront";
 
 export const CUSTOMER_TRANSACTION_TYPE_LABELS: Record<CustomerTransactionType, string> = {
   debt: "Debt given",
   extra: "Extra money received",
+  upfront: "Upfront received",
 };
 
 export const CUSTOMER_TRANSACTION_MODE_LABELS: Record<CustomerTransactionMode, string> = {
@@ -349,6 +352,7 @@ export const CUSTOMER_TRANSACTION_STATUS_LABELS: Record<CustomerTransactionStatu
   partial: "Partial",
   settled: "Settled",
   extra: "Extra",
+  upfront: "Upfront",
 };
 
 export type CustomerTransaction = {
@@ -358,11 +362,11 @@ export type CustomerTransaction = {
   type: CustomerTransactionType;
   amount: number;
   /** Only meaningful for "debt" rows — how much of `amount` has been paid
-   * back so far. Always 0 for "extra" rows. */
+   * back so far. Always 0 for "extra" and "upfront" rows. */
   amountPaid: number;
   mode: CustomerTransactionMode;
   reference?: string | undefined;
-  /** Date the debt was given, or the date the extra money was received. */
+  /** Date the debt was given, or the date the extra/upfront money was received. */
   date: string;
   /** Date the debt was last paid against (set/updated by recordPayment). */
   paidDate?: string | undefined;

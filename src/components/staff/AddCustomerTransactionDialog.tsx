@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createDebt, createExtra } from "@/lib/api/customer-transactions";
+import { createDebt, createExtra, createUpfront } from "@/lib/api/customer-transactions";
 import { listCustomers } from "@/lib/api/customers";
 import type {
   Customer,
@@ -106,8 +106,19 @@ export function AddCustomerTransactionDialog({
         reference: values.reference || undefined,
         notes: values.notes || undefined,
       };
-      const row = values.type === "debt" ? await createDebt(input) : await createExtra(input);
-      toast.success(values.type === "debt" ? "Debt recorded" : "Extra payment recorded");
+      const row =
+        values.type === "debt"
+          ? await createDebt(input)
+          : values.type === "upfront"
+            ? await createUpfront(input)
+            : await createExtra(input);
+      toast.success(
+        values.type === "debt"
+          ? "Debt recorded"
+          : values.type === "upfront"
+            ? "Upfront payment recorded"
+            : "Extra payment recorded",
+      );
       onCreated?.(row);
       setValues(emptyForm(customerId));
       setOpen(false);
@@ -155,7 +166,9 @@ export function AddCustomerTransactionDialog({
             <p className="mt-1.5 text-xs text-muted-foreground">
               {values.type === "debt"
                 ? "Credit you're extending — this increases what the customer owes you."
-                : "Money received beyond what they owed (an advance/overpayment) — this does not reduce any debt."}
+                : values.type === "upfront"
+                  ? "Customer paid the exact price of an order in advance — not extra, not a debt."
+                  : "Money received beyond what they owed (an advance/overpayment) — this does not reduce any debt."}
             </p>
           </div>
 

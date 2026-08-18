@@ -40,17 +40,18 @@ export async function listCustomerTransactionsFor(
 }
 
 /** Outstanding = remaining balance on this customer's unpaid "debt" rows.
- * "extra" rows are recorded for the books but don't reduce it — see the
- * CustomerTransactionType doc comment in types.ts for why. */
+ * "extra" and "upfront" rows are recorded for the books but don't reduce
+ * it — see the CustomerTransactionType doc comment in types.ts for why. */
 export function getTransactionStatus(t: CustomerTransaction): CustomerTransactionStatus {
   if (t.type === "extra") return "extra";
+  if (t.type === "upfront") return "upfront";
   if (t.amountPaid <= 0) return "outstanding";
   if (t.amountPaid < t.amount) return "partial";
   return "settled";
 }
 
 export function remainingBalance(t: CustomerTransaction): number {
-  if (t.type === "extra") return 0;
+  if (t.type === "extra" || t.type === "upfront") return 0;
   return Math.max(t.amount - t.amountPaid, 0);
 }
 
@@ -70,6 +71,8 @@ export type NewDebtInput = {
 };
 
 export type NewExtraInput = NewDebtInput;
+
+export type NewUpfrontInput = NewDebtInput;
 
 export type RecordPaymentInput = {
   amount: number;
@@ -128,6 +131,13 @@ export async function createDebt(input: NewDebtInput): Promise<CustomerTransacti
  * Kept on the customer's record for reference; doesn't touch outstanding. */
 export async function createExtra(input: NewExtraInput): Promise<CustomerTransaction> {
   return insertTransaction("extra", input);
+}
+
+/** Record money received upfront that matches the exact price of an order —
+ * not extra, not a debt. Kept on the customer's record for reference;
+ * doesn't touch outstanding. */
+export async function createUpfront(input: NewUpfrontInput): Promise<CustomerTransaction> {
+  return insertTransaction("upfront", input);
 }
 
 /** Apply a payment against an existing debt row — full or partial. Reduces

@@ -31,6 +31,7 @@ function buildStatementText(
   openDebts: CustomerTransaction[],
   totalOutstanding: number,
   totalExtra: number,
+  totalUpfront: number,
 ): string {
   const lines: string[] = [];
   lines.push("*Dahabo Global Logistics*");
@@ -52,6 +53,9 @@ function buildStatementText(
   lines.push(`Total outstanding: KSh ${totalOutstanding.toLocaleString()}`);
   if (totalExtra > 0) {
     lines.push(`Advance/credit balance on file: KSh ${totalExtra.toLocaleString()}`);
+  }
+  if (totalUpfront > 0) {
+    lines.push(`Upfront received (paid ahead for order): KSh ${totalUpfront.toLocaleString()}`);
   }
   lines.push("");
   lines.push(
@@ -89,7 +93,10 @@ export function SendStatementDialog({
       .sort((a, b) => a.date.localeCompare(b.date));
     const totalOutstanding = openDebts.reduce((sum, t) => sum + remainingBalance(t), 0);
     const totalExtra = mine.filter((t) => t.type === "extra").reduce((sum, t) => sum + t.amount, 0);
-    return { openDebts, totalOutstanding, totalExtra };
+    const totalUpfront = mine
+      .filter((t) => t.type === "upfront")
+      .reduce((sum, t) => sum + t.amount, 0);
+    return { openDebts, totalOutstanding, totalExtra, totalUpfront };
   }, [transactions, customerId]);
 
   // Reset to the customer passed in (or the first on the list) each time the

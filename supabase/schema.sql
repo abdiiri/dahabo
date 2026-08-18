@@ -210,7 +210,7 @@ create trigger customers_set_updated_at before update on public.customers
 create table public.customer_transactions (
   id uuid primary key default gen_random_uuid(),
   customer_id uuid not null references public.customers (id) on delete cascade,
-  type text not null check (type in ('debt', 'extra')),
+  type text not null check (type in ('debt', 'extra', 'upfront')),
   amount numeric(14, 2) not null check (amount > 0),
   amount_paid numeric(14, 2) not null default 0,
   mode public.payment_method not null default 'cash',

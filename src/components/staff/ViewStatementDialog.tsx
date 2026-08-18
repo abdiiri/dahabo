@@ -25,6 +25,7 @@ import {
 import {
   CUSTOMER_TRANSACTION_MODE_LABELS,
   CUSTOMER_TRANSACTION_STATUS_LABELS,
+  CUSTOMER_TRANSACTION_TYPE_LABELS,
   type Customer,
   type CustomerTransaction,
   type CustomerTransactionStatus,
@@ -87,7 +88,10 @@ export function ViewStatementDialog({
     const totalExtra = rows
       .filter((r) => r.transaction.type === "extra")
       .reduce((sum, r) => sum + r.transaction.amount, 0);
-    return { totalIssued, totalPaid, totalOutstanding, totalExtra };
+    const totalUpfront = rows
+      .filter((r) => r.transaction.type === "upfront")
+      .reduce((sum, r) => sum + r.transaction.amount, 0);
+    return { totalIssued, totalPaid, totalOutstanding, totalExtra, totalUpfront };
   }, [rows]);
 
   const generatedAt = useMemo(
@@ -191,7 +195,7 @@ export function ViewStatementDialog({
             </div>
 
             {/* Summary cards */}
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-5">
               {[
                 { label: "Total debt issued", value: summary.totalIssued },
                 { label: "Total paid", value: summary.totalPaid },
@@ -201,6 +205,7 @@ export function ViewStatementDialog({
                   emphasis: summary.totalOutstanding > 0,
                 },
                 { label: "Advance / credit on file", value: summary.totalExtra },
+                { label: "Upfront received", value: summary.totalUpfront },
               ].map((s) => (
                 <div key={s.label} className="rounded-lg border bg-surface p-3">
                   <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -249,7 +254,7 @@ export function ViewStatementDialog({
                           </td>
                           <td className="px-3 py-2 align-top">
                             <p className="font-medium">
-                              {r.transaction.type === "debt" ? "Debt given" : "Extra received"}
+                              {CUSTOMER_TRANSACTION_TYPE_LABELS[r.transaction.type]}
                             </p>
                             {r.transaction.reference ? (
                               <p className="text-xs text-muted-foreground">

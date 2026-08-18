@@ -7,6 +7,7 @@ import {
   Wallet,
   HandCoins,
   PiggyBank,
+  BadgeCheck,
   Users as UsersIcon,
   MessageCircle,
   FileText,
@@ -234,10 +235,13 @@ function Page() {
     const totalExtra = ledgerRows
       .filter((t) => t.type === "extra")
       .reduce((sum, t) => sum + t.amount, 0);
+    const totalUpfront = ledgerRows
+      .filter((t) => t.type === "upfront")
+      .reduce((sum, t) => sum + t.amount, 0);
     const customersOwing = new Set(
       debtRows.filter((t) => remainingBalance(t) > 0).map((t) => t.customerId),
     ).size;
-    return { totalOutstanding, totalExtra, customersOwing };
+    return { totalOutstanding, totalExtra, totalUpfront, customersOwing };
   }, [ledgerRows]);
 
   function goToTab(next: "invoices" | "ledger") {
@@ -302,15 +306,26 @@ function Page() {
       header: "Type",
       render: (r) => {
         const isDebt = r.type === "debt";
+        const isUpfront = r.type === "upfront";
         return (
           <span className="inline-flex items-center gap-2 text-sm">
             <span
               className={cn(
                 "grid size-7 shrink-0 place-items-center rounded-full",
-                isDebt ? "bg-destructive/12 text-destructive" : "bg-success/12 text-success",
+                isDebt
+                  ? "bg-destructive/12 text-destructive"
+                  : isUpfront
+                    ? "bg-primary/12 text-primary"
+                    : "bg-success/12 text-success",
               )}
             >
-              {isDebt ? <HandCoins className="size-3.5" /> : <PiggyBank className="size-3.5" />}
+              {isDebt ? (
+                <HandCoins className="size-3.5" />
+              ) : isUpfront ? (
+                <BadgeCheck className="size-3.5" />
+              ) : (
+                <PiggyBank className="size-3.5" />
+              )}
             </span>
             <span className="font-medium">{CUSTOMER_TRANSACTION_TYPE_LABELS[r.type]}</span>
           </span>
@@ -466,7 +481,7 @@ function Page() {
             </div>
           ) : (
             <>
-              <section className="grid gap-4 sm:grid-cols-3">
+              <section className="grid gap-4 sm:grid-cols-4">
                 <StatCard
                   label="Total outstanding"
                   value={`KSh ${ledgerStats.totalOutstanding.toLocaleString()}`}
@@ -478,6 +493,12 @@ function Page() {
                   value={`KSh ${ledgerStats.totalExtra.toLocaleString()}`}
                   icon={PiggyBank}
                   tone="success"
+                />
+                <StatCard
+                  label="Upfront received"
+                  value={`KSh ${ledgerStats.totalUpfront.toLocaleString()}`}
+                  icon={BadgeCheck}
+                  tone="default"
                 />
                 <StatCard
                   label="Customers owing"
