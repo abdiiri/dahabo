@@ -8,9 +8,11 @@ import {
   HandCoins,
   PiggyBank,
   Users as UsersIcon,
+  MessageCircle,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getErrorMessage, cn } from "@/lib/utils";
+import { getErrorMessage, cn, buildWhatsAppLink } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatCard } from "@/components/common/StatCard";
@@ -42,6 +44,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AddCustomerTransactionDialog } from "@/components/staff/AddCustomerTransactionDialog";
 import { RecordPaymentDialog } from "@/components/staff/RecordPaymentDialog";
+import { SendStatementDialog } from "@/components/staff/SendStatementDialog";
+import { ViewStatementDialog } from "@/components/staff/ViewStatementDialog";
 import { listInvoices, type Invoice } from "@/lib/api/invoices";
 import { listCustomers } from "@/lib/api/customers";
 import {
@@ -99,26 +103,12 @@ const INVOICE_STATUS_LABELS: Record<Invoice["status"], string> = {
   cancelled: "Cancelled",
 };
 
-const invoiceColumns: Column<Invoice>[] = [
-  { key: "invoiceCode", header: "Invoice" },
-  { key: "customerName", header: "Customer", render: (r) => r.customerName ?? "—" },
-  {
-    key: "issuedDate",
-    header: "Issued",
-    render: (r) => new Date(r.issuedDate).toLocaleDateString(),
-  },
-  {
-    key: "dueDate",
-    header: "Due",
-    render: (r) => (r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—"),
-  },
-  { key: "amount", header: "Amount", render: (r) => `KSh ${r.amount.toLocaleString()}` },
-  {
-    key: "status",
-    header: "Status",
-    render: (r) => <StatusPill status={INVOICE_STATUS_LABELS[r.status]} />,
-  },
-];
+const invoiceStatusText = (status: Invoice["status"]) =>
+  status === "paid"
+    ? "has been paid — thank you!"
+    : status === "overdue"
+      ? "is overdue"
+      : "is awaiting payment";
 
 function Page() {
   const search = Route.useSearch();
@@ -137,6 +127,8 @@ function Page() {
   const [paying, setPaying] = useState<CustomerTransaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [statementOpen, setStatementOpen] = useState(false);
+  const [viewStatementOpen, setViewStatementOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -159,6 +151,73 @@ function Page() {
     customers.forEach((c) => map.set(c.id, c.name));
     return map;
   }, [customers]);
+
+  const customerById = useMemo(() => {
+    const map = new Map<string, Customer>();
+    customers.forEach((c) => map.set(c.id, c));
+    return map;
+  }, [customers]);
+
+  function sendInvoiceReminder(invoice: Invoice) {
+    const customer = invoice.customerId ? customerById.get(invoice.customerId) : undefined;
+    const dueText = invoice.dueDate
+      ? ` (due ${new Date(invoice.dueDate).toLocaleDateString()})`
+      : "";
+    const message = [
+      "*Dahabo Global Logistics*",
+      `Hi ${customer?.name ?? "there"}, your invoice ${invoice.invoiceCode} for KSh ${invoice.amount.toLocaleString()}${dueText} ${invoiceStatusText(invoice.status)}.`,
+      "Kindly get in touch if you have any questions. Thank you for your business.",
+      "— Dahabo Global Logistics",
+    ].join("\n");
+    const link = buildWhatsAppLink(customer?.phone, message);
+    if (!link) {
+      toast.error("No phone number on file for this customer", {
+        description: "Add one from the Customers tab to enable WhatsApp sending.",
+      });
+      return;
+    }
+    window.open(link, "_blank", "noopener,noreferrer");
+  }
+
+  const invoiceColumns: Column<Invoice>[] = [
+    { key: "invoiceCode", header: "Invoice" },
+    { key: "customerName", header: "Customer", render: (r) => r.customerName ?? "—" },
+    {
+      key: "issuedDate",
+      header: "Issued",
+      render: (r) => new Date(r.issuedDate).toLocaleDateString(),
+    },
+    {
+      key: "dueDate",
+      header: "Due",
+      render: (r) => (r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—"),
+    },
+    { key: "amount", header: "Amount", render: (r) => `KSh ${r.amount.toLocaleString()}` },
+    {
+      key: "status",
+      header: "Status",
+      render: (r) => <StatusPill status={INVOICE_STATUS_LABELS[r.status]} />,
+    },
+    {
+      key: "id",
+      header: "",
+      className: "w-10",
+      render: (r) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          title="Send via WhatsApp"
+          onClick={(e) => {
+            e.stopPropagation();
+            sendInvoiceReminder(r);
+          }}
+        >
+          <MessageCircle className="size-4" />
+        </Button>
+      ),
+    },
+  ];
 
   const ledgerRows = useMemo(() => {
     let rows = transactions ?? [];
@@ -209,6 +268,25 @@ function Page() {
     }
   }
 
+  function sendDebtReminder(t: CustomerTransaction) {
+    const customer = customerById.get(t.customerId);
+    const remaining = remainingBalance(t);
+    const message = [
+      "*Dahabo Global Logistics*",
+      `Hi ${customer?.name ?? t.customerName ?? "there"}, this is a reminder that KSh ${remaining.toLocaleString()} from ${new Date(t.date).toLocaleDateString()}${t.reference ? ` (Ref: ${t.reference})` : ""} is still outstanding.`,
+      "Kindly settle at your earliest convenience. Thank you for your business.",
+      "— Dahabo Global Logistics",
+    ].join("\n");
+    const link = buildWhatsAppLink(customer?.phone, message);
+    if (!link) {
+      toast.error("No phone number on file for this customer", {
+        description: "Add one from the Customers tab to enable WhatsApp sending.",
+      });
+      return;
+    }
+    window.open(link, "_blank", "noopener,noreferrer");
+  }
+
   const ledgerColumns: Column<CustomerTransaction>[] = [
     {
       key: "customerName",
@@ -249,9 +327,7 @@ function Page() {
             <span className="font-semibold tabular-nums">KSh {r.amount.toLocaleString()}</span>
             {r.type === "debt" && r.amountPaid > 0 ? (
               <span className="text-xs text-muted-foreground">
-                {remaining > 0
-                  ? `KSh ${remaining.toLocaleString()} still owed`
-                  : "Fully paid back"}
+                {remaining > 0 ? `KSh ${remaining.toLocaleString()} still owed` : "Fully paid back"}
               </span>
             ) : null}
           </div>
@@ -311,6 +387,11 @@ function Page() {
                   <Wallet className="size-4" /> Record payment
                 </DropdownMenuItem>
               ) : null}
+              {r.type === "debt" && status !== "settled" ? (
+                <DropdownMenuItem onSelect={() => sendDebtReminder(r)}>
+                  <MessageCircle className="size-4" /> Send reminder
+                </DropdownMenuItem>
+              ) : null}
               {canDelete ? (
                 <DropdownMenuItem
                   onSelect={() => setDeletingId(r.id)}
@@ -333,13 +414,27 @@ function Page() {
         title="Finance"
         description="Invoices, receivables, and the customer debt ledger."
         actions={
-          tab === "ledger" && canEdit ? (
-            <AddCustomerTransactionDialog
-              onCreated={(row) => {
-                setTransactions((rows) => [row, ...(rows ?? [])]);
-                listCustomers().then(setCustomers);
-              }}
-            />
+          tab === "ledger" ? (
+            <div className="flex flex-wrap gap-2">
+              {customers.length > 0 ? (
+                <Button variant="outline" onClick={() => setViewStatementOpen(true)}>
+                  <FileText className="size-4" /> View statement
+                </Button>
+              ) : null}
+              {customers.length > 0 ? (
+                <Button variant="outline" onClick={() => setStatementOpen(true)}>
+                  <MessageCircle className="size-4" /> Send statement
+                </Button>
+              ) : null}
+              {canEdit ? (
+                <AddCustomerTransactionDialog
+                  onCreated={(row) => {
+                    setTransactions((rows) => [row, ...(rows ?? [])]);
+                    listCustomers().then(setCustomers);
+                  }}
+                />
+              ) : null}
+            </div>
           ) : null
         }
       />
@@ -441,9 +536,7 @@ function Page() {
 
                     <Select
                       value={statusFilter}
-                      onValueChange={(v) =>
-                        setStatusFilter(v as "all" | CustomerTransactionStatus)
-                      }
+                      onValueChange={(v) => setStatusFilter(v as "all" | CustomerTransactionStatus)}
                     >
                       <SelectTrigger className="w-[150px]">
                         <SelectValue placeholder="All statuses" />
@@ -477,6 +570,22 @@ function Page() {
           listCustomers().then(setCustomers);
           setPaying(null);
         }}
+      />
+
+      <SendStatementDialog
+        open={statementOpen}
+        onClose={() => setStatementOpen(false)}
+        customers={customers}
+        transactions={transactions ?? []}
+        initialCustomerId={customerFilter !== "all" ? customerFilter : undefined}
+      />
+
+      <ViewStatementDialog
+        open={viewStatementOpen}
+        onClose={() => setViewStatementOpen(false)}
+        customers={customers}
+        transactions={transactions ?? []}
+        initialCustomerId={customerFilter !== "all" ? customerFilter : undefined}
       />
 
       <AlertDialog open={deletingId !== null} onOpenChange={(open) => !open && setDeletingId(null)}>

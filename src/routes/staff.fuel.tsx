@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Loader2, MoreHorizontal, Pencil, Trash2, Fuel as FuelIcon, Droplets, Wallet, Route as RouteIcon } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
+import { StatCard } from "@/components/common/StatCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +63,8 @@ export const Route = createFileRoute("/staff/fuel")({
 
 function Page() {
   const [records, setRecords] = useState<FuelRecord[] | null>(null);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicleFilter, setVehicleFilter] = useState<string>("all");
   const [editing, setEditing] = useState<FuelRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -69,10 +72,25 @@ function Page() {
   useEffect(() => {
     let active = true;
     listFuelRecords().then((rows) => active && setRecords(rows));
+    listVehicles().then((rows) => active && setVehicles(rows));
     return () => {
       active = false;
     };
   }, []);
+
+  const filteredRecords = useMemo(() => {
+    const rows = records ?? [];
+    if (vehicleFilter === "all") return rows;
+    return rows.filter((r) => r.vehicleId === vehicleFilter);
+  }, [records, vehicleFilter]);
+
+  // Totals reflect whatever filter is active, so the numbers always match what's in the table below.
+  const fuelStats = useMemo(() => {
+    const totalLiters = filteredRecords.reduce((sum, r) => sum + r.liters, 0);
+    const totalCost = filteredRecords.reduce((sum, r) => sum + r.cost, 0);
+    const avgCostPerLiter = totalLiters > 0 ? totalCost / totalLiters : 0;
+    return { totalLiters, totalCost, avgCostPerLiter };
+  }, [filteredRecords]);
 
   async function handleDelete() {
     if (!deletingId) return;
@@ -90,10 +108,32 @@ function Page() {
   }
 
   const columns: Column<FuelRecord>[] = [
-    { key: "fuelCode", header: "Fuel #", render: (r) => r.fuelCode ?? "—" },
+    { key: "fuelCode", header: "Fuel #", render: (r) => <span className="font-mono text-sm">{r.fuelCode}</span> },
     { key: "vehicleLabel", header: "Vehicle", render: (r) => r.vehicleLabel ?? "—" },
-    { key: "liters", header: "Liters", render: (r) => r.liters.toLocaleString() },
+    {
+      key: "tripLabel",
+      header: "Trip",
+      render: (r) =>
+        r.tripLabel ? (
+          <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+            <RouteIcon className="size-3.5" /> {r.tripLabel}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    { key: "liters", header: "Liters", render: (r) => `${r.liters.toLocaleString()} L` },
     { key: "cost", header: "Cost", render: (r) => `KSh ${r.cost.toLocaleString()}` },
+    {
+      key: "cost",
+      header: "KSh / L",
+      className: "w-px",
+      render: (r) => (
+        <span className="text-sm text-muted-foreground">
+          {r.liters > 0 ? `KSh ${(r.cost / r.liters).toFixed(1)}` : "—"}
+        </span>
+      ),
+    },
     {
       key: "odometerKm",
       header: "Odometer",
@@ -149,7 +189,49 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable data={records} columns={columns} searchPlaceholder="Search fuel records…" />
+        <>
+          <section className="grid gap-4 sm:grid-cols-3">
+            <StatCard
+              label="Total liters"
+              value={`${fuelStats.totalLiters.toLocaleString()} L`}
+              icon={Droplets}
+              tone="default"
+            />
+            <StatCard
+              label="Total fuel cost"
+              value={`KSh ${fuelStats.totalCost.toLocaleString()}`}
+              icon={Wallet}
+              tone="gold"
+            />
+            <StatCard
+              label="Average cost / liter"
+              value={`KSh ${fuelStats.avgCostPerLiter.toFixed(1)}`}
+              icon={FuelIcon}
+              tone="default"
+            />
+          </section>
+
+          <DataTable
+            data={filteredRecords}
+            columns={columns}
+            searchPlaceholder="Search fuel records…"
+            toolbar={
+              <Select value={vehicleFilter} onValueChange={setVehicleFilter}>
+                <SelectTrigger className="w-[170px]">
+                  <SelectValue placeholder="All vehicles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All vehicles</SelectItem>
+                  {vehicles.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.plateNumber}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            }
+          />
+        </>
       )}
 
       <EditFuelRecordDialog

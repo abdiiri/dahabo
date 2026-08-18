@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createTrip, listActiveTripAssignments } from "@/lib/api/trips";
+import { createTrip, listActiveTripAssignments, listTrips } from "@/lib/api/trips";
 import { listVehicles } from "@/lib/api/vehicles";
 import { listDrivers } from "@/lib/api/drivers";
 import { listTransportOrders } from "@/lib/api/transport-orders";
@@ -59,9 +59,28 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
         vehicleIds: new Set(tripByVehicleId.keys()),
       }),
     );
-    listTransportOrders().then((rows) =>
-      setOrders(rows.filter((o) => o.status !== "completed" && o.status !== "cancelled")),
-    );
+    // An order already tied to a live trip (in_progress, or "scheduled" if
+    // that status is ever used) must not be offered again here — that trip
+    // is already earning against it, and starting a second one would double
+    // it up. Cross-check against trips directly rather than trusting order.status
+    // alone, since a failed status sync would otherwise still let it through.
+    Promise.all([listTransportOrders(), listTrips()]).then(([orderRows, tripRows]) => {
+      const linkedOrderIds = new Set(
+        tripRows
+          .filter((t) => t.status === "in_progress" || t.status === "scheduled")
+          .map((t) => t.transportOrderId)
+          .filter((id): id is string => Boolean(id)),
+      );
+      setOrders(
+        orderRows.filter(
+          (o) =>
+            o.status !== "completed" &&
+            o.status !== "cancelled" &&
+            o.status !== "in_progress" &&
+            !linkedOrderIds.has(o.id),
+        ),
+      );
+    });
   }, [open]);
 
   // Only an available driver and an active, free vehicle can be picked —
@@ -132,13 +151,22 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No linked order</SelectItem>
-                {orders.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.orderCode} — {o.pickupLocation} to {o.destination}
-                  </SelectItem>
-                ))}
+                {orders.length === 0 ? (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    No orders available to link right now
+                  </div>
+                ) : (
+                  orders.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.orderCode} — {o.pickupLocation} to {o.destination}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Orders already on an active trip aren't listed — complete that trip first.
+            </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>

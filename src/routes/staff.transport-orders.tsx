@@ -53,6 +53,18 @@ import { listTrips } from "@/lib/api/trips";
 import { listCustomers } from "@/lib/api/customers";
 import { TRANSPORT_ORDER_STATUS_LABELS, type TransportOrder, type Customer, type Trip } from "@/lib/api/types";
 
+/** Compact "18 Aug 2026, 10:30 AM" style date + time, matching how Trips
+ * displays its own timestamps. */
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 /** A trip still on the road for this order — the reason "Mark complete"
  * gets blocked. Cancelled trips don't count: a cancelled trip shouldn't
  * stop staff from completing the order some other way. */
@@ -142,6 +154,15 @@ function Page() {
       key: "agreedAmount",
       header: "Amount",
       render: (r) => `KSh ${r.agreedAmount.toLocaleString()}`,
+    },
+    {
+      key: "createdAt",
+      header: "Date & Time",
+      render: (r) => (
+        <span className="whitespace-nowrap text-muted-foreground">
+          {formatDateTime(r.createdAt)}
+        </span>
+      ),
     },
     {
       key: "status",

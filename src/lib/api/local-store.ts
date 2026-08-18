@@ -71,10 +71,9 @@ function sortByCreated<T extends CodedRow>(rows: T[]): T[] {
  * tables' own localStorage entries directly so it can be called from any
  * of the three api modules without a circular import between them.
  *
- * Transport orders and trips each get their own dense 1, 2, 3… counter by
- * creation order — a trip no longer borrows its linked order's number, so
- * the oldest trip is always TRIP-1 and a brand-new trip always lands on
- * whatever number comes next in the trips table, same as orders.
+ * Transport orders, trips, and fuel records each get their own dense
+ * 1, 2, 3… counter by creation order — none of them borrow a number from
+ * another table, so the oldest row in each table is always #1.
  */
 export function renumberFleetCodes(): void {
   if (typeof window === "undefined") return;
@@ -91,22 +90,18 @@ export function renumberFleetCodes(): void {
   });
   write("trips", trips);
 
-  const tripNumberById = new Map<string, number>();
+  const tripCodeById = new Map<string, string>();
   trips.forEach((trip) => {
-    const n = extractRefNumber(trip.tripCode as string);
-    if (n !== undefined) tripNumberById.set(trip.id, n);
+    tripCodeById.set(trip.id, trip.tripCode as string);
   });
 
   const fuels = sortByCreated(read<CodedRow>("fuel_records", []));
-  let fuelCounter = fuels.length ? Math.max(orders.length, trips.length) : 0;
-  fuels.forEach((fuel) => {
+  fuels.forEach((fuel, i) => {
+    fuel.fuelCode = `FUEL-${i + 1}`;
+    // Keep the displayed trip label in sync with the trip's current code
+    // (trips may have just been renumbered above too).
     const tripId = fuel.tripId as string | undefined;
-    let n = tripId ? tripNumberById.get(tripId) : undefined;
-    if (n === undefined) {
-      fuelCounter += 1;
-      n = fuelCounter;
-    }
-    fuel.fuelCode = `FUEL-${n}`;
+    fuel.tripLabel = tripId ? tripCodeById.get(tripId) : undefined;
   });
   write("fuel_records", fuels);
 }

@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/select";
 import { createFuelRecord } from "@/lib/api/fuel-records";
 import { listVehicles } from "@/lib/api/vehicles";
-import type { NewFuelRecordInput, FuelRecord, Vehicle } from "@/lib/api/types";
+import { listTrips } from "@/lib/api/trips";
+import type { NewFuelRecordInput, FuelRecord, Vehicle, Trip } from "@/lib/api/types";
 
 const empty: NewFuelRecordInput = { vehicleId: "", liters: 0, cost: 0 };
 
@@ -31,11 +32,15 @@ export function AddFuelRecordDialog({ onCreated }: { onCreated?: (record: FuelRe
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<NewFuelRecordInput>(empty);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (open) listVehicles().then(setVehicles);
+    if (open) {
+      listVehicles().then(setVehicles);
+      listTrips().then(setTrips);
+    }
   }, [open]);
 
   const set = <K extends keyof NewFuelRecordInput>(k: K) => (v: NewFuelRecordInput[K]) =>
@@ -77,12 +82,34 @@ export function AddFuelRecordDialog({ onCreated }: { onCreated?: (record: FuelRe
         <div className="grid gap-3 py-2">
           <div>
             <Label className="mb-1.5 block text-sm">Vehicle</Label>
-            <Select value={values.vehicleId} onValueChange={set("vehicleId")}>
+            <Select value={values.vehicleId} onValueChange={(v) => setValues((s) => ({ ...s, vehicleId: v, tripId: undefined }))}>
               <SelectTrigger className="w-full"><SelectValue placeholder="Select a vehicle" /></SelectTrigger>
               <SelectContent>
                 {vehicles.map((v) => (
                   <SelectItem key={v.id} value={v.id}>{v.plateNumber}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-sm">Link to a trip (optional)</Label>
+            <Select
+              value={values.tripId ?? "none"}
+              onValueChange={(v) => set("tripId")(v === "none" ? undefined : v)}
+              disabled={!values.vehicleId}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={values.vehicleId ? "No trip" : "Select a vehicle first"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No trip</SelectItem>
+                {trips
+                  .filter((t) => t.vehicleId === values.vehicleId)
+                  .map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.tripCode} · {t.origin} → {t.destination}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

@@ -506,13 +506,17 @@ export type DriverPayment = {
 
 export type FuelRecord = {
   id: string;
-  /** Reference number, e.g. "FUEL-4" — reuses the linked trip's number
-   * (and, through the trip, the transport order's number) when the fuel
-   * record is tied to a trip; otherwise gets its own sequential number. */
+  /** Reference number, e.g. "FUEL-4" — its own dense sequence by creation
+   * order, same scheme as Transport Orders and Trips. Doesn't borrow a
+   * number from any linked trip. */
   fuelCode: string;
   vehicleId: string;
   vehicleLabel?: string | undefined;
   tripId?: string | undefined;
+  /** The linked trip's own code (e.g. "TRIP-4"), for display only — shown
+   * so a fill-up still reads as "this trip's fuel" even though its own
+   * fuelCode no longer matches the trip's number. */
+  tripLabel?: string | undefined;
   branch?: string | undefined;
   liters: number;
   cost: number;

@@ -10,22 +10,52 @@ const SELECT = "*, trips(trip_code), drivers(full_name)";
 
 export async function listDriverPayments(): Promise<DriverPayment[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("driver_payments").select(SELECT).is("deleted_at", null).order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("driver_payments")
+      .select(SELECT)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapSupabasePayment);
   }
   return store.list();
 }
 
-export async function updateDriverPaymentStatus(id: string, status: DriverPaymentStatus): Promise<DriverPayment | undefined> {
+export async function updateDriverPaymentStatus(
+  id: string,
+  status: DriverPaymentStatus,
+): Promise<DriverPayment | undefined> {
   if (isSupabaseConfigured && supabase) {
     const patch: Record<string, unknown> = { status };
     if (status === "paid") patch.paid_at = new Date().toISOString();
-    const { data, error } = await supabase.from("driver_payments").update(patch).eq("id", id).select(SELECT).single();
+    const { data, error } = await supabase
+      .from("driver_payments")
+      .update(patch)
+      .eq("id", id)
+      .select(SELECT)
+      .single();
     if (error) throw error;
     return mapSupabasePayment(data);
   }
-  return store.update(id, { status, paidAt: status === "paid" ? new Date().toISOString() : undefined });
+  return store.update(id, {
+    status,
+    paidAt: status === "paid" ? new Date().toISOString() : undefined,
+  });
+}
+
+/** Soft-deletes a payment record (moves it to the Recycle Bin). The trip
+ * it came from is untouched — this only removes the payment entry itself,
+ * same as deleting a Salary entry doesn't affect anything else. */
+export async function deleteDriverPayment(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from("driver_payments")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  store.remove(id);
 }
 
 /**
