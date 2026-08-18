@@ -35,6 +35,8 @@ export function DataTable<T extends { id: string }>({
   toolbar,
   onRowClick,
   renderExpanded,
+  rowClassName,
+  initialQuery,
 }: {
   data: T[];
   columns: Column<T>[];
@@ -46,8 +48,14 @@ export function DataTable<T extends { id: string }>({
    * this content (e.g. a breakdown of what makes up the row's numbers).
    * Return null/undefined for a given row to render it without a chevron. */
   renderExpanded?: (row: T) => ReactNode;
+  /** Optional extra classes per row — e.g. to highlight a row someone was
+   * linked in to from another page. */
+  rowClassName?: (row: T) => string | undefined;
+  /** Pre-fills the search box (e.g. arriving from a link elsewhere with a
+   * specific record in mind). Only applied once, on first render. */
+  initialQuery?: string;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery ?? "");
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
@@ -160,10 +168,12 @@ export function DataTable<T extends { id: string }>({
               return (
                 <Fragment key={row.id}>
                   <tr
+                    id={`row-${row.id}`}
                     onClick={() => onRowClick?.(row)}
                     className={cn(
                       "border-t border-border transition-colors hover:bg-secondary/60",
                       onRowClick && "cursor-pointer",
+                      rowClassName?.(row),
                     )}
                   >
                     {renderExpanded ? (

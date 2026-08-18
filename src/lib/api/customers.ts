@@ -91,6 +91,22 @@ export async function editCustomer(id: string, input: EditCustomerInput): Promis
   return updated;
 }
 
+/** Internal — called by lib/api/customer-transactions.ts to keep the
+ * customer's cached `outstanding` figure in sync whenever their debt
+ * ledger changes. Not for use elsewhere; the customers UI never sets this
+ * directly. */
+export async function setCustomerOutstanding(id: string, outstanding: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from("customers")
+      .update({ outstanding_balance: outstanding })
+      .eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  store.update(id, { outstanding });
+}
+
 /** Moves the customer to the Recycle Bin (soft delete) — restorable there any time. */
 export async function deleteCustomer(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {

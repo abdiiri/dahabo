@@ -4,6 +4,7 @@ export type RecycleBinTable =
   | "vehicles"
   | "drivers"
   | "customers"
+  | "customer_transactions"
   | "shipments"
   | "transport_orders"
   | "trips"
@@ -21,6 +22,7 @@ export const RECYCLE_BIN_TABLES: { table: RecycleBinTable; label: string; labelF
   { table: "vehicles", label: "Vehicles", labelField: "plate_number" },
   { table: "drivers", label: "Drivers", labelField: "full_name" },
   { table: "customers", label: "Customers", labelField: "name" },
+  { table: "customer_transactions", label: "Customer ledger", labelField: "id" },
   { table: "shipments", label: "Shipments", labelField: "shipment_code" },
   { table: "transport_orders", label: "Transport orders", labelField: "order_code" },
   { table: "trips", label: "Trips", labelField: "trip_code" },
@@ -56,15 +58,13 @@ export async function listRecycleBin(): Promise<RecycleBinItem[]> {
         .not("deleted_at", "is", null)
         .order("deleted_at", { ascending: false });
       if (error || !data) return [];
-      return data.map(
-        (row: Record<string, unknown>): RecycleBinItem => ({
-          id: row.id as string,
-          table,
-          tableLabel: label,
-          label: labelField !== "id" ? String(row[labelField] ?? row.id) : String(row.id),
-          deletedAt: row.deleted_at as string,
-        }),
-      );
+      return data.map((row: Record<string, unknown>): RecycleBinItem => ({
+        id: row.id as string,
+        table,
+        tableLabel: label,
+        label: labelField !== "id" ? String(row[labelField] ?? row.id) : String(row.id),
+        deletedAt: row.deleted_at as string,
+      }));
     }),
   );
 

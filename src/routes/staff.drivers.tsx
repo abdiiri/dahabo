@@ -48,7 +48,12 @@ import {
   setDriverAccountStatus,
   type EditDriverInput,
 } from "@/lib/api/drivers";
-import { LICENSE_CLASS_LABELS, type Driver, type LicenseClass } from "@/lib/api/types";
+import {
+  LICENSE_CLASS_LABELS,
+  DRIVER_STATUS_LABELS,
+  type Driver,
+  type LicenseClass,
+} from "@/lib/api/types";
 import { usePermissions } from "@/lib/permissions";
 
 export const Route = createFileRoute("/staff/drivers")({
@@ -158,6 +163,11 @@ function Page() {
     },
     {
       key: "status",
+      header: "Driving status",
+      render: (r) => <StatusPill status={DRIVER_STATUS_LABELS[r.status]} />,
+    },
+    {
+      key: "accountStatus",
       header: "Account",
       render: (r) => (
         <StatusPill status={r.accountStatus === "suspended" ? "Suspended" : "Active"} />
@@ -214,7 +224,11 @@ function Page() {
         breadcrumb={["Staff", "Drivers"]}
         title="Drivers"
         description="Roster, licences, work assignments and cash advances."
-        actions={canCreate ? <AddDriverDialog onCreated={(d) => setDrivers((rows) => [d, ...(rows ?? [])])} /> : null}
+        actions={
+          canCreate ? (
+            <AddDriverDialog onCreated={(d) => setDrivers((rows) => [d, ...(rows ?? [])])} />
+          ) : null
+        }
       />
 
       {drivers === null ? (

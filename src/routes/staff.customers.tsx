@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, MoreHorizontal, Pencil, Trash2, Users } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Loader2, MoreHorizontal, Pencil, Trash2, Users, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -69,6 +69,7 @@ export const Route = createFileRoute("/staff/customers")({
 });
 
 function Page() {
+  const navigate = useNavigate();
   const { can } = usePermissions();
   const canCreate = can("customers", "create");
   const canEdit = can("customers", "edit");
@@ -116,7 +117,19 @@ function Page() {
     {
       key: "outstanding",
       header: "Outstanding",
-      render: (r) => `KES ${r.outstanding.toLocaleString()}`,
+      render: (r) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate({ to: "/staff/finance", search: { tab: "ledger", customer: r.id } });
+          }}
+          className="font-medium text-primary underline-offset-2 hover:underline"
+          title="View this customer's ledger in Finance"
+        >
+          KES {r.outstanding.toLocaleString()}
+        </button>
+      ),
     },
     { key: "status", header: "Status", render: (r) => <StatusPill status={r.status} /> },
     {
@@ -142,6 +155,13 @@ function Page() {
                 <Pencil className="size-4" /> Edit
               </DropdownMenuItem>
             ) : null}
+            <DropdownMenuItem
+              onSelect={() =>
+                navigate({ to: "/staff/finance", search: { tab: "ledger", customer: r.id } })
+              }
+            >
+              <Wallet className="size-4" /> View in Finance
+            </DropdownMenuItem>
             {canDelete ? (
               <DropdownMenuItem
                 onSelect={() => setDeletingId(r.id)}

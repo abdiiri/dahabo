@@ -1,11 +1,13 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { localStore, nextTableRef, renumberFleetCodes } from "./local-store";
-import { getDriver } from "./drivers";
+import { getDriver, syncLocalDriverTripStatus } from "./drivers";
 import { syncLocalDriverPayment } from "./driver-payments";
 import { getTransportOrder, updateTransportOrderStatus } from "./transport-orders";
 import type { Trip, NewTripInput, CompleteTripInput } from "./types";
 
 const store = localStore<Trip>("trips", []);
+
+const ACTIVE_TRIP_STATUSES = ["scheduled", "in_progress"] as const;
 
 const SELECT = "*, vehicles(vehicle_code, plate_number), drivers(full_name)";
 
@@ -22,7 +24,11 @@ export async function getTrip(id: string): Promise<Trip | undefined> {
 
 export async function listTrips(): Promise<Trip[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("trips").select(SELECT).is("deleted_at", null).order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("trips")
+      .select(SELECT)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapSupabaseTrip);
   }
@@ -42,6 +48,26 @@ export async function listTripsForVehicle(vehicleId: string): Promise<Trip[]> {
     return (data ?? []).map(mapSupabaseTrip);
   }
   return store.list().filter((t) => t.vehicleId === vehicleId);
+}
+
+/** Which drivers and vehicles are currently on an active (scheduled or
+ * in_progress) trip, and which trip that is — used to keep the Start Trip
+ * dropdowns from offering someone who's already out on the road, and to
+ * show a "busy" badge on the Drivers and Fleet pages. The database itself
+ * is the real source of truth (see the trips_guard_availability trigger,
+ * migration 030) — this is just what the UI reads to stay in step with it. */
+export async function listActiveTripAssignments(): Promise<{
+  tripByDriverId: Map<string, Trip>;
+  tripByVehicleId: Map<string, Trip>;
+}> {
+  const trips = await listTrips();
+  const active = trips.filter((t) =>
+    (ACTIVE_TRIP_STATUSES as readonly string[]).includes(t.status),
+  );
+  return {
+    tripByDriverId: new Map(active.map((t) => [t.driverId, t])),
+    tripByVehicleId: new Map(active.map((t) => [t.vehicleId, t])),
+  };
 }
 
 export async function createTrip(input: NewTripInput): Promise<Trip> {
@@ -80,6 +106,21 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
   // the oldest trip is TRIP-1 and a new trip always gets the next number in
   // the trips table, regardless of which order (if any) it's linked to.
   const existing = store.list();
+
+  // Mirrors the trips_guard_availability trigger (migration 030): a driver
+  // or vehicle already on an active trip can't be booked onto another one.
+  const conflict = existing.find(
+    (t) =>
+      (ACTIVE_TRIP_STATUSES as readonly string[]).includes(t.status) &&
+      (t.driverId === input.driverId || t.vehicleId === input.vehicleId),
+  );
+  if (conflict) {
+    const reason = conflict.driverId === input.driverId ? "driver" : "vehicle";
+    throw new Error(
+      `This ${reason} is already on trip ${conflict.tripCode} — complete or remove that trip first.`,
+    );
+  }
+
   const ref = nextTableRef(existing.map((t) => t.tripCode));
 
   const trip: Trip = {
@@ -97,6 +138,10 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
     createdAt: new Date().toISOString(),
   };
   const created = store.insert(trip);
+
+  // Mirrors the trips_sync_driver_status trigger (migration 030): the
+  // driver is now on the road, so their status flips to on_route.
+  syncLocalDriverTripStatus(created.driverId, true);
 
   // Mirrors the trips_sync_driver_payment trigger (migration 016), which
   // now fires on insert: the flat mileage amount is known as soon as the
@@ -117,7 +162,9 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
   if (created.transportOrderId) {
     const order = await getTransportOrder(created.transportOrderId);
     if (order && order.status !== "completed" && order.status !== "cancelled") {
-      await updateTransportOrderStatus(created.transportOrderId, "in_progress").catch(() => undefined);
+      await updateTransportOrderStatus(created.transportOrderId, "in_progress").catch(
+        () => undefined,
+      );
     }
   }
 
@@ -130,7 +177,10 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
  * it done and records the completion date/time automatically — no
  * odometer reading needed.
  */
-export async function completeTrip(id: string, _input: CompleteTripInput = {}): Promise<Trip | undefined> {
+export async function completeTrip(
+  id: string,
+  _input: CompleteTripInput = {},
+): Promise<Trip | undefined> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
       .from("trips")
@@ -151,6 +201,10 @@ export async function completeTrip(id: string, _input: CompleteTripInput = {}): 
     status: "completed",
     completedAt: new Date().toISOString(),
   });
+
+  // Mirrors the trips_sync_driver_status trigger (migration 030): the
+  // driver is free again now the trip's done.
+  syncLocalDriverTripStatus(trip.driverId, false);
 
   if (trip.transportOrderId) {
     await updateTransportOrderStatus(trip.transportOrderId, "completed").catch(() => undefined);
@@ -226,8 +280,15 @@ export async function deleteTrip(id: string): Promise<void> {
     if (error) throw error;
     return;
   }
+  const trip = store.get(id);
   store.remove(id);
   renumberFleetCodes();
+
+  // Mirrors the trips_sync_driver_status trigger (migration 030): a
+  // deleted trip no longer keeps its driver marked as on the road.
+  if (trip && (ACTIVE_TRIP_STATUSES as readonly string[]).includes(trip.status)) {
+    syncLocalDriverTripStatus(trip.driverId, false);
+  }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapSupabaseTrip(row: any): Trip {

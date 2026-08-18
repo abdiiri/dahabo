@@ -12,13 +12,18 @@ import {
   Fuel,
   AlertTriangle,
   RefreshCw,
+  CalendarClock,
+  CheckCircle2,
+  CircleDot,
+  XCircle,
+  MapPin,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/common/StatusPill";
-import { getErrorMessage } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import { listDrivers } from "@/lib/api/drivers";
 import { listStaff } from "@/lib/api/staff";
 import { listVehicles } from "@/lib/api/vehicles";
@@ -115,6 +120,18 @@ function Page() {
   const activeStaff = staff.filter((s) => s.status !== "suspended");
   const recentTrips = [...trips].slice(0, 5);
 
+  const tripStatusMeta: Record<Trip["status"], { icon: typeof CircleDot; tone: string; iconClass: string }> = {
+    scheduled: { icon: CalendarClock, tone: "bg-warning/12 text-warning", iconClass: "" },
+    in_progress: { icon: CircleDot, tone: "bg-chart-4/15 text-chart-4", iconClass: "animate-pulse" },
+    completed: { icon: CheckCircle2, tone: "bg-success/12 text-success", iconClass: "" },
+    cancelled: { icon: XCircle, tone: "bg-destructive/12 text-destructive", iconClass: "" },
+  };
+
+  function initials(name: string) {
+    const parts = name.trim().split(/\s+/);
+    return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+  }
+
   return (
     <>
       <PageHeader
@@ -159,31 +176,78 @@ function Page() {
         <Card className="gap-4 p-6 shadow-soft">
           <div className="flex items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              <RouteIcon className="size-4" /> Recent trips
+              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-secondary text-foreground">
+                <RouteIcon className="size-3.5" />
+              </span>
+              Recent trips
             </h2>
-            <Button asChild size="sm" variant="ghost">
+            <Button asChild size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground">
               <Link to="/staff/trips">
                 View all <ArrowRight className="size-3.5" />
               </Link>
             </Button>
           </div>
           {recentTrips.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No trips yet — start one from the Trips page.</p>
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <span className="grid size-10 place-items-center rounded-full bg-muted text-muted-foreground">
+                <RouteIcon className="size-5" />
+              </span>
+              <p className="text-sm text-muted-foreground">No trips yet — start one from the Trips page.</p>
+            </div>
           ) : (
-            <ul className="grid gap-2">
-              {recentTrips.map((t) => (
-                <li key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{t.origin} → {t.destination}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {t.tripCode}
-                      {t.driverName ? ` · ${t.driverName}` : ""}
-                      {t.startedAt ? ` · Started ${new Date(t.startedAt).toLocaleDateString()}` : ""}
-                    </p>
-                  </div>
-                  <StatusPill status={TRIP_STATUS_LABELS[t.status]} />
-                </li>
-              ))}
+            <ul className="-mx-2">
+              {recentTrips.map((t, i) => {
+                const meta = tripStatusMeta[t.status];
+                const StatusIcon = meta.icon;
+                return (
+                  <li key={t.id}>
+                    <Link
+                      to="/staff/trips"
+                      className={cn(
+                        "group flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-secondary/60",
+                        i !== 0 && "border-t border-border/70",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "grid size-9 shrink-0 place-items-center rounded-full transition-transform group-hover:scale-105",
+                          meta.tone,
+                        )}
+                      >
+                        <StatusIcon className={cn("size-4", meta.iconClass)} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
+                          <span className="truncate">{t.origin}</span>
+                          <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{t.destination}</span>
+                        </p>
+                        <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                          <span className="font-mono tracking-tight">{t.tripCode}</span>
+                          {t.driverName ? (
+                            <>
+                              <span aria-hidden className="text-border">·</span>
+                              <span className="flex items-center gap-1">
+                                <span className="grid size-4 shrink-0 place-items-center rounded-full bg-navy text-[9px] font-bold text-navy-foreground">
+                                  {initials(t.driverName)}
+                                </span>
+                                {t.driverName}
+                              </span>
+                            </>
+                          ) : null}
+                          {t.startedAt ? (
+                            <>
+                              <span aria-hidden className="text-border">·</span>
+                              <span>{new Date(t.startedAt).toLocaleDateString()}</span>
+                            </>
+                          ) : null}
+                        </p>
+                      </div>
+                      <StatusPill status={TRIP_STATUS_LABELS[t.status]} className="shrink-0" />
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Card>
@@ -191,29 +255,59 @@ function Page() {
         <Card className="gap-4 p-6 shadow-soft">
           <div className="flex items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              <ClipboardList className="size-4" /> Pending transport orders
+              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-secondary text-foreground">
+                <ClipboardList className="size-3.5" />
+              </span>
+              Pending transport orders
             </h2>
-            <Button asChild size="sm" variant="ghost">
+            <Button asChild size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground">
               <Link to="/staff/transport-orders">
                 View all <ArrowRight className="size-3.5" />
               </Link>
             </Button>
           </div>
           {pendingOrders.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">Nothing pending — all caught up.</p>
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <span className="grid size-10 place-items-center rounded-full bg-muted text-muted-foreground">
+                <ClipboardList className="size-5" />
+              </span>
+              <p className="text-sm text-muted-foreground">Nothing pending — all caught up.</p>
+            </div>
           ) : (
-            <ul className="grid gap-2">
-              {pendingOrders.slice(0, 5).map((o) => (
-                <li key={o.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{o.pickupLocation} → {o.destination}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {o.orderCode}
-                      {o.customerName ? ` · ${o.customerName}` : ""}
-                      {" · KSh "}{o.agreedAmount.toLocaleString()}
-                    </p>
-                  </div>
-                  <StatusPill status={TRANSPORT_ORDER_STATUS_LABELS[o.status]} />
+            <ul className="-mx-2">
+              {pendingOrders.slice(0, 5).map((o, i) => (
+                <li key={o.id}>
+                  <Link
+                    to="/staff/transport-orders"
+                    className={cn(
+                      "group flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-secondary/60",
+                      i !== 0 && "border-t border-border/70",
+                    )}
+                  >
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gold/18 text-gold transition-transform group-hover:scale-105">
+                      <MapPin className="size-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
+                        <span className="truncate">{o.pickupLocation}</span>
+                        <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{o.destination}</span>
+                      </p>
+                      <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                        <span className="font-mono tracking-tight">{o.orderCode}</span>
+                        {o.customerName ? (
+                          <>
+                            <span aria-hidden className="text-border">·</span>
+                            <span className="truncate">{o.customerName}</span>
+                          </>
+                        ) : null}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className="text-sm font-bold tabular-nums">KSh {o.agreedAmount.toLocaleString()}</span>
+                      <StatusPill status={TRANSPORT_ORDER_STATUS_LABELS[o.status]} />
+                    </div>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -232,28 +326,45 @@ function Page() {
         <Card className="gap-4 p-6 shadow-soft">
           <div className="flex items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              <UserCog className="size-4" /> Drivers
+              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-secondary text-foreground">
+                <UserCog className="size-3.5" />
+              </span>
+              Drivers
             </h2>
-            <Button asChild size="sm" variant="ghost">
+            <Button asChild size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground">
               <Link to="/staff/drivers">
                 View all <ArrowRight className="size-3.5" />
               </Link>
             </Button>
           </div>
           {drivers.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No drivers added yet.</p>
+            <p className="py-10 text-center text-sm text-muted-foreground">No drivers added yet.</p>
           ) : (
-            <ul className="grid gap-2">
-              {drivers.slice(0, 5).map((d) => (
-                <li key={d.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
-                  <div>
-                    <p className="font-medium">{d.fullName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {d.driverCode}
-                      {d.currentLocation ? ` · ${d.currentLocation}` : ""}
-                    </p>
-                  </div>
-                  <StatusPill status={d.accountStatus === "suspended" ? "Suspended" : "Active"} />
+            <ul className="-mx-2">
+              {drivers.slice(0, 5).map((d, i) => (
+                <li key={d.id}>
+                  <Link
+                    to="/staff/drivers"
+                    className={cn(
+                      "group flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm transition-colors hover:bg-secondary/60",
+                      i !== 0 && "border-t border-border/70",
+                    )}
+                  >
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-navy text-xs font-bold text-navy-foreground transition-transform group-hover:scale-105">
+                      {initials(d.fullName)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">{d.fullName}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {d.driverCode}
+                        {d.currentLocation ? ` · ${d.currentLocation}` : ""}
+                      </p>
+                    </div>
+                    <StatusPill
+                      className="shrink-0"
+                      status={d.accountStatus === "suspended" ? "Suspended" : "Active"}
+                    />
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -263,25 +374,39 @@ function Page() {
         <Card className="gap-4 p-6 shadow-soft">
           <div className="flex items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              <Users className="size-4" /> Staff
+              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-secondary text-foreground">
+                <Users className="size-3.5" />
+              </span>
+              Staff
             </h2>
-            <Button asChild size="sm" variant="ghost">
+            <Button asChild size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground">
               <Link to="/staff/users">
                 View all <ArrowRight className="size-3.5" />
               </Link>
             </Button>
           </div>
           {staff.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No staff added yet.</p>
+            <p className="py-10 text-center text-sm text-muted-foreground">No staff added yet.</p>
           ) : (
-            <ul className="grid gap-2">
-              {staff.slice(0, 5).map((s) => (
-                <li key={s.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
-                  <div>
-                    <p className="font-medium">{s.fullName}</p>
-                    <p className="text-xs text-muted-foreground">{s.email}</p>
-                  </div>
-                  <StatusPill status={s.status === "suspended" ? "Suspended" : "Active"} />
+            <ul className="-mx-2">
+              {staff.slice(0, 5).map((s, i) => (
+                <li key={s.id}>
+                  <Link
+                    to="/staff/users"
+                    className={cn(
+                      "group flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm transition-colors hover:bg-secondary/60",
+                      i !== 0 && "border-t border-border/70",
+                    )}
+                  >
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gold/18 text-xs font-bold text-gold transition-transform group-hover:scale-105">
+                      {initials(s.fullName)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">{s.fullName}</p>
+                      <p className="truncate text-xs text-muted-foreground">{s.email}</p>
+                    </div>
+                    <StatusPill className="shrink-0" status={s.status === "suspended" ? "Suspended" : "Active"} />
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -293,22 +418,22 @@ function Page() {
       <Card className="gap-3 p-6 shadow-soft">
         <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Quick actions</h2>
         <div className="flex flex-wrap gap-2">
-          <Button asChild size="sm" variant="outline">
+          <Button asChild size="sm" variant="outline" className="card-lift">
             <Link to="/staff/transport-orders">
               <ClipboardList className="size-4" /> New transport order
             </Link>
           </Button>
-          <Button asChild size="sm" variant="outline">
+          <Button asChild size="sm" variant="outline" className="card-lift">
             <Link to="/staff/trips">
               <RouteIcon className="size-4" /> Start a trip
             </Link>
           </Button>
-          <Button asChild size="sm" variant="outline">
+          <Button asChild size="sm" variant="outline" className="card-lift">
             <Link to="/staff/fuel">
               <Fuel className="size-4" /> Log fuel
             </Link>
           </Button>
-          <Button asChild size="sm" variant="outline">
+          <Button asChild size="sm" variant="outline" className="card-lift">
             <Link to="/staff/drivers">
               <UserCog className="size-4" /> Assign work / cash advance
             </Link>

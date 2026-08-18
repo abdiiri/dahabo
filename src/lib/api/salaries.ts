@@ -97,6 +97,18 @@ export async function editSalary(id: string, input: EditSalaryInput): Promise<Sa
   return updated;
 }
 
+export async function deleteSalary(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from("salaries")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  store.remove(id);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRow(row: any, nameById?: Map<string, string>): Salary {
   return {

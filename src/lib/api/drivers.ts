@@ -269,6 +269,23 @@ export async function updateMyLocation(driverId: string, location: string): Prom
   } as Partial<Driver>);
 }
 
+/** Keeps a driver's status in step with whether they're on an active trip
+ * right now — used only by trips.ts, only in local/demo mode (in Supabase
+ * mode the trips_sync_driver_status trigger, migration 030, does this).
+ * Setting onTrip=true always flips to 'on_route'. Setting onTrip=false only
+ * clears it back to 'available', and only if the driver is currently
+ * 'on_route' — this never touches 'off_duty' or 'suspended', since a driver
+ * only reaches 'on_route' by starting a trip in the first place. */
+export function syncLocalDriverTripStatus(id: string, onTrip: boolean): void {
+  const driver = store.get(id);
+  if (!driver) return;
+  if (onTrip) {
+    store.update(id, { status: "on_route" } as Partial<Driver>);
+  } else if (driver.status === "on_route") {
+    store.update(id, { status: "available" } as Partial<Driver>);
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapSupabaseDriver(row: any): Driver {
   return {

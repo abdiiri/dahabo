@@ -33,12 +33,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AddVehicleDialog } from "@/components/staff/AddVehicleDialog";
 import { listVehicles, editVehicle, type EditVehicleInput } from "@/lib/api/vehicles";
+import { listActiveTripAssignments } from "@/lib/api/trips";
 import {
   VEHICLE_TYPE_LABELS,
   VEHICLE_STATUS_LABELS,
   type Vehicle,
   type VehicleType,
   type VehicleStatus,
+  type Trip,
 } from "@/lib/api/types";
 import { usePermissions } from "@/lib/permissions";
 
@@ -66,10 +68,14 @@ function Page() {
   const canEdit = can("vehicles", "edit");
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [editing, setEditing] = useState<Vehicle | null>(null);
+  const [tripByVehicleId, setTripByVehicleId] = useState<Map<string, Trip>>(new Map());
 
   useEffect(() => {
     let active = true;
     listVehicles().then((rows) => active && setVehicles(rows));
+    listActiveTripAssignments().then(
+      ({ tripByVehicleId }) => active && setTripByVehicleId(tripByVehicleId),
+    );
     return () => {
       active = false;
     };
@@ -82,7 +88,19 @@ function Page() {
     {
       key: "status",
       header: "Status",
-      render: (r) => <StatusPill status={VEHICLE_STATUS_LABELS[r.status]} />,
+      render: (r) => {
+        const trip = tripByVehicleId.get(r.id);
+        return (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <StatusPill status={VEHICLE_STATUS_LABELS[r.status]} />
+            {trip ? (
+              <span title={`On trip ${trip.tripCode}`}>
+                <StatusPill status="On Route" className="whitespace-nowrap" />
+              </span>
+            ) : null}
+          </div>
+        );
+      },
     },
     { key: "odometerKm", header: "Odometer", render: (r) => `${r.odometerKm.toLocaleString()} km` },
     { key: "nextServiceDate", header: "Next service" },

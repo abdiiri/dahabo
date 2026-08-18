@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createTrip } from "@/lib/api/trips";
+import { createTrip, listActiveTripAssignments } from "@/lib/api/trips";
 import { listVehicles } from "@/lib/api/vehicles";
 import { listDrivers } from "@/lib/api/drivers";
 import { listTransportOrders } from "@/lib/api/transport-orders";
@@ -41,6 +41,10 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
   const [values, setValues] = useState<NewTripInput>(empty);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [busy, setBusy] = useState<{ driverIds: Set<string>; vehicleIds: Set<string> }>({
+    driverIds: new Set(),
+    vehicleIds: new Set(),
+  });
   const [orders, setOrders] = useState<TransportOrder[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -49,14 +53,37 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
     if (!open) return;
     listVehicles().then(setVehicles);
     listDrivers().then(setDrivers);
-    listTransportOrders().then((rows) => setOrders(rows.filter((o) => o.status !== "completed" && o.status !== "cancelled")));
+    listActiveTripAssignments().then(({ tripByDriverId, tripByVehicleId }) =>
+      setBusy({
+        driverIds: new Set(tripByDriverId.keys()),
+        vehicleIds: new Set(tripByVehicleId.keys()),
+      }),
+    );
+    listTransportOrders().then((rows) =>
+      setOrders(rows.filter((o) => o.status !== "completed" && o.status !== "cancelled")),
+    );
   }, [open]);
 
-  const set = <K extends keyof NewTripInput>(k: K) => (v: NewTripInput[K]) =>
-    setValues((s) => ({ ...s, [k]: v }));
+  // Only an available driver and an active, free vehicle can be picked —
+  // this is what stops a driver or vehicle already out on a trip from
+  // being double-booked, before the database's own guard would catch it.
+  const availableDrivers = drivers.filter(
+    (d) => d.status === "available" && !busy.driverIds.has(d.id),
+  );
+  const freeVehicles = vehicles.filter((v) => v.status === "active" && !busy.vehicleIds.has(v.id));
+
+  const set =
+    <K extends keyof NewTripInput>(k: K) =>
+    (v: NewTripInput[K]) =>
+      setValues((s) => ({ ...s, [k]: v }));
 
   async function handleSubmit() {
-    if (!values.vehicleId || !values.driverId || !values.origin.trim() || !values.destination.trim()) {
+    if (
+      !values.vehicleId ||
+      !values.driverId ||
+      !values.origin.trim() ||
+      !values.destination.trim()
+    ) {
       setError("Vehicle, driver, origin and destination are all required.");
       return;
     }
@@ -87,7 +114,10 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Start a trip</DialogTitle>
-          <DialogDescription>Enter the agreed mileage pay for this trip — no distance calculation needed.</DialogDescription>
+          <DialogDescription>
+            Enter the agreed mileage pay for this trip — no distance calculation needed. Only active
+            vehicles and available drivers not already on a trip are listed below.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-3 py-2">
@@ -97,11 +127,15 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
               value={values.transportOrderId ?? "none"}
               onValueChange={(v) => set("transportOrderId")(v === "none" ? undefined : v)}
             >
-              <SelectTrigger className="w-full"><SelectValue placeholder="No linked order" /></SelectTrigger>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="No linked order" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No linked order</SelectItem>
                 {orders.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>{o.orderCode} — {o.pickupLocation} to {o.destination}</SelectItem>
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.orderCode} — {o.pickupLocation} to {o.destination}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -110,22 +144,42 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
             <div>
               <Label className="mb-1.5 block text-sm">Vehicle</Label>
               <Select value={values.vehicleId} onValueChange={set("vehicleId")}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Select a vehicle" /></SelectTrigger>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a vehicle" />
+                </SelectTrigger>
                 <SelectContent>
-                  {vehicles.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>{v.plateNumber}</SelectItem>
-                  ))}
+                  {freeVehicles.length === 0 ? (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      No active, free vehicles right now
+                    </div>
+                  ) : (
+                    freeVehicles.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.plateNumber}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Driver</Label>
               <Select value={values.driverId} onValueChange={set("driverId")}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Select a driver" /></SelectTrigger>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a driver" />
+                </SelectTrigger>
                 <SelectContent>
-                  {drivers.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>{d.fullName}</SelectItem>
-                  ))}
+                  {availableDrivers.length === 0 ? (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      No available drivers right now
+                    </div>
+                  ) : (
+                    availableDrivers.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.fullName}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -133,11 +187,19 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="mb-1.5 block text-sm">Origin</Label>
-              <Input value={values.origin} onChange={(e) => set("origin")(e.target.value)} placeholder="e.g. Mombasa" />
+              <Input
+                value={values.origin}
+                onChange={(e) => set("origin")(e.target.value)}
+                placeholder="e.g. Mombasa"
+              />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Destination</Label>
-              <Input value={values.destination} onChange={(e) => set("destination")(e.target.value)} placeholder="e.g. Nairobi" />
+              <Input
+                value={values.destination}
+                onChange={(e) => set("destination")(e.target.value)}
+                placeholder="e.g. Nairobi"
+              />
             </div>
           </div>
           {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
@@ -157,9 +219,15 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>Cancel</Button>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting ? <Loader2 className="size-4 animate-spin" /> : <RouteIcon className="size-4" />}
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <RouteIcon className="size-4" />
+            )}
             Start trip
           </Button>
         </DialogFooter>

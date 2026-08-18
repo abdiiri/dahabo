@@ -310,8 +310,64 @@ export type Customer = {
   email?: string | undefined;
   phone?: string | undefined;
   tier: string;
+  /** Total unpaid balance across this customer's "debt" ledger entries —
+   * kept in sync automatically by lib/api/customer-transactions.ts
+   * whenever a debt is recorded, paid, or removed. Never edit directly. */
   outstanding: number;
   status: string;
+};
+
+/* =========================================================
+   CUSTOMER LEDGER (Finance <-> Customers link)
+   ========================================================= */
+
+/** "debt": money the customer owes us (credit we extended).
+ * "extra": money the customer gave beyond what they owed — an advance or
+ * over-payment, logged for the record but not netted against outstanding. */
+export type CustomerTransactionType = "debt" | "extra";
+
+export type CustomerTransactionMode = "mpesa" | "bank_transfer" | "cash" | "cheque" | "card";
+
+/** Derived, not stored — see getTransactionStatus() in customer-transactions.ts. */
+export type CustomerTransactionStatus = "outstanding" | "partial" | "settled" | "extra";
+
+export const CUSTOMER_TRANSACTION_TYPE_LABELS: Record<CustomerTransactionType, string> = {
+  debt: "Debt given",
+  extra: "Extra money received",
+};
+
+export const CUSTOMER_TRANSACTION_MODE_LABELS: Record<CustomerTransactionMode, string> = {
+  mpesa: "M-Pesa",
+  bank_transfer: "Bank transfer",
+  cash: "Cash",
+  cheque: "Cheque",
+  card: "Card",
+};
+
+export const CUSTOMER_TRANSACTION_STATUS_LABELS: Record<CustomerTransactionStatus, string> = {
+  outstanding: "Outstanding",
+  partial: "Partial",
+  settled: "Settled",
+  extra: "Extra",
+};
+
+export type CustomerTransaction = {
+  id: string;
+  customerId: string;
+  customerName?: string | undefined;
+  type: CustomerTransactionType;
+  amount: number;
+  /** Only meaningful for "debt" rows — how much of `amount` has been paid
+   * back so far. Always 0 for "extra" rows. */
+  amountPaid: number;
+  mode: CustomerTransactionMode;
+  reference?: string | undefined;
+  /** Date the debt was given, or the date the extra money was received. */
+  date: string;
+  /** Date the debt was last paid against (set/updated by recordPayment). */
+  paidDate?: string | undefined;
+  notes?: string | undefined;
+  createdAt: string;
 };
 
 /* =========================================================

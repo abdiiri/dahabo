@@ -203,6 +203,31 @@ create trigger customers_set_updated_at before update on public.customers
   for each row execute function public.set_updated_at();
 
 -- -----------------------------------------------------------------------------
+-- 8b. Customer ledger — debts given to, and extra money received from, a
+--     customer. customers.outstanding_balance is a cached total kept in
+--     sync from the app layer whenever a row here changes.
+-- -----------------------------------------------------------------------------
+create table public.customer_transactions (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid not null references public.customers (id) on delete cascade,
+  type text not null check (type in ('debt', 'extra')),
+  amount numeric(14, 2) not null check (amount > 0),
+  amount_paid numeric(14, 2) not null default 0,
+  mode public.payment_method not null default 'cash',
+  reference text,
+  entry_date date not null default current_date,
+  paid_date date,
+  notes text,
+  created_by uuid references public.profiles (id) on delete set null,
+  deleted_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index customer_transactions_customer_id_idx on public.customer_transactions (customer_id);
+create trigger customer_transactions_set_updated_at before update on public.customer_transactions
+  for each row execute function public.set_updated_at();
+
+-- -----------------------------------------------------------------------------
 -- 9. Shipments
 -- -----------------------------------------------------------------------------
 create table public.shipments (
@@ -358,6 +383,7 @@ alter table public.vehicles enable row level security;
 alter table public.drivers enable row level security;
 alter table public.warehouses enable row level security;
 alter table public.customers enable row level security;
+alter table public.customer_transactions enable row level security;
 alter table public.shipments enable row level security;
 alter table public.assignments enable row level security;
 alter table public.driver_advances enable row level security;
@@ -500,7 +526,7 @@ declare
   t text;
 begin
   foreach t in array array[
-    'branches', 'vehicles', 'warehouses', 'customers', 'shipments',
+    'branches', 'vehicles', 'warehouses', 'customers', 'customer_transactions', 'shipments',
     'documents', 'invoices', 'payments', 'audit_logs'
   ]
   loop
