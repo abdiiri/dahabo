@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CityCombobox } from "@/components/common/CityCombobox";
 import {
   Select,
   SelectContent,
@@ -148,6 +149,22 @@ export function QuoteForm() {
     </div>
   );
 
+  const cityField = (k: keyof Fields, label: string, placeholder: string) => (
+    <div className="min-w-0">
+      <Label className="text-sm font-semibold">
+        {label}
+        {required.includes(k) ? <span className="ml-0.5 text-destructive">*</span> : null}
+      </Label>
+      <CityCombobox
+        value={values[k]}
+        onChange={set(k)}
+        placeholder={placeholder}
+        className={cn("mt-1.5 h-11", errors[k] && "border-destructive")}
+      />
+      {errors[k] ? <p className="mt-1 text-xs font-medium text-destructive">{errors[k]}</p> : null}
+    </div>
+  );
+
   return (
     <Card className="p-6 shadow-lift sm:p-8">
       <form onSubmit={submit} noValidate>
@@ -175,7 +192,7 @@ export function QuoteForm() {
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             {select("pickupCountry", "Pickup country", countries, "Select country")}
             {select("pickupCounty", "Pickup county", counties, "Select county")}
-            {field("pickupCity", "Pickup city / town", { placeholder: "e.g. Nairobi" })}
+            {cityField("pickupCity", "Pickup city / town", "e.g. Nairobi")}
           </div>
         </fieldset>
 
@@ -184,7 +201,7 @@ export function QuoteForm() {
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             {select("destCountry", "Destination country", countries, "Select country")}
             {select("destCounty", "Destination county", counties, "Select county")}
-            {field("destCity", "Destination city / town", { placeholder: "e.g. Mombasa" })}
+            {cityField("destCity", "Destination city / town", "e.g. Mombasa")}
           </div>
         </fieldset>
 

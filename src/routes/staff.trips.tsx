@@ -9,6 +9,7 @@ import { StatusPill } from "@/components/common/StatusPill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CityCombobox } from "@/components/common/CityCombobox";
 import {
   Dialog,
   DialogContent,
@@ -263,14 +264,11 @@ function EditTripDialog({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="mb-1.5 block text-sm">Origin</Label>
-              <Input value={values.origin ?? ""} onChange={(e) => set("origin")(e.target.value)} />
+              <CityCombobox value={values.origin ?? ""} onChange={set("origin")} />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Destination</Label>
-              <Input
-                value={values.destination ?? ""}
-                onChange={(e) => set("destination")(e.target.value)}
-              />
+              <CityCombobox value={values.destination ?? ""} onChange={set("destination")} />
             </div>
           </div>
           <div>

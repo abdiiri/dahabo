@@ -5,6 +5,7 @@ import { getErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CityCombobox } from "@/components/common/CityCombobox";
 import {
   Dialog,
   DialogContent,
@@ -90,11 +91,15 @@ export function AddShipmentDialog({ onCreated }: { onCreated?: (shipment: Shipme
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="mb-1.5 block text-sm">Origin</Label>
-              <Input value={values.origin} onChange={(e) => set("origin")(e.target.value)} placeholder="e.g. Mombasa" />
+              <CityCombobox value={values.origin} onChange={set("origin")} placeholder="e.g. Mombasa" />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Destination</Label>
-              <Input value={values.destination} onChange={(e) => set("destination")(e.target.value)} placeholder="e.g. Nairobi" />
+              <CityCombobox
+                value={values.destination}
+                onChange={set("destination")}
+                placeholder="e.g. Nairobi"
+              />
             </div>
           </div>
           {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}

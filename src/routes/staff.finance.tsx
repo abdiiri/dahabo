@@ -118,7 +118,7 @@ function Page() {
   const canEdit = can("customers", "edit");
   const canDelete = can("customers", "delete");
 
-  const [tab, setTab] = useState<"invoices" | "ledger">(search.tab ?? "invoices");
+  const [tab, setTab] = useState<"invoices" | "ledger">(search.tab ?? "ledger");
   const [invoices, setInvoices] = useState<Invoice[] | null>(null);
   const [transactions, setTransactions] = useState<CustomerTransaction[] | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -456,23 +456,9 @@ function Page() {
 
       <Tabs value={tab} onValueChange={(v) => goToTab(v as "invoices" | "ledger")}>
         <TabsList>
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="ledger">Customer Ledger</TabsTrigger>
+          <TabsTrigger value="invoices">Invoices</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="invoices" className="mt-4">
-          {invoices === null ? (
-            <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground">
-              <Loader2 className="size-5 animate-spin" />
-            </div>
-          ) : (
-            <DataTable
-              data={invoices}
-              columns={invoiceColumns}
-              searchPlaceholder="Search invoices…"
-            />
-          )}
-        </TabsContent>
 
         <TabsContent value="ledger" className="mt-4 space-y-4">
           {transactions === null ? (

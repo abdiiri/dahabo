@@ -211,46 +211,53 @@
 }
 
 /*
- * Print support for documents like the account statement — everything on
- * the page is hidden except the element marked `.statement-print-area`,
- * which is then blown up to fill the printed page. Any control that
- * shouldn't appear on paper (dialog chrome, buttons, selects) gets
- * `.no-print`.
+ * Print support for the account statement. Printing happens in a
+ * dedicated popup window (see ViewStatementDialog's handlePrint) that
+ * contains only the statement markup — nothing else from the app to hide
+ * or fight with. This block just makes that isolated page compact enough
+ * to land on a single A4 sheet: the page margin is owned by `@page`, base
+ * type is smaller, and every section that shouldn't split mid-row is
+ * pinned with `break-inside: avoid`.
  */
+@page {
+  size: A4;
+  margin: 10mm 12mm;
+}
+
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  .statement-print-area,
-  .statement-print-area * {
-    visibility: visible;
-  }
-  /* Neutralise the dialog chrome (fixed position, centering transform,
-     scroll clipping) so the statement isn't cropped to the on-screen
-     modal's box when it's pulled out to print. */
-  .statement-dialog-content {
-    position: static !important;
-    inset: auto !important;
-    transform: none !important;
-    max-width: none !important;
-    max-height: none !important;
-    overflow: visible !important;
-    width: 100% !important;
-    box-shadow: none !important;
-    border: none !important;
-    padding: 0 !important;
-    background: transparent !important;
+  html,
+  body {
+    height: auto !important;
+    background: #fff !important;
   }
   .statement-print-area {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: auto;
+    width: 100%;
+    max-width: 190mm;
     margin: 0;
-    padding: 12mm;
-    border: none;
-    box-shadow: none;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    font-size: 10.5px;
+    line-height: 1.35;
+    color: #000;
+  }
+  .statement-print-area table {
+    font-size: 10px;
+  }
+  /* Keep each logical block intact rather than letting the browser split
+     it across a page boundary — this is what makes a short statement
+     collapse cleanly onto one sheet instead of spilling a stray line or
+     two onto a second page. */
+  .statement-print-area > * {
+    break-inside: avoid;
+  }
+  .statement-print-area tr {
+    break-inside: avoid;
+  }
+  .statement-print-area thead {
+    display: table-header-group;
   }
   .no-print {
     display: none !important;

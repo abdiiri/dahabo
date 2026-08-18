@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Printer, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -99,14 +99,63 @@ export function ViewStatementDialog({
     [open, customerId],
   );
 
+  const printAreaRef = useRef<HTMLDivElement>(null);
+
+  /** Prints the statement in a dedicated popup window that contains only
+   * the statement markup — nothing else from the app's DOM. Earlier this
+   * used `window.print()` with a "hide everything except this element"
+   * CSS trick, but that trick is fragile: `visibility: hidden` elements
+   * still occupy their normal-flow space, and the app shell's own fixed/
+   * absolute layout can shove the statement off onto a second page or
+   * off-screen entirely depending on the browser. A clean, isolated
+   * document sidesteps that whole class of bug. */
   function handlePrint() {
-    window.print();
+    const node = printAreaRef.current;
+    if (!node) return;
+
+    const printWindow = window.open("", "_blank", "width=900,height=1200");
+    if (!printWindow) {
+      toast.error("Pop-up blocked", {
+        description: "Allow pop-ups for this site to print the statement.",
+      });
+      return;
+    }
+
+    // Carry over every stylesheet/style tag the app already has loaded so
+    // the statement keeps its fonts, colors, and table styling.
+    const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map((el) => el.outerHTML)
+      .join("\n");
+
+    printWindow.document.open();
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Statement of account — ${customer?.name ?? ""}</title>
+    ${styleTags}
+    <style>
+      html, body { margin: 0; padding: 0; background: #fff; }
+      body { display: flex; justify-content: center; }
+    </style>
+  </head>
+  <body>
+    ${node.outerHTML}
+  </body>
+</html>`);
+    printWindow.document.close();
+
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    };
   }
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="statement-dialog-content max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-        <DialogHeader className="no-print">
+        <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="size-4.5" /> View account statement
           </DialogTitle>
@@ -116,7 +165,7 @@ export function ViewStatementDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="no-print">
+        <div>
           <Select value={customerId ?? ""} onValueChange={(v) => setCustomerId(v)}>
             <SelectTrigger className="w-full sm:w-[280px]">
               <SelectValue placeholder="Select a customer" />
@@ -132,62 +181,79 @@ export function ViewStatementDialog({
         </div>
 
         {customer ? (
-          <div className="statement-print-area space-y-6 rounded-xl border bg-card p-6">
+          <div
+            ref={printAreaRef}
+            className="statement-print-area space-y-6 rounded-xl border bg-card p-6 print:space-y-3"
+          >
             {/* Letterhead */}
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <img src={logoMark} alt="" className="size-12 shrink-0 object-contain" />
+            <div className="flex flex-wrap items-start justify-between gap-4 print:gap-2">
+              <div className="flex items-center gap-3 print:gap-2">
+                <img
+                  src={logoMark}
+                  alt=""
+                  className="size-12 shrink-0 object-contain print:size-9"
+                />
                 <div>
-                  <p className="font-display text-lg font-extrabold tracking-tight text-navy">
+                  <p className="font-display text-lg font-extrabold tracking-tight text-navy print:text-sm">
                     DAHABO GLOBAL LOGISTICS
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground print:text-[9px]">
                     Parklands, Limuru Road, Amco Crystal Plaza, Suite 5A, Nairobi
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground print:text-[9px]">
                     +254 722 665 333 · abdirashiidmahad@gmail.com
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-display text-base font-bold uppercase tracking-wide text-navy">
+                <p className="font-display text-base font-bold uppercase tracking-wide text-navy print:text-xs">
                   Statement of Account
                 </p>
-                <p className="text-xs text-muted-foreground">Generated {generatedAt}</p>
+                <p className="text-xs text-muted-foreground print:text-[9px]">
+                  Generated {generatedAt}
+                </p>
               </div>
             </div>
 
-            <Separator />
+            <Separator className="print:my-0" />
 
             {/* Customer details */}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 print:grid-cols-2 print:gap-2">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground print:text-[9px]">
                   Billed to
                 </p>
-                <p className="mt-1 font-display text-base font-bold">{customer.name}</p>
+                <p className="mt-1 font-display text-base font-bold print:mt-0.5 print:text-sm">
+                  {customer.name}
+                </p>
                 {customer.contact ? (
-                  <p className="text-sm text-muted-foreground">{customer.contact}</p>
+                  <p className="text-sm text-muted-foreground print:text-[9px]">
+                    {customer.contact}
+                  </p>
                 ) : null}
                 {customer.phone ? (
-                  <p className="text-sm text-muted-foreground">{customer.phone}</p>
+                  <p className="text-sm text-muted-foreground print:text-[9px]">
+                    {customer.phone}
+                  </p>
                 ) : null}
                 {customer.email ? (
-                  <p className="text-sm text-muted-foreground">{customer.email}</p>
+                  <p className="text-sm text-muted-foreground print:text-[9px]">
+                    {customer.email}
+                  </p>
                 ) : null}
               </div>
-              <div className="sm:text-right">
+              <div className="sm:text-right print:text-right">
                 {customer.customerCode ? (
-                  <p className="text-sm">
+                  <p className="text-sm print:text-[9px]">
                     <span className="text-muted-foreground">Customer code: </span>
                     <span className="font-medium">{customer.customerCode}</span>
                   </p>
                 ) : null}
-                <p className="text-sm">
+                <p className="text-sm print:text-[9px]">
                   <span className="text-muted-foreground">Account tier: </span>
                   <span className="font-medium">{customer.tier}</span>
                 </p>
-                <p className="text-sm">
+                <p className="text-sm print:text-[9px]">
                   <span className="text-muted-foreground">Account status: </span>
                   <span className="font-medium">{customer.status}</span>
                 </p>
@@ -195,7 +261,7 @@ export function ViewStatementDialog({
             </div>
 
             {/* Summary cards */}
-            <div className="grid gap-3 sm:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-5 print:grid-cols-5 print:gap-1.5">
               {[
                 { label: "Total debt issued", value: summary.totalIssued },
                 { label: "Total paid", value: summary.totalPaid },
@@ -207,13 +273,16 @@ export function ViewStatementDialog({
                 { label: "Advance / credit on file", value: summary.totalExtra },
                 { label: "Upfront received", value: summary.totalUpfront },
               ].map((s) => (
-                <div key={s.label} className="rounded-lg border bg-surface p-3">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div
+                  key={s.label}
+                  className="rounded-lg border bg-surface p-3 print:rounded-none print:border-0 print:bg-transparent print:p-0 print:border-l print:pl-1.5"
+                >
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground print:text-[7.5px] print:leading-tight">
                     {s.label}
                   </p>
                   <p
                     className={cn(
-                      "mt-1 font-display text-sm font-bold",
+                      "mt-1 font-display text-sm font-bold print:mt-0 print:text-[10px]",
                       s.emphasis ? "text-destructive" : "text-foreground",
                     )}
                   >
@@ -225,7 +294,7 @@ export function ViewStatementDialog({
 
             {/* Ledger */}
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground print:mb-1 print:text-[9px]">
                 Transaction history
               </p>
               {rows.length === 0 ? (
@@ -233,53 +302,63 @@ export function ViewStatementDialog({
                   No ledger entries on file for this customer yet.
                 </p>
               ) : (
-                <div className="overflow-x-auto rounded-lg border">
-                  <table className="w-full text-sm">
+                <div className="overflow-x-auto rounded-lg border print:overflow-visible print:rounded-none print:border-0">
+                  <table className="w-full text-sm print:text-[10px]">
                     <thead>
-                      <tr className="border-b bg-surface text-left text-xs uppercase tracking-wide text-muted-foreground">
-                        <th className="px-3 py-2 font-medium">Date</th>
-                        <th className="px-3 py-2 font-medium">Description</th>
-                        <th className="px-3 py-2 font-medium">Mode</th>
-                        <th className="px-3 py-2 text-right font-medium">Amount</th>
-                        <th className="px-3 py-2 text-right font-medium">Paid</th>
-                        <th className="px-3 py-2 text-right font-medium">Balance</th>
-                        <th className="px-3 py-2 font-medium">Status</th>
+                      <tr className="border-b bg-surface text-left text-xs uppercase tracking-wide text-muted-foreground print:bg-transparent print:text-[8px]">
+                        <th className="px-3 py-2 font-medium print:px-1.5 print:py-1">Date</th>
+                        <th className="px-3 py-2 font-medium print:px-1.5 print:py-1">
+                          Description
+                        </th>
+                        <th className="px-3 py-2 font-medium print:px-1.5 print:py-1">Mode</th>
+                        <th className="px-3 py-2 text-right font-medium print:px-1.5 print:py-1">
+                          Amount
+                        </th>
+                        <th className="px-3 py-2 text-right font-medium print:px-1.5 print:py-1">
+                          Paid
+                        </th>
+                        <th className="px-3 py-2 text-right font-medium print:px-1.5 print:py-1">
+                          Balance
+                        </th>
+                        <th className="px-3 py-2 font-medium print:px-1.5 print:py-1">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rows.map((r) => (
                         <tr key={r.transaction.id} className="border-b last:border-b-0">
-                          <td className="whitespace-nowrap px-3 py-2 align-top">
+                          <td className="whitespace-nowrap px-3 py-2 align-top print:px-1.5 print:py-1">
                             {new Date(r.transaction.date).toLocaleDateString()}
                           </td>
-                          <td className="px-3 py-2 align-top">
+                          <td className="px-3 py-2 align-top print:px-1.5 print:py-1">
                             <p className="font-medium">
                               {CUSTOMER_TRANSACTION_TYPE_LABELS[r.transaction.type]}
                             </p>
                             {r.transaction.reference ? (
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-xs text-muted-foreground print:text-[8px]">
                                 Ref: {r.transaction.reference}
                               </p>
                             ) : null}
                             {r.transaction.notes ? (
-                              <p className="text-xs text-muted-foreground">{r.transaction.notes}</p>
+                              <p className="text-xs text-muted-foreground print:text-[8px]">
+                                {r.transaction.notes}
+                              </p>
                             ) : null}
                           </td>
-                          <td className="whitespace-nowrap px-3 py-2 align-top">
+                          <td className="whitespace-nowrap px-3 py-2 align-top print:px-1.5 print:py-1">
                             {CUSTOMER_TRANSACTION_MODE_LABELS[r.transaction.mode]}
                           </td>
-                          <td className="whitespace-nowrap px-3 py-2 text-right align-top">
+                          <td className="whitespace-nowrap px-3 py-2 text-right align-top print:px-1.5 print:py-1">
                             KSh {r.transaction.amount.toLocaleString()}
                           </td>
-                          <td className="whitespace-nowrap px-3 py-2 text-right align-top">
+                          <td className="whitespace-nowrap px-3 py-2 text-right align-top print:px-1.5 print:py-1">
                             {r.transaction.type === "debt"
                               ? `KSh ${r.transaction.amountPaid.toLocaleString()}`
                               : "—"}
                           </td>
-                          <td className="whitespace-nowrap px-3 py-2 text-right align-top font-medium">
+                          <td className="whitespace-nowrap px-3 py-2 text-right align-top font-medium print:px-1.5 print:py-1">
                             KSh {r.runningBalance.toLocaleString()}
                           </td>
-                          <td className="whitespace-nowrap px-3 py-2 align-top">
+                          <td className="whitespace-nowrap px-3 py-2 align-top print:px-1.5 print:py-1">
                             <StatusPill status={CUSTOMER_TRANSACTION_STATUS_LABELS[r.status]} />
                           </td>
                         </tr>
@@ -290,17 +369,17 @@ export function ViewStatementDialog({
               )}
             </div>
 
-            <Separator />
+            <Separator className="print:my-0" />
 
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <p className="max-w-md text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-end justify-between gap-4 print:gap-2">
+              <p className="max-w-md text-xs text-muted-foreground print:text-[8px]">
                 {summary.totalOutstanding > 0
                   ? "Kindly clear the outstanding balance above at your earliest convenience. Get in touch if you have any questions about this statement."
                   : "This account has no outstanding balance. Thank you for your business."}
               </p>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Balance due</p>
-                <p className="font-display text-xl font-extrabold text-navy">
+                <p className="text-xs text-muted-foreground print:text-[8px]">Balance due</p>
+                <p className="font-display text-xl font-extrabold text-navy print:text-sm">
                   KSh {summary.totalOutstanding.toLocaleString()}
                 </p>
               </div>

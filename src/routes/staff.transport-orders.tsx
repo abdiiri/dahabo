@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CityCombobox } from "@/components/common/CityCombobox";
 import {
   Dialog,
   DialogContent,
@@ -356,17 +357,14 @@ function EditTransportOrderDialog({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="mb-1.5 block text-sm">Pickup location</Label>
-              <Input
+              <CityCombobox
                 value={values.pickupLocation ?? ""}
-                onChange={(e) => set("pickupLocation")(e.target.value)}
+                onChange={set("pickupLocation")}
               />
             </div>
             <div>
               <Label className="mb-1.5 block text-sm">Destination</Label>
-              <Input
-                value={values.destination ?? ""}
-                onChange={(e) => set("destination")(e.target.value)}
-              />
+              <CityCombobox value={values.destination ?? ""} onChange={set("destination")} />
             </div>
           </div>
           <div>
