@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { localStore } from "./local-store";
+import { listDrivers } from "./drivers";
 import type { DriverAdvance, NewAdvanceInput, UsageReportInput } from "./types";
 
 const store = localStore<DriverAdvance>("driver_advances", []);
@@ -44,9 +45,15 @@ export async function giveAdvance(input: NewAdvanceInput): Promise<DriverAdvance
     return mapRow(data);
   }
 
+  // Resolve the driver's name up front so demo mode's Audit Logs "Target"
+  // column shows who the advance was given to (codeOf() in local-store.ts
+  // reads driverName), same as the Supabase trigger already does.
+  const driverName = (await listDrivers()).find((d) => d.id === input.driverId)?.fullName;
+
   const advance: DriverAdvance = {
     id: `local-${crypto.randomUUID()}`,
     driverId: input.driverId,
+    driverName,
     amount: input.amount,
     purpose: input.purpose,
     givenAt: new Date().toISOString(),

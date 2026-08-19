@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Printer, FileText } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatMoney, formatMoneyGroups } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { StatusPill } from "@/components/common/StatusPill";
@@ -28,28 +30,37 @@ import {
   CUSTOMER_TRANSACTION_TYPE_LABELS,
   type Customer,
   type CustomerTransaction,
+  type CustomerTransactionCurrency,
   type CustomerTransactionStatus,
 } from "@/lib/api/types";
 import logoMark from "@/assets/dahabo-logo-mark.png";
 
-/** One row of the running-balance ledger rendered on the statement. */
+/** One row of the running-balance ledger rendered on the statement. Balance
+ * is tracked per currency — a customer can carry debts in more than one, so
+ * a single running number would silently mix them. */
 type StatementRow = {
   transaction: CustomerTransaction;
   status: CustomerTransactionStatus;
-  runningBalance: number;
+  runningBalances: { amount: number; currency: CustomerTransactionCurrency }[];
 };
 
 /** Builds the chronological, running-balance view of a customer's full
  * ledger — every debt and every extra/advance payment, oldest first, each
- * annotated with the outstanding balance as of that entry. This is the
- * "smart" part: rather than just listing raw rows, it reconstructs the
- * account's balance history the way a real statement would. */
+ * annotated with the outstanding balance (per currency) as of that entry.
+ * This is the "smart" part: rather than just listing raw rows, it
+ * reconstructs the account's balance history the way a real statement would. */
 function buildStatementRows(transactions: CustomerTransaction[]): StatementRow[] {
   const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-  let balance = 0;
+  const balances = new Map<CustomerTransactionCurrency, number>();
   return sorted.map((t) => {
-    balance += t.type === "debt" ? remainingBalance(t) : 0;
-    return { transaction: t, status: getTransactionStatus(t), runningBalance: balance };
+    if (t.type === "debt") {
+      balances.set(t.currency, (balances.get(t.currency) ?? 0) + remainingBalance(t));
+    }
+    return {
+      transaction: t,
+      status: getTransactionStatus(t),
+      runningBalances: [...balances.entries()].map(([currency, amount]) => ({ currency, amount })),
+    };
   });
 }
 
@@ -82,16 +93,26 @@ export function ViewStatementDialog({
 
   const summary = useMemo(() => {
     const debts = rows.filter((r) => r.transaction.type === "debt");
-    const totalIssued = debts.reduce((sum, r) => sum + r.transaction.amount, 0);
-    const totalPaid = debts.reduce((sum, r) => sum + r.transaction.amountPaid, 0);
-    const totalOutstanding = rows.length > 0 ? (rows[rows.length - 1]?.runningBalance ?? 0) : 0;
-    const totalExtra = rows
-      .filter((r) => r.transaction.type === "extra")
-      .reduce((sum, r) => sum + r.transaction.amount, 0);
-    const totalUpfront = rows
-      .filter((r) => r.transaction.type === "upfront")
-      .reduce((sum, r) => sum + r.transaction.amount, 0);
-    return { totalIssued, totalPaid, totalOutstanding, totalExtra, totalUpfront };
+    const totalIssued = formatMoneyGroups(
+      debts.map((r) => ({ amount: r.transaction.amount, currency: r.transaction.currency })),
+    );
+    const totalPaid = formatMoneyGroups(
+      debts.map((r) => ({ amount: r.transaction.amountPaid, currency: r.transaction.currency })),
+    );
+    const lastBalances = rows.length > 0 ? (rows[rows.length - 1]?.runningBalances ?? []) : [];
+    const totalOutstanding = formatMoneyGroups(lastBalances);
+    const hasOutstanding = lastBalances.some((b) => b.amount > 0);
+    const totalExtra = formatMoneyGroups(
+      rows
+        .filter((r) => r.transaction.type === "extra")
+        .map((r) => ({ amount: r.transaction.amount, currency: r.transaction.currency })),
+    );
+    const totalUpfront = formatMoneyGroups(
+      rows
+        .filter((r) => r.transaction.type === "upfront")
+        .map((r) => ({ amount: r.transaction.amount, currency: r.transaction.currency })),
+    );
+    return { totalIssued, totalPaid, totalOutstanding, hasOutstanding, totalExtra, totalUpfront };
   }, [rows]);
 
   const generatedAt = useMemo(
@@ -132,7 +153,7 @@ export function ViewStatementDialog({
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Statement of account — ${customer?.name ?? ""}</title>
+    <title>Dahabo Global Logistics — Statement</title>
     ${styleTags}
     <style>
       html, body { margin: 0; padding: 0; background: #fff; }
@@ -268,7 +289,7 @@ export function ViewStatementDialog({
                 {
                   label: "Outstanding balance",
                   value: summary.totalOutstanding,
-                  emphasis: summary.totalOutstanding > 0,
+                  emphasis: summary.hasOutstanding,
                 },
                 { label: "Advance / credit on file", value: summary.totalExtra },
                 { label: "Upfront received", value: summary.totalUpfront },
@@ -286,7 +307,7 @@ export function ViewStatementDialog({
                       s.emphasis ? "text-destructive" : "text-foreground",
                     )}
                   >
-                    KSh {s.value.toLocaleString()}
+                    {s.value}
                   </p>
                 </div>
               ))}
@@ -348,15 +369,15 @@ export function ViewStatementDialog({
                             {CUSTOMER_TRANSACTION_MODE_LABELS[r.transaction.mode]}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-right align-top print:px-1.5 print:py-1">
-                            KSh {r.transaction.amount.toLocaleString()}
+                            {formatMoney(r.transaction.amount, r.transaction.currency)}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-right align-top print:px-1.5 print:py-1">
                             {r.transaction.type === "debt"
-                              ? `KSh ${r.transaction.amountPaid.toLocaleString()}`
+                              ? formatMoney(r.transaction.amountPaid, r.transaction.currency)
                               : "—"}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-right align-top font-medium print:px-1.5 print:py-1">
-                            KSh {r.runningBalance.toLocaleString()}
+                            {formatMoneyGroups(r.runningBalances)}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 align-top print:px-1.5 print:py-1">
                             <StatusPill status={CUSTOMER_TRANSACTION_STATUS_LABELS[r.status]} />
@@ -373,14 +394,14 @@ export function ViewStatementDialog({
 
             <div className="flex flex-wrap items-end justify-between gap-4 print:gap-2">
               <p className="max-w-md text-xs text-muted-foreground print:text-[8px]">
-                {summary.totalOutstanding > 0
+                {summary.hasOutstanding
                   ? "Kindly clear the outstanding balance above at your earliest convenience. Get in touch if you have any questions about this statement."
                   : "This account has no outstanding balance. Thank you for your business."}
               </p>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground print:text-[8px]">Balance due</p>
                 <p className="font-display text-xl font-extrabold text-navy print:text-sm">
-                  KSh {summary.totalOutstanding.toLocaleString()}
+                  {summary.totalOutstanding}
                 </p>
               </div>
             </div>

@@ -11,9 +11,11 @@ import {
   Users as UsersIcon,
   MessageCircle,
   FileText,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage, cn, buildWhatsAppLink } from "@/lib/utils";
+import { formatMoney, formatMoneyGroups } from "@/lib/currency";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatCard } from "@/components/common/StatCard";
@@ -126,6 +128,7 @@ function Page() {
   const [typeFilter, setTypeFilter] = useState<"all" | CustomerTransactionType>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | CustomerTransactionStatus>("all");
   const [paying, setPaying] = useState<CustomerTransaction | null>(null);
+  const [editingEntry, setEditingEntry] = useState<CustomerTransaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [statementOpen, setStatementOpen] = useState(false);
@@ -228,20 +231,28 @@ function Page() {
     return rows;
   }, [transactions, customerFilter, typeFilter, statusFilter]);
 
-  // Totals reflect whatever filters are active, so the numbers always match what's in the table below.
+  // Totals reflect whatever filters are active, so the numbers always match
+  // what's in the table below. Entries can be in different currencies, so
+  // each total is grouped by currency rather than summed as one number —
+  // see formatMoneyGroups in lib/currency.ts.
   const ledgerStats = useMemo(() => {
     const debtRows = ledgerRows.filter((t) => t.type === "debt");
-    const totalOutstanding = debtRows.reduce((sum, t) => sum + remainingBalance(t), 0);
-    const totalExtra = ledgerRows
-      .filter((t) => t.type === "extra")
-      .reduce((sum, t) => sum + t.amount, 0);
-    const totalUpfront = ledgerRows
-      .filter((t) => t.type === "upfront")
-      .reduce((sum, t) => sum + t.amount, 0);
+    const totalOutstanding = formatMoneyGroups(
+      debtRows.map((t) => ({ amount: remainingBalance(t), currency: t.currency })),
+    );
+    const totalExtra = formatMoneyGroups(
+      ledgerRows.filter((t) => t.type === "extra").map((t) => ({ amount: t.amount, currency: t.currency })),
+    );
+    const totalUpfront = formatMoneyGroups(
+      ledgerRows
+        .filter((t) => t.type === "upfront")
+        .map((t) => ({ amount: t.amount, currency: t.currency })),
+    );
     const customersOwing = new Set(
       debtRows.filter((t) => remainingBalance(t) > 0).map((t) => t.customerId),
     ).size;
-    return { totalOutstanding, totalExtra, totalUpfront, customersOwing };
+    const hasOutstanding = debtRows.some((t) => remainingBalance(t) > 0);
+    return { totalOutstanding, totalExtra, totalUpfront, customersOwing, hasOutstanding };
   }, [ledgerRows]);
 
   function goToTab(next: "invoices" | "ledger") {
@@ -277,7 +288,7 @@ function Page() {
     const remaining = remainingBalance(t);
     const message = [
       "*Dahabo Global Logistics*",
-      `Hi ${customer?.name ?? t.customerName ?? "there"}, this is a reminder that KSh ${remaining.toLocaleString()} from ${new Date(t.date).toLocaleDateString()}${t.reference ? ` (Ref: ${t.reference})` : ""} is still outstanding.`,
+      `Hi ${customer?.name ?? t.customerName ?? "there"}, this is a reminder that ${formatMoney(remaining, t.currency)} from ${new Date(t.date).toLocaleDateString()}${t.reference ? ` (Ref: ${t.reference})` : ""} is still outstanding.`,
       "Kindly settle at your earliest convenience. Thank you for your business.",
       "— Dahabo Global Logistics",
     ].join("\n");
@@ -339,10 +350,12 @@ function Page() {
         const remaining = remainingBalance(r);
         return (
           <div className="flex flex-col">
-            <span className="font-semibold tabular-nums">KSh {r.amount.toLocaleString()}</span>
+            <span className="font-semibold tabular-nums">{formatMoney(r.amount, r.currency)}</span>
             {r.type === "debt" && r.amountPaid > 0 ? (
               <span className="text-xs text-muted-foreground">
-                {remaining > 0 ? `KSh ${remaining.toLocaleString()} still owed` : "Fully paid back"}
+                {remaining > 0
+                  ? `${formatMoney(remaining, r.currency)} still owed`
+                  : "Fully paid back"}
               </span>
             ) : null}
           </div>
@@ -400,6 +413,11 @@ function Page() {
               {canEdit && canPay ? (
                 <DropdownMenuItem onSelect={() => setPaying(r)}>
                   <Wallet className="size-4" /> Record payment
+                </DropdownMenuItem>
+              ) : null}
+              {canEdit ? (
+                <DropdownMenuItem onSelect={() => setEditingEntry(r)}>
+                  <Pencil className="size-4" /> Edit
                 </DropdownMenuItem>
               ) : null}
               {r.type === "debt" && status !== "settled" ? (
@@ -470,19 +488,19 @@ function Page() {
               <section className="grid gap-4 sm:grid-cols-4">
                 <StatCard
                   label="Total outstanding"
-                  value={`KSh ${ledgerStats.totalOutstanding.toLocaleString()}`}
+                  value={ledgerStats.totalOutstanding}
                   icon={HandCoins}
-                  tone={ledgerStats.totalOutstanding > 0 ? "danger" : "default"}
+                  tone={ledgerStats.hasOutstanding ? "danger" : "default"}
                 />
                 <StatCard
                   label="Extra / advance balance"
-                  value={`KSh ${ledgerStats.totalExtra.toLocaleString()}`}
+                  value={ledgerStats.totalExtra}
                   icon={PiggyBank}
                   tone="success"
                 />
                 <StatCard
                   label="Upfront received"
-                  value={`KSh ${ledgerStats.totalUpfront.toLocaleString()}`}
+                  value={ledgerStats.totalUpfront}
                   icon={BadgeCheck}
                   tone="default"
                 />
@@ -576,6 +594,17 @@ function Page() {
           setTransactions((rows) => (rows ?? []).map((r) => (r.id === updated.id ? updated : r)));
           listCustomers().then(setCustomers);
           setPaying(null);
+        }}
+      />
+
+      <AddCustomerTransactionDialog
+        entry={editingEntry}
+        open={editingEntry !== null}
+        onOpenChange={(open) => !open && setEditingEntry(null)}
+        onUpdated={(updated) => {
+          setTransactions((rows) => (rows ?? []).map((r) => (r.id === updated.id ? updated : r)));
+          listCustomers().then(setCustomers);
+          setEditingEntry(null);
         }}
       />
 

@@ -121,6 +121,10 @@ type LocalAuditEntry = {
   description?: string;
   targetTable?: string;
   targetId?: string;
+  /** Human-readable label for the record the action happened to — mirrors
+   * audit_logs.target_name from migration 035, so the Audit Logs tab's
+   * "Target" column is just as readable in demo mode as it is for real. */
+  targetName?: string | undefined;
   createdAt: string;
 };
 
@@ -157,6 +161,14 @@ function codeOf(row: unknown): string | undefined {
   const candidates = [
     "orderCode", "tripCode", "vehicleCode", "driverCode", "staffCode", "assignmentCode",
     "shipmentCode", "fuelCode", "customerCode", "invoiceCode", "warehouseCode", "documentCode",
+    // Person/vehicle labels a row points at, checked before generic name
+    // fields — e.g. a driver_payments row has no name of its own, but does
+    // carry the driver's name, which is what "Target" should show.
+    "driverName", "vehicleName", "plateNumber", "customerName", "staffName",
+    // A salaries row is keyed by driverId/profileId, not a name — personName
+    // is filled in by salaries.ts (driver or staff) so a salary/allowance/
+    // bonus payment shows *who* was paid, same as driver_payments does.
+    "personName",
     "fullName", "name", "title", "description", "purpose",
   ];
   for (const field of candidates) {
@@ -203,6 +215,7 @@ export function localStore<T extends { id: string }>(key: string, seed: T[]) {
           action: `${key}_created`,
           targetTable: key,
           targetId: row.id,
+          targetName: code,
           description: code ? `Created ${label.toLowerCase()} — ${code}` : `Created a ${label.toLowerCase()}`,
         });
       }
@@ -225,6 +238,7 @@ export function localStore<T extends { id: string }>(key: string, seed: T[]) {
           action: `${key}_updated`,
           targetTable: key,
           targetId: id,
+          targetName: code,
           description: (code ? `Updated ${label.toLowerCase()} — ${code}` : `Updated a ${label.toLowerCase()}`) + statusNote,
         });
       }
@@ -243,6 +257,7 @@ export function localStore<T extends { id: string }>(key: string, seed: T[]) {
           action: `${key}_deleted`,
           targetTable: key,
           targetId: id,
+          targetName: code,
           description: code ? `Deleted ${label.toLowerCase()} — ${code}` : `Deleted a ${label.toLowerCase()}`,
         });
       }

@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { recordPayment, remainingBalance } from "@/lib/api/customer-transactions";
+import { formatMoney } from "@/lib/currency";
 import type { CustomerTransaction, CustomerTransactionMode } from "@/lib/api/types";
 import { CUSTOMER_TRANSACTION_MODE_LABELS } from "@/lib/api/types";
 
@@ -41,6 +42,7 @@ export function RecordPaymentDialog({
   const [submitting, setSubmitting] = useState(false);
 
   const balance = entry ? remainingBalance(entry) : 0;
+  const currency = entry?.currency ?? "KES";
 
   useEffect(() => {
     if (entry) {
@@ -53,7 +55,7 @@ export function RecordPaymentDialog({
   async function handleSubmit() {
     if (!entry) return;
     if (amount <= 0 || amount > balance) {
-      toast.error(`Enter an amount between 1 and ${balance.toLocaleString()}.`);
+      toast.error(`Enter an amount between 1 and ${formatMoney(balance, currency)}.`);
       return;
     }
     setSubmitting(true);
@@ -74,13 +76,14 @@ export function RecordPaymentDialog({
         <DialogHeader>
           <DialogTitle>Record payment</DialogTitle>
           <DialogDescription>
-            {entry?.customerName ?? "Customer"} owes KSh {balance.toLocaleString()} on this entry.
+            {entry?.customerName ?? "Customer"} owes {formatMoney(balance, currency)} on this
+            entry. Payments are recorded in the same currency as the debt.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-3 py-2">
           <div>
-            <Label className="mb-1.5 block text-sm">Amount paid (KSh)</Label>
+            <Label className="mb-1.5 block text-sm">Amount paid ({currency})</Label>
             <Input
               type="number"
               min={0}

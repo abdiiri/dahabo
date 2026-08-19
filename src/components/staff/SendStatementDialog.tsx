@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { remainingBalance } from "@/lib/api/customer-transactions";
+import { formatMoney, formatMoneyGroups } from "@/lib/currency";
 import type { Customer, CustomerTransaction } from "@/lib/api/types";
 
 /** Builds the default statement text for one customer — open debts, total
@@ -29,9 +30,11 @@ import type { Customer, CustomerTransaction } from "@/lib/api/types";
 function buildStatementText(
   customer: Customer,
   openDebts: CustomerTransaction[],
-  totalOutstanding: number,
-  totalExtra: number,
-  totalUpfront: number,
+  totalOutstanding: string,
+  totalExtra: string,
+  hasExtra: boolean,
+  totalUpfront: string,
+  hasUpfront: boolean,
 ): string {
   const lines: string[] = [];
   lines.push("*Dahabo Global Logistics*");
@@ -44,18 +47,18 @@ function buildStatementText(
     for (const t of openDebts) {
       const ref = t.reference ? ` (Ref: ${t.reference})` : "";
       lines.push(
-        `• ${new Date(t.date).toLocaleDateString()} — KSh ${remainingBalance(t).toLocaleString()}${ref}`,
+        `• ${new Date(t.date).toLocaleDateString()} — ${formatMoney(remainingBalance(t), t.currency)}${ref}`,
       );
     }
     lines.push("");
   }
 
-  lines.push(`Total outstanding: KSh ${totalOutstanding.toLocaleString()}`);
-  if (totalExtra > 0) {
-    lines.push(`Advance/credit balance on file: KSh ${totalExtra.toLocaleString()}`);
+  lines.push(`Total outstanding: ${totalOutstanding}`);
+  if (hasExtra) {
+    lines.push(`Advance/credit balance on file: ${totalExtra}`);
   }
-  if (totalUpfront > 0) {
-    lines.push(`Upfront received (paid ahead for order): KSh ${totalUpfront.toLocaleString()}`);
+  if (hasUpfront) {
+    lines.push(`Upfront received (paid ahead for order): ${totalUpfront}`);
   }
   lines.push("");
   lines.push(
@@ -91,12 +94,25 @@ export function SendStatementDialog({
     const openDebts = mine
       .filter((t) => t.type === "debt" && remainingBalance(t) > 0)
       .sort((a, b) => a.date.localeCompare(b.date));
-    const totalOutstanding = openDebts.reduce((sum, t) => sum + remainingBalance(t), 0);
-    const totalExtra = mine.filter((t) => t.type === "extra").reduce((sum, t) => sum + t.amount, 0);
-    const totalUpfront = mine
-      .filter((t) => t.type === "upfront")
-      .reduce((sum, t) => sum + t.amount, 0);
-    return { openDebts, totalOutstanding, totalExtra, totalUpfront };
+    const totalOutstanding = formatMoneyGroups(
+      openDebts.map((t) => ({ amount: remainingBalance(t), currency: t.currency })),
+    );
+    const extraRows = mine.filter((t) => t.type === "extra");
+    const totalExtra = formatMoneyGroups(
+      extraRows.map((t) => ({ amount: t.amount, currency: t.currency })),
+    );
+    const upfrontRows = mine.filter((t) => t.type === "upfront");
+    const totalUpfront = formatMoneyGroups(
+      upfrontRows.map((t) => ({ amount: t.amount, currency: t.currency })),
+    );
+    return {
+      openDebts,
+      totalOutstanding,
+      totalExtra,
+      hasExtra: extraRows.length > 0,
+      totalUpfront,
+      hasUpfront: upfrontRows.length > 0,
+    };
   }, [transactions, customerId]);
 
   // Reset to the customer passed in (or the first on the list) each time the
@@ -110,7 +126,15 @@ export function SendStatementDialog({
   useEffect(() => {
     if (!open || !customer || !stats) return;
     setMessage(
-      buildStatementText(customer, stats.openDebts, stats.totalOutstanding, stats.totalExtra),
+      buildStatementText(
+        customer,
+        stats.openDebts,
+        stats.totalOutstanding,
+        stats.totalExtra,
+        stats.hasExtra,
+        stats.totalUpfront,
+        stats.hasUpfront,
+      ),
     );
     // Only regenerate when the customer changes — not on every keystroke,
     // since the message is meant to be editable afterward.

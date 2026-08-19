@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { localStore } from "./local-store";
 import { listDrivers } from "./drivers";
+import { listStaff } from "./staff";
 import type { Salary, NewSalaryInput, DriverPaymentStatus } from "./types";
 
 const store = localStore<Salary>("salaries", []);
@@ -44,9 +45,18 @@ export async function createSalary(input: NewSalaryInput, isDriver = true): Prom
     return mapRow(data);
   }
 
+  // Resolve who's actually being paid up front — in demo mode, this is
+  // what lets the Audit Logs "Target" column show a name instead of just
+  // "Salary/allowance" (see local-store.ts's codeOf(), which reads
+  // personName). Mirrors what listSalaries() does for the Supabase path.
+  const personName = isDriver
+    ? (await listDrivers()).find((d) => d.id === input.profileId)?.fullName
+    : (await listStaff()).find((s) => s.id === input.profileId)?.fullName;
+
   const record: Salary = {
     id: `local-${crypto.randomUUID()}`,
     profileId: input.profileId,
+    personName,
     type: input.type,
     amount: input.amount,
     periodMonth: input.periodMonth,

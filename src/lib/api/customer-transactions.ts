@@ -3,6 +3,7 @@ import { localStore } from "./local-store";
 import { setCustomerOutstanding } from "./customers";
 import type {
   CustomerTransaction,
+  CustomerTransactionCurrency,
   CustomerTransactionMode,
   CustomerTransactionStatus,
   CustomerTransactionType,
@@ -64,6 +65,7 @@ async function recalcOutstanding(customerId: string): Promise<void> {
 export type NewDebtInput = {
   customerId: string;
   amount: number;
+  currency: CustomerTransactionCurrency;
   mode: CustomerTransactionMode;
   date: string;
   reference?: string | undefined;
@@ -81,6 +83,21 @@ export type RecordPaymentInput = {
   reference?: string | undefined;
 };
 
+/** Editable fields on an existing ledger entry. Currency and amount can both
+ * be corrected after the fact — e.g. an entry logged in the wrong currency,
+ * or a typo in the figure. `customerId` and `type` are intentionally not
+ * editable here: moving an entry to a different customer or flipping it
+ * between debt/extra/upfront changes what it means, not just its details —
+ * delete and re-add instead. */
+export type UpdateTransactionInput = {
+  amount: number;
+  currency: CustomerTransactionCurrency;
+  mode: CustomerTransactionMode;
+  date: string;
+  reference?: string | undefined;
+  notes?: string | undefined;
+};
+
 async function insertTransaction(
   type: CustomerTransactionType,
   input: NewDebtInput,
@@ -92,6 +109,7 @@ async function insertTransaction(
         customer_id: input.customerId,
         type,
         amount: input.amount,
+        currency: input.currency,
         mode: input.mode,
         entry_date: input.date,
         reference: input.reference || null,
@@ -110,6 +128,7 @@ async function insertTransaction(
     customerId: input.customerId,
     type,
     amount: input.amount,
+    currency: input.currency,
     amountPaid: 0,
     mode: input.mode,
     reference: input.reference,
@@ -138,6 +157,48 @@ export async function createExtra(input: NewExtraInput): Promise<CustomerTransac
  * doesn't touch outstanding. */
 export async function createUpfront(input: NewUpfrontInput): Promise<CustomerTransaction> {
   return insertTransaction("upfront", input);
+}
+
+/** Edit an existing ledger entry's amount, currency, mode, date, reference,
+ * or notes. Re-totals the customer's outstanding balance afterward in case
+ * the amount changed on a debt row. */
+export async function updateCustomerTransaction(
+  id: string,
+  input: UpdateTransactionInput,
+): Promise<CustomerTransaction> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("customer_transactions")
+      .update({
+        amount: input.amount,
+        currency: input.currency,
+        mode: input.mode,
+        entry_date: input.date,
+        reference: input.reference || null,
+        notes: input.notes || null,
+      })
+      .eq("id", id)
+      .select(SELECT)
+      .single();
+    if (error) throw error;
+    const updated = mapRow(data);
+    if (updated.type === "debt") await recalcOutstanding(updated.customerId);
+    return updated;
+  }
+
+  const existing = store.get(id);
+  if (!existing) throw new Error("Ledger entry not found");
+  const updated = store.update(id, {
+    amount: input.amount,
+    currency: input.currency,
+    mode: input.mode,
+    date: input.date,
+    reference: input.reference,
+    notes: input.notes,
+  });
+  if (!updated) throw new Error("Ledger entry not found");
+  if (updated.type === "debt") await recalcOutstanding(updated.customerId);
+  return updated;
 }
 
 /** Apply a payment against an existing debt row — full or partial. Reduces
@@ -209,6 +270,7 @@ function mapRow(row: any): CustomerTransaction {
     customerName: row.customers?.name ?? undefined,
     type: row.type,
     amount: Number(row.amount) || 0,
+    currency: (row.currency as CustomerTransactionCurrency) || "KES",
     amountPaid: Number(row.amount_paid) || 0,
     mode: row.mode,
     reference: row.reference ?? undefined,

@@ -245,6 +245,9 @@ export type NewDriverInput = {
 export type DriverAdvance = {
   id: string;
   driverId: string;
+  /** Demo-mode only (not a real column) — lets the Audit Logs "Target"
+   * column show the driver's name without a lookup. */
+  driverName?: string | undefined;
   amount: number;
   purpose?: string | undefined;
   givenBy?: string | undefined;
@@ -330,6 +333,11 @@ export type CustomerTransactionType = "debt" | "extra" | "upfront";
 
 export type CustomerTransactionMode = "mpesa" | "bank_transfer" | "cash" | "cheque" | "card";
 
+/** Currency the money was given or received in. KES is the default for
+ * everyday local business; the rest cover Dahabo's cross-border corridors
+ * (Uganda, Tanzania, Ethiopia, Somalia) plus USD for international deals. */
+export type CustomerTransactionCurrency = "KES" | "USD" | "UGX" | "TZS" | "ETB" | "SOS";
+
 /** Derived, not stored — see getTransactionStatus() in customer-transactions.ts. */
 export type CustomerTransactionStatus = "outstanding" | "partial" | "settled" | "extra" | "upfront";
 
@@ -347,6 +355,37 @@ export const CUSTOMER_TRANSACTION_MODE_LABELS: Record<CustomerTransactionMode, s
   card: "Card",
 };
 
+/** Order controls how the currency dropdown lists options — KES first since
+ * it's the default/most-used, then the rest alphabetically by code. */
+export const CUSTOMER_TRANSACTION_CURRENCIES: CustomerTransactionCurrency[] = [
+  "KES",
+  "USD",
+  "ETB",
+  "SOS",
+  "TZS",
+  "UGX",
+];
+
+export const CUSTOMER_TRANSACTION_CURRENCY_LABELS: Record<CustomerTransactionCurrency, string> = {
+  KES: "KES — Kenyan Shilling",
+  USD: "USD — US Dollar",
+  UGX: "UGX — Ugandan Shilling",
+  TZS: "TZS — Tanzanian Shilling",
+  ETB: "ETB — Ethiopian Birr",
+  SOS: "SOS — Somali Shilling",
+};
+
+/** Short prefix used in amounts, e.g. "KSh 12,000" — matches the KSh style
+ * already used across invoices/statements rather than raw ISO codes. */
+export const CUSTOMER_TRANSACTION_CURRENCY_SYMBOLS: Record<CustomerTransactionCurrency, string> = {
+  KES: "KSh",
+  USD: "$",
+  UGX: "USh",
+  TZS: "TSh",
+  ETB: "Br",
+  SOS: "Ssh",
+};
+
 export const CUSTOMER_TRANSACTION_STATUS_LABELS: Record<CustomerTransactionStatus, string> = {
   outstanding: "Outstanding",
   partial: "Partial",
@@ -361,6 +400,9 @@ export type CustomerTransaction = {
   customerName?: string | undefined;
   type: CustomerTransactionType;
   amount: number;
+  /** Currency `amount` (and `amountPaid`) are denominated in. Defaults to
+   * "KES" for older rows that predate multi-currency support. */
+  currency: CustomerTransactionCurrency;
   /** Only meaningful for "debt" rows — how much of `amount` has been paid
    * back so far. Always 0 for "extra" and "upfront" rows. */
   amountPaid: number;
