@@ -1,9 +1,21 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { localStore } from "./local-store";
+import { localStore, nextTableRef } from "./local-store";
 import type { Customer } from "./types";
 
 // No seed data — this starts empty until real customers are added.
 const store = localStore<Customer>("customers", []);
+
+/** Keeps demo-mode customer codes dense (1, 2, 3… with no gaps) after a
+ * delete — mirrors the customers_renumber database trigger used once
+ * Supabase is connected (migration 034). New customers are prepended by
+ * store.insert(), so the stored list is newest-first — reverse it to get
+ * creation order, oldest first. */
+function renumberCustomerCodes(): void {
+  const rows = [...store.list()].reverse();
+  rows.forEach((c, i) => {
+    store.update(c.id, { customerCode: `CUS-${i + 1}` });
+  });
+}
 
 export async function listCustomers(): Promise<Customer[]> {
   if (isSupabaseConfigured && supabase) {
@@ -28,11 +40,13 @@ export type NewCustomerInput = {
 
 export async function createCustomer(input: NewCustomerInput): Promise<Customer> {
   if (isSupabaseConfigured && supabase) {
-    const customerCode = `CUS-${Date.now().toString().slice(-6)}`;
+    // customer_code is assigned by the customers_set_code trigger in the
+    // database (migration 034) — it always hands out the next dense
+    // number after the highest active customer (CUS-1, CUS-2, CUS-3…), so
+    // it's intentionally not sent from here.
     const { data, error } = await supabase
       .from("customers")
       .insert({
-        customer_code: customerCode,
         name: input.name,
         contact_name: input.contact || null,
         email: input.email || null,
@@ -46,13 +60,9 @@ export async function createCustomer(input: NewCustomerInput): Promise<Customer>
   }
 
   const existing = store.list();
-  const max = existing.reduce((m, c) => {
-    const n = Number((c.customerCode ?? "").replace(/\D/g, ""));
-    return Number.isFinite(n) ? Math.max(m, n) : m;
-  }, 4000);
   const customer: Customer = {
     id: `local-${crypto.randomUUID()}`,
-    customerCode: `CUS-${max + 1}`,
+    customerCode: `CUS-${nextTableRef(existing.map((c) => c.customerCode))}`,
     name: input.name,
     contact: input.contact,
     email: input.email,
@@ -107,7 +117,9 @@ export async function setCustomerOutstanding(id: string, outstanding: number): P
   store.update(id, { outstanding });
 }
 
-/** Moves the customer to the Recycle Bin (soft delete) — restorable there any time. */
+/** Moves the customer to the Recycle Bin (soft delete) — restorable there
+ * any time. Remaining customers' codes renumber down to stay dense
+ * (1, 2, 3… with no gaps), matching Fleet / Transport Orders / Trips. */
 export async function deleteCustomer(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase
@@ -118,6 +130,7 @@ export async function deleteCustomer(id: string): Promise<void> {
     return;
   }
   store.remove(id);
+  renumberCustomerCodes();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

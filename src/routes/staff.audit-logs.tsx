@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
-import { listAuditLogs, type AuditLogEntry } from "@/lib/api/audit-logs";
+import { listAuditLogs, formatAction, type AuditLogEntry } from "@/lib/api/audit-logs";
 
 export const Route = createFileRoute("/staff/audit-logs")({
   head: () => ({
@@ -18,11 +18,10 @@ export const Route = createFileRoute("/staff/audit-logs")({
 });
 
 const columns: Column<AuditLogEntry>[] = [
-  { key: "actorName", header: "Actor", render: (r) => r.actorName ?? "System" },
-  { key: "action", header: "Action" },
-  { key: "targetTable", header: "Target", render: (r) => (r.targetTable ? `${r.targetTable}${r.targetId ? ` · ${r.targetId}` : ""}` : "—") },
-  { key: "ipAddress", header: "IP", render: (r) => r.ipAddress ?? "—" },
   { key: "createdAt", header: "Time", render: (r) => new Date(r.createdAt).toLocaleString() },
+  { key: "actorName", header: "Who", render: (r) => r.actorName ?? "System" },
+  { key: "description", header: "Action", render: (r) => r.description ?? formatAction(r.action) },
+  { key: "targetTable", header: "Target", render: (r) => (r.targetTable ? `${r.targetTable}${r.targetId ? ` · ${r.targetId.slice(0, 8)}` : ""}` : "—") },
 ];
 
 function Page() {

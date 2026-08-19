@@ -116,26 +116,32 @@ export const staffNav: NavGroup[] = [
         to: "/staff/customers",
         icon: Users2,
       },
-      {
-        label: "Shipments",
-        to: "/staff/shipments",
-        icon: Package,
-      },
+      // Commented out — not currently used in the system. Restore this
+      // item (and the matching route/pages) if Shipments is needed again.
+      // {
+      //   label: "Shipments",
+      //   to: "/staff/shipments",
+      //   icon: Package,
+      // },
       {
         label: "Finance",
         to: "/staff/finance",
         icon: DollarSign,
       },
-      {
-        label: "Warehouses",
-        to: "/staff/warehouses",
-        icon: Warehouse,
-      },
-      {
-        label: "Documents",
-        to: "/staff/documents",
-        icon: FileText,
-      },
+      // Commented out — not currently used in the system. Restore this
+      // item (and the matching route/pages) if Warehouses is needed again.
+      // {
+      //   label: "Warehouses",
+      //   to: "/staff/warehouses",
+      //   icon: Warehouse,
+      // },
+      // Commented out — not currently used in the system. Restore this
+      // item (and the matching route/pages) if Documents is needed again.
+      // {
+      //   label: "Documents",
+      //   to: "/staff/documents",
+      //   icon: FileText,
+      // },
       {
         label: "Reports",
         to: "/staff/reports",
@@ -151,11 +157,14 @@ export const staffNav: NavGroup[] = [
         to: "/staff/recycle-bin",
         icon: Trash2,
       },
-      {
-        label: "Notifications",
-        to: "/staff/notifications",
-        icon: Bell,
-      },
+      // Commented out — not currently used in the system. Restore this
+      // item (and the matching route/pages) if Notifications is needed
+      // again.
+      // {
+      //   label: "Notifications",
+      //   to: "/staff/notifications",
+      //   icon: Bell,
+      // },
       {
         label: "Settings",
         to: "/staff/settings",

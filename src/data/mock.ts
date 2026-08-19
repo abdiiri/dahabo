@@ -229,12 +229,12 @@ export const auditLogs = Array.from({ length: 14 }, (_, i) => ({
 }));
 
 export const staffUsers = [
-  { id: "USR-101", name: "Amina Dahir", email: "amina@dahaboglobal.com", role: "Super Admin", branch: "Nairobi HQ", status: "Active" },
-  { id: "USR-102", name: "Peter Kimani", email: "peter@dahaboglobal.com", role: "Operations Manager", branch: "Nairobi HQ", status: "Active" },
-  { id: "USR-103", name: "Mercy Chebet", email: "mercy@dahaboglobal.com", role: "Finance Officer", branch: "Eldoret", status: "Active" },
-  { id: "USR-104", name: "Yusuf Omar", email: "yusuf@dahaboglobal.com", role: "Warehouse Manager", branch: "Mombasa", status: "Active" },
-  { id: "USR-105", name: "Grace Wanjiru", email: "grace@dahaboglobal.com", role: "Fleet Manager", branch: "Kampala", status: "Suspended" },
-  { id: "USR-106", name: "Abdi Hassan", email: "abdi@dahaboglobal.com", role: "Driver", branch: "Nairobi HQ", status: "Active" },
+  { id: "USR-001", name: "Amina Dahir", email: "amina@dahaboglobal.com", role: "Super Admin", branch: "Nairobi HQ", status: "Active" },
+  { id: "USR-002", name: "Peter Kimani", email: "peter@dahaboglobal.com", role: "Operations Manager", branch: "Nairobi HQ", status: "Active" },
+  { id: "USR-003", name: "Mercy Chebet", email: "mercy@dahaboglobal.com", role: "Finance Officer", branch: "Eldoret", status: "Active" },
+  { id: "USR-004", name: "Yusuf Omar", email: "yusuf@dahaboglobal.com", role: "Warehouse Manager", branch: "Mombasa", status: "Active" },
+  { id: "USR-005", name: "Grace Wanjiru", email: "grace@dahaboglobal.com", role: "Fleet Manager", branch: "Kampala", status: "Suspended" },
+  { id: "USR-006", name: "Abdi Hassan", email: "abdi@dahaboglobal.com", role: "Driver", branch: "Nairobi HQ", status: "Active" },
 ];
 
 export const roles = [

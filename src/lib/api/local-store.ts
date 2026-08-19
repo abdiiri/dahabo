@@ -106,7 +106,86 @@ export function renumberFleetCodes(): void {
   write("fuel_records", fuels);
 }
 
+// -----------------------------------------------------------------------------
+// Local (demo-mode) audit trail — mirrors what the Supabase triggers do for
+// a real database (see migration 033), so the Audit Logs tab still shows
+// every create/update/delete even when no project is connected. Actions are
+// generic here (no login exists in demo mode to know *who*), but every
+// table's activity is still captured automatically — no per-file wiring.
+// -----------------------------------------------------------------------------
+
+type LocalAuditEntry = {
+  id: string;
+  actorName?: string;
+  action: string;
+  description?: string;
+  targetTable?: string;
+  targetId?: string;
+  createdAt: string;
+};
+
+/** Human label per table, used in generated audit descriptions. */
+const ENTITY_LABELS: Record<string, string> = {
+  assignments: "Assignment",
+  branches: "Branch",
+  customer_transactions: "Customer transaction",
+  customers: "Customer",
+  documents: "Document",
+  driver_advances: "Driver advance",
+  driver_payments: "Driver payment",
+  drivers: "Driver",
+  fuel_records: "Fuel record",
+  invoices: "Invoice",
+  maintenance_records: "Maintenance record",
+  salaries: "Salary/allowance entry",
+  shipments: "Shipment",
+  staff: "Staff account",
+  transport_orders: "Transport order",
+  trips: "Trip",
+  vehicles: "Vehicle",
+  warehouses: "Warehouse",
+};
+
+// Tables that shouldn't generate their own audit trail entries — either
+// they aren't a real business record, or they'd just be noise.
+const AUDIT_EXCLUDED_KEYS = new Set(["audit_logs", "notifications", "role_permissions"]);
+
+/** Best-effort short display code/name for a row, tried in priority order. */
+function codeOf(row: unknown): string | undefined {
+  const r = row as Record<string, unknown> | null | undefined;
+  if (!r) return undefined;
+  const candidates = [
+    "orderCode", "tripCode", "vehicleCode", "driverCode", "staffCode", "assignmentCode",
+    "shipmentCode", "fuelCode", "customerCode", "invoiceCode", "warehouseCode", "documentCode",
+    "fullName", "name", "title", "description", "purpose",
+  ];
+  for (const field of candidates) {
+    const v = r[field];
+    if (typeof v === "string" && v.trim()) return v;
+  }
+  return undefined;
+}
+
+function pushAuditLog(entry: Omit<LocalAuditEntry, "id" | "createdAt">) {
+  if (typeof window === "undefined") return;
+  try {
+    const existing = read<LocalAuditEntry>("audit_logs", []);
+    const row: LocalAuditEntry = {
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+      actorName: "Demo user",
+      ...entry,
+    };
+    write("audit_logs", [row, ...existing].slice(0, 300));
+  } catch {
+    // demo mode only — never block the real action over a logging failure
+  }
+}
+
 export function localStore<T extends { id: string }>(key: string, seed: T[]) {
+  const label = ENTITY_LABELS[key] ?? key;
+  const trackAudit = !AUDIT_EXCLUDED_KEYS.has(key);
+
   return {
     list(): T[] {
       return read<T>(key, seed);
@@ -118,6 +197,15 @@ export function localStore<T extends { id: string }>(key: string, seed: T[]) {
       const rows = read<T>(key, seed);
       const next = [row, ...rows];
       write(key, next);
+      if (trackAudit) {
+        const code = codeOf(row);
+        pushAuditLog({
+          action: `${key}_created`,
+          targetTable: key,
+          targetId: row.id,
+          description: code ? `Created ${label.toLowerCase()} — ${code}` : `Created a ${label.toLowerCase()}`,
+        });
+      }
       return row;
     },
     update(id: string, patch: Partial<T>): T | undefined {
@@ -129,14 +217,35 @@ export function localStore<T extends { id: string }>(key: string, seed: T[]) {
         return updated;
       });
       write(key, next);
+      if (trackAudit && updated) {
+        const code = codeOf(updated);
+        const patchRecord = patch as Record<string, unknown>;
+        const statusNote = typeof patchRecord.status === "string" ? ` — status changed to ${patchRecord.status}` : "";
+        pushAuditLog({
+          action: `${key}_updated`,
+          targetTable: key,
+          targetId: id,
+          description: (code ? `Updated ${label.toLowerCase()} — ${code}` : `Updated a ${label.toLowerCase()}`) + statusNote,
+        });
+      }
       return updated;
     },
     remove(id: string): void {
       const rows = read<T>(key, seed);
+      const removed = rows.find((row) => row.id === id);
       write(
         key,
         rows.filter((row) => row.id !== id),
       );
+      if (trackAudit) {
+        const code = codeOf(removed);
+        pushAuditLog({
+          action: `${key}_deleted`,
+          targetTable: key,
+          targetId: id,
+          description: code ? `Deleted ${label.toLowerCase()} — ${code}` : `Deleted a ${label.toLowerCase()}`,
+        });
+      }
     },
   };
 }
