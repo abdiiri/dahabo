@@ -240,6 +240,15 @@ function Page() {
     const totalOutstanding = formatMoneyGroups(
       debtRows.map((t) => ({ amount: remainingBalance(t), currency: t.currency })),
     );
+    // What's actually landed in the bank: payments collected against debts,
+    // plus extra/upfront money customers have handed over outright. Distinct
+    // from "Total outstanding", which is what's still owed.
+    const totalReceived = formatMoneyGroups([
+      ...debtRows.map((t) => ({ amount: t.amountPaid, currency: t.currency })),
+      ...ledgerRows
+        .filter((t) => t.type === "extra" || t.type === "upfront")
+        .map((t) => ({ amount: t.amount, currency: t.currency })),
+    ]);
     const totalExtra = formatMoneyGroups(
       ledgerRows.filter((t) => t.type === "extra").map((t) => ({ amount: t.amount, currency: t.currency })),
     );
@@ -252,7 +261,7 @@ function Page() {
       debtRows.filter((t) => remainingBalance(t) > 0).map((t) => t.customerId),
     ).size;
     const hasOutstanding = debtRows.some((t) => remainingBalance(t) > 0);
-    return { totalOutstanding, totalExtra, totalUpfront, customersOwing, hasOutstanding };
+    return { totalOutstanding, totalReceived, totalExtra, totalUpfront, customersOwing, hasOutstanding };
   }, [ledgerRows]);
 
   function goToTab(next: "invoices" | "ledger") {
@@ -485,12 +494,18 @@ function Page() {
             </div>
           ) : (
             <>
-              <section className="grid gap-4 sm:grid-cols-4">
+              <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 <StatCard
                   label="Total outstanding"
                   value={ledgerStats.totalOutstanding}
                   icon={HandCoins}
                   tone={ledgerStats.hasOutstanding ? "danger" : "default"}
+                />
+                <StatCard
+                  label="Total received"
+                  value={ledgerStats.totalReceived}
+                  icon={Wallet}
+                  tone="success"
                 />
                 <StatCard
                   label="Extra / advance balance"
