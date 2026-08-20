@@ -87,13 +87,14 @@ function Page() {
 
   const tripById = useMemo(() => new Map(trips.map((t) => [t.id, t])), [trips]);
 
-  // Default view order: Trip 1 first, ascending — not creation order. Users
-  // can still click the Trip column header to flip it or sort by something
-  // else entirely; this only sets what they see before touching a header.
+  // Default view order: most recent trip first, descending — not creation
+  // order. Users can still click the Trip column header to flip it or sort
+  // by something else entirely; this only sets what they see before
+  // touching a header.
   const sortedPayments = useMemo(() => {
     const rows = payments ?? [];
     return [...rows].sort(
-      (a, b) => (extractRefNumber(a.tripCode) ?? 0) - (extractRefNumber(b.tripCode) ?? 0),
+      (a, b) => (extractRefNumber(b.tripCode) ?? 0) - (extractRefNumber(a.tripCode) ?? 0),
     );
   }, [payments]);
 
