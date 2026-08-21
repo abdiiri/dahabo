@@ -135,9 +135,10 @@ function Page() {
       ),
     },
     {
-      key: "odometerKm",
-      header: "Odometer",
-      render: (r) => (r.odometerKm ? `${r.odometerKm.toLocaleString()} km` : "—"),
+      key: "createdAt",
+      header: "Time",
+      render: (r) =>
+        new Date(r.filledAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
     },
     { key: "filledAt", header: "Date", render: (r) => new Date(r.filledAt).toLocaleDateString() },
     {
@@ -372,7 +373,12 @@ function EditFuelRecordDialog({
               <Label className="mb-1.5 block text-sm">Date</Label>
               <Input
                 type="date"
-                value={values.filledAt ?? ""}
+                // filledAt is stored as a full timestamp (e.g.
+                // "2026-08-19T12:34:56Z"); a native date input only accepts
+                // plain "yyyy-MM-dd" and silently shows blank on anything
+                // else, so trim it here or this field looks empty/broken and
+                // an easy-to-miss wrong date can slip through unnoticed.
+                value={values.filledAt ? values.filledAt.slice(0, 10) : ""}
                 onChange={(e) => set("filledAt")(e.target.value)}
               />
             </div>
