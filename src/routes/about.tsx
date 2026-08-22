@@ -3,7 +3,7 @@ import { Award, Compass, HeartHandshake, Target } from "lucide-react";
 import { PublicPage } from "@/components/site/PublicPage";
 import { SectionHeading } from "@/components/common/PageHeader";
 import { Card } from "@/components/ui/card";
-import warehouseImg from "@/assets/warehouse.jpg";
+import aboutImg from "@/assets/about-excavator.jpg";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -26,10 +26,10 @@ function About() {
     >
       <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
         <img
-          src={warehouseImg}
-          alt="Interior of a Dahabo Global Logistics distribution warehouse"
-          width={1400}
-          height={900}
+          src={aboutImg}
+          alt="Dahabo Global Logistics excavator on site"
+          width={860}
+          height={925}
           loading="lazy"
           className="rounded-2xl object-cover shadow-lift"
         />

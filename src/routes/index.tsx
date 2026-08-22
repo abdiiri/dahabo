@@ -33,6 +33,8 @@ import vehicleBox from "@/assets/vehicle-box-truck.jpg";
 import vehicleVan from "@/assets/vehicle-van.jpg";
 import containerYard from "@/assets/container-yard.jpg";
 import fleetHeavy1 from "@/assets/fleet-heavy-1.jpg";
+import fleetHeavy2 from "@/assets/fleet-heavy-2.jpg";
+import fleetHeavy4 from "@/assets/fleet-heavy-4.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -61,8 +63,13 @@ const fleetImages: Record<string, string> = {
   // in for the generic stock shot so the fleet section shows an actual truck.
   heavy: fleetHeavy1,
   box: vehicleBox,
-  van: vehicleVan,
-  pickup: vehicleBox,
+  // "Vans" and "Motorcycles" used to share the exact same stock photo. No
+  // real van/motorcycle photo yet, so this real (heavy-truck) photo is
+  // standing in for Vans just to stop the duplicate — swap for an actual
+  // van photo when one's available.
+  van: fleetHeavy4,
+  // "Box Trucks" and "Pickups" used to share the exact same stock photo too.
+  pickup: fleetHeavy2,
   moto: vehicleVan,
   special: containerYard,
 };
