@@ -32,6 +32,7 @@ import vehicleHeavy from "@/assets/vehicle-heavy-truck.jpg";
 import vehicleBox from "@/assets/vehicle-box-truck.jpg";
 import vehicleVan from "@/assets/vehicle-van.jpg";
 import containerYard from "@/assets/container-yard.jpg";
+import fleetHeavy1 from "@/assets/fleet-heavy-1.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -56,7 +57,9 @@ export const Route = createFileRoute("/")({
 });
 
 const fleetImages: Record<string, string> = {
-  heavy: vehicleHeavy,
+  // Real photo of the company's own prime mover + trailer, KDX 183Z — swapped
+  // in for the generic stock shot so the fleet section shows an actual truck.
+  heavy: fleetHeavy1,
   box: vehicleBox,
   van: vehicleVan,
   pickup: vehicleBox,
