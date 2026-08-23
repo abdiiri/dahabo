@@ -33,7 +33,7 @@ function Page() {
     <>
       <PageHeader breadcrumb={['Portal', 'Payments']} title="Payments" description="Settled and processing payments." actions={<Button>New record</Button>} />
       
-      <DataTable data={payments as Row[]} columns={columns} />
+      <DataTable data={payments as Row[]} columns={columns} exportFilename="payments" />
     </>
   );
 }

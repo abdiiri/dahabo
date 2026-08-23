@@ -247,6 +247,7 @@ function Page() {
         <DataTable
           data={drivers}
           columns={columns}
+          exportFilename="drivers"
           onRowClick={(row) =>
             navigate({ to: "/staff/drivers/$driverId", params: { driverId: row.id } })
           }

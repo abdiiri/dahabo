@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CityCombobox } from "@/components/common/CityCombobox";
+import { CustomerSelect } from "@/components/common/CustomerSelect";
 import {
   Dialog,
   DialogContent,
@@ -19,13 +20,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -224,7 +218,7 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable data={orders} columns={columns} searchPlaceholder="Search orders…" />
+        <DataTable data={orders} columns={columns} searchPlaceholder="Search orders…" exportFilename="transport-orders" />
       )}
 
       <EditTransportOrderDialog
@@ -337,22 +331,12 @@ function EditTransportOrderDialog({
         <div className="grid gap-3 py-2">
           <div>
             <Label className="mb-1.5 block text-sm">Customer (optional)</Label>
-            <Select
-              value={values.customerId ?? "none"}
-              onValueChange={(v) => set("customerId")(v === "none" ? undefined : v)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="No customer" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No customer</SelectItem>
-                {customers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CustomerSelect
+              customers={customers}
+              value={values.customerId}
+              onChange={set("customerId")}
+              onCustomerCreated={(c) => setCustomers((rows) => [c, ...rows])}
+            />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>

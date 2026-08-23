@@ -18,10 +18,20 @@ export const Route = createFileRoute("/staff/audit-logs")({
 });
 
 const columns: Column<AuditLogEntry>[] = [
-  { key: "createdAt", header: "Time", render: (r) => new Date(r.createdAt).toLocaleString() },
+  {
+    key: "createdAt",
+    header: "Time",
+    render: (r) => new Date(r.createdAt).toLocaleString(),
+    exportValue: (r) => new Date(r.createdAt).toLocaleString(),
+  },
   { key: "actorName", header: "Who", render: (r) => r.actorName ?? "System" },
-  { key: "description", header: "Action", render: (r) => r.description ?? formatAction(r.action) },
-  { key: "targetTable", header: "Target", render: (r) => formatTarget(r) },
+  {
+    key: "description",
+    header: "Action",
+    render: (r) => r.description ?? formatAction(r.action),
+    exportValue: (r) => r.description ?? formatAction(r.action),
+  },
+  { key: "targetTable", header: "Target", render: (r) => formatTarget(r), exportValue: formatTarget },
 ];
 
 function Page() {
@@ -44,7 +54,7 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable data={logs} columns={columns} searchPlaceholder="Search audit logs…" />
+        <DataTable data={logs} columns={columns} searchPlaceholder="Search audit logs…" exportFilename="audit-logs" />
       )}
     </>
   );

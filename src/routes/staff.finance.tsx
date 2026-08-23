@@ -320,6 +320,7 @@ function Page() {
           {r.customerName ?? customerNameById.get(r.customerId) ?? "—"}
         </span>
       ),
+      exportValue: (r) => r.customerName ?? customerNameById.get(r.customerId) ?? "",
     },
     {
       key: "type",
@@ -531,6 +532,7 @@ function Page() {
                 data={ledgerRows}
                 columns={ledgerColumns}
                 searchPlaceholder="Search the ledger…"
+                exportFilename="customer-ledger"
                 toolbar={
                   <div className="flex flex-wrap gap-2">
                     <Select

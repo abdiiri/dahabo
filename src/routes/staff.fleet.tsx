@@ -152,7 +152,7 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable data={vehicles} columns={columns} pageSize={100} />
+        <DataTable data={vehicles} columns={columns} pageSize={100} exportFilename="fleet" />
       )}
 
       <EditVehicleDialog

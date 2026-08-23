@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listNotifications, type NotificationEntry } from "@/lib/api/notifications";
 
@@ -23,6 +24,7 @@ const cats = ["All", "Shipment", "Finance", "Drivers", "Customers", "System"];
 
 function Page() {
   const [notifications, setNotifications] = useState<NotificationEntry[] | null>(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -40,17 +42,31 @@ function Page() {
     );
   }
 
+  const q = query.trim().toLowerCase();
+  const searched = q ? notifications.filter((n) => n.title.toLowerCase().includes(q)) : notifications;
+
   return (
     <>
       <PageHeader breadcrumb={["Staff", "Notifications"]} title="Notification centre" description="Everything the operations platform wants you to know." />
+      <div className="relative mb-4 max-w-sm">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search notifications…"
+          className="pl-9"
+        />
+      </div>
       <Tabs defaultValue="All">
         <TabsList className="flex-wrap">{cats.map((c) => <TabsTrigger key={c} value={c}>{c}</TabsTrigger>)}</TabsList>
         {cats.map((c) => {
-          const filtered = notifications.filter((n) => c === "All" || n.category === c);
+          const filtered = searched.filter((n) => c === "All" || n.category === c);
           return (
             <TabsContent key={c} value={c} className="mt-4 space-y-3">
               {filtered.length === 0 ? (
-                <p className="py-10 text-center text-sm text-muted-foreground">No notifications here yet.</p>
+                <p className="py-10 text-center text-sm text-muted-foreground">
+                  {q ? "No notifications match your search." : "No notifications here yet."}
+                </p>
               ) : (
                 filtered.map((n) => (
                   <Card key={n.id} className="flex-row items-start gap-4 p-4 shadow-soft">

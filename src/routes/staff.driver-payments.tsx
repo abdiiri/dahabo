@@ -234,6 +234,7 @@ function Page() {
             data={filteredPayments}
             columns={columns}
             searchPlaceholder="Search payments…"
+            exportFilename="driver-payments"
             toolbar={
               <Select
                 value={statusFilter}

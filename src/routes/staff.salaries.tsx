@@ -178,7 +178,7 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable data={entries} columns={columns} searchPlaceholder="Search payments…" />
+        <DataTable data={entries} columns={columns} searchPlaceholder="Search payments…" exportFilename="salaries" />
       )}
 
       <EditSalaryDialog

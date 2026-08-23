@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  FileDown,
   Search,
   Settings2,
 } from "lucide-react";
@@ -19,12 +20,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { exportRowsToExcel } from "@/lib/export-excel";
 
 export type Column<T> = {
   key: keyof T & string;
   header: string;
   className?: string;
   render?: (row: T) => ReactNode;
+  /** Plain value to use in the Excel export for this column, when the
+   * rendered cell isn't already plain text (a status pill, an icon, a
+   * formatted link). Falls back to the raw field value. */
+  exportValue?: (row: T) => unknown;
 };
 
 export function DataTable<T extends { id: string }>({
@@ -37,6 +43,7 @@ export function DataTable<T extends { id: string }>({
   renderExpanded,
   rowClassName,
   initialQuery,
+  exportFilename = "export",
 }: {
   data: T[];
   columns: Column<T>[];
@@ -54,6 +61,8 @@ export function DataTable<T extends { id: string }>({
   /** Pre-fills the search box (e.g. arriving from a link elsewhere with a
    * specific record in mind). Only applied once, on first render. */
   initialQuery?: string;
+  /** Base name (no extension) for the downloaded .xlsx file — e.g. "drivers". */
+  exportFilename?: string;
 }) {
   const [query, setQuery] = useState(initialQuery ?? "");
   const [page, setPage] = useState(0);
@@ -109,6 +118,23 @@ export function DataTable<T extends { id: string }>({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {toolbar}
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={filtered.length === 0}
+            onClick={() =>
+              exportRowsToExcel(
+                exportFilename,
+                visibleColumns.map((c) => ({
+                  header: c.header,
+                  exportValue: c.exportValue ?? ((row: T) => row[c.key]),
+                })),
+                filtered,
+              )
+            }
+          >
+            <FileDown className="size-4" /> Export
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline">

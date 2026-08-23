@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CustomerSelect } from "@/components/common/CustomerSelect";
 import {
   createDebt,
   createExtra,
@@ -233,18 +234,14 @@ export function AddCustomerTransactionDialog({
         {!customerId && !isEditing ? (
           <div>
             <Label className="mb-1.5 block text-sm">Customer</Label>
-            <Select value={values.customerId} onValueChange={set("customerId")}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CustomerSelect
+              customers={customers}
+              value={values.customerId || undefined}
+              onChange={(id) => set("customerId")(id ?? "")}
+              onCustomerCreated={(c) => setCustomers((rows) => [c, ...rows])}
+              placeholder="Select a customer"
+              allowNone={false}
+            />
           </div>
         ) : null}
 

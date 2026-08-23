@@ -184,7 +184,7 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable data={staff} columns={columns} />
+        <DataTable data={staff} columns={columns} exportFilename="staff" />
       )}
 
       <EditStaffDialog

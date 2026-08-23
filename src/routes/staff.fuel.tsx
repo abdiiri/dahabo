@@ -216,6 +216,7 @@ function Page() {
             data={filteredRecords}
             columns={columns}
             searchPlaceholder="Search fuel records…"
+            exportFilename="fuel-records"
             toolbar={
               <Select value={vehicleFilter} onValueChange={setVehicleFilter}>
                 <SelectTrigger className="w-[170px]">

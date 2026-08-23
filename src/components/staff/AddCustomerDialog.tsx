@@ -26,8 +26,21 @@ import type { Customer } from "@/lib/api/types";
 
 const empty: NewCustomerInput = { name: "", contact: "", email: "", phone: "", tier: "SME" };
 
-export function AddCustomerDialog({ onCreated }: { onCreated?: (customer: Customer) => void }) {
-  const [open, setOpen] = useState(false);
+type AddCustomerDialogProps = {
+  onCreated?: (customer: Customer) => void;
+  /** Controlled mode — e.g. launched from the "+ Add new customer" option in
+   * another form's customer picker, with no trigger button of its own. When
+   * omitted, the dialog manages its own open state behind the default
+   * "New customer" trigger button (original behaviour, unchanged). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
+export function AddCustomerDialog({ onCreated, open: openProp, onOpenChange }: AddCustomerDialogProps) {
+  const [openState, setOpenState] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : openState;
+  const setOpen = controlled ? (onOpenChange ?? (() => {})) : setOpenState;
   const [values, setValues] = useState<NewCustomerInput>(empty);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -57,11 +70,13 @@ export function AddCustomerDialog({ onCreated }: { onCreated?: (customer: Custom
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <UserPlus className="size-4" /> New customer
-        </Button>
-      </DialogTrigger>
+      {!controlled ? (
+        <DialogTrigger asChild>
+          <Button>
+            <UserPlus className="size-4" /> New customer
+          </Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>New customer</DialogTitle>

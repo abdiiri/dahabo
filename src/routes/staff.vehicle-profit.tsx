@@ -180,6 +180,7 @@ function Page() {
           data={rows}
           columns={columns}
           searchPlaceholder="Search vehicles…"
+          exportFilename="vehicle-profit"
           renderExpanded={(r) => {
             const hasAnything =
               r.trips.length > 0 || r.fuelEntries.length > 0 || r.maintenanceEntries.length > 0;

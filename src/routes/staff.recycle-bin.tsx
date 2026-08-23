@@ -194,7 +194,7 @@ function Page() {
           <p className="max-w-sm text-xs">Anything deleted anywhere in the system will show up here.</p>
         </div>
       ) : (
-        <DataTable data={items} columns={columns} searchPlaceholder="Search deleted records…" />
+        <DataTable data={items} columns={columns} searchPlaceholder="Search deleted records…" exportFilename="recycle-bin" />
       )}
     </>
   );

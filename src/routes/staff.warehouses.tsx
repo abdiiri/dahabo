@@ -47,7 +47,7 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable data={warehouses} columns={columns} searchPlaceholder="Search warehouses…" />
+        <DataTable data={warehouses} columns={columns} searchPlaceholder="Search warehouses…" exportFilename="warehouses" />
       )}
     </>
   );

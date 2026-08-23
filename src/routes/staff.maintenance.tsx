@@ -123,6 +123,7 @@ function Page() {
           data={records}
           columns={columns}
           searchPlaceholder="Search maintenance records…"
+          exportFilename="maintenance-records"
         />
       )}
 

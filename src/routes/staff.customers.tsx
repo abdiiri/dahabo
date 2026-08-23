@@ -200,7 +200,7 @@ function Page() {
           <p className="max-w-sm text-xs">Customers you add will show up here.</p>
         </div>
       ) : (
-        <DataTable data={customers} columns={columns} />
+        <DataTable data={customers} columns={columns} exportFilename="customers" />
       )}
 
       <EditCustomerDialog

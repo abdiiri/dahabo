@@ -34,7 +34,7 @@ function Page() {
     <>
       <PageHeader breadcrumb={['Portal', 'Shipments']} title="My shipments" description="Every consignment on your account." actions={<Button>New record</Button>} />
       
-      <DataTable data={shipments as Row[]} columns={columns} />
+      <DataTable data={shipments as Row[]} columns={columns} exportFilename="shipments" />
     </>
   );
 }

@@ -143,7 +143,7 @@ function Page() {
           <p className="max-w-sm text-xs">Shipments you record will show up here.</p>
         </div>
       ) : (
-        <DataTable data={shipments} columns={columns} />
+        <DataTable data={shipments} columns={columns} exportFilename="shipments" />
       )}
 
       <EditShipmentDialog

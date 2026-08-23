@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CityCombobox } from "@/components/common/CityCombobox";
+import { CustomerSelect } from "@/components/common/CustomerSelect";
 import {
   Dialog,
   DialogContent,
@@ -16,13 +17,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { createTransportOrder } from "@/lib/api/transport-orders";
 import { listCustomers } from "@/lib/api/customers";
 import type { NewTransportOrderInput, TransportOrder, Customer } from "@/lib/api/types";
@@ -87,15 +81,12 @@ export function AddTransportOrderDialog({ onCreated }: { onCreated?: (order: Tra
         <div className="grid gap-3 py-2">
           <div>
             <Label className="mb-1.5 block text-sm">Customer (optional)</Label>
-            <Select value={values.customerId ?? "none"} onValueChange={(v) => set("customerId")(v === "none" ? undefined : v)}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="No customer" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No customer</SelectItem>
-                {customers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CustomerSelect
+              customers={customers}
+              value={values.customerId}
+              onChange={set("customerId")}
+              onCustomerCreated={(c) => setCustomers((rows) => [c, ...rows])}
+            />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>

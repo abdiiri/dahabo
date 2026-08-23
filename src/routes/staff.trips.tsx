@@ -158,7 +158,7 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable data={trips} columns={columns} searchPlaceholder="Search trips…" />
+        <DataTable data={trips} columns={columns} searchPlaceholder="Search trips…" exportFilename="trips" />
       )}
 
       <CompleteTripDialog
