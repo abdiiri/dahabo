@@ -31,6 +31,7 @@ export const CITIES: string[] = [
   "Nanyuki",
   "Embu",
   "Kitui",
+  "Mwingi",
   "Homa Bay",
   "Migori",
   "Narok",

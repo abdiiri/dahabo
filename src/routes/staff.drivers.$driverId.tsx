@@ -10,6 +10,7 @@ import {
   MapPin,
   Pencil,
   Phone,
+  Route as RouteIcon,
   ShieldAlert,
   Star,
   Trash2,
@@ -62,16 +63,19 @@ import {
   type EditDriverInput,
 } from "@/lib/api/drivers";
 import { listAssignmentsForDriver } from "@/lib/api/assignments";
+import { listTripsForDriver } from "@/lib/api/trips";
 import { listAdvancesForDriver, giveAdvance } from "@/lib/api/driver-advances";
 import {
   ASSIGNMENT_STATUS_LABELS,
   ASSIGNMENT_TYPE_LABELS,
   DRIVER_STATUS_LABELS,
   LICENSE_CLASS_LABELS,
+  TRIP_STATUS_LABELS,
   type Assignment,
   type Driver,
   type DriverAdvance,
   type LicenseClass,
+  type Trip,
 } from "@/lib/api/types";
 
 export const Route = createFileRoute("/staff/drivers/$driverId")({
@@ -106,6 +110,8 @@ function Page() {
   const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [advances, setAdvances] = useState<DriverAdvance[]>([]);
   const [loadingAdvances, setLoadingAdvances] = useState(true);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [loadingTrips, setLoadingTrips] = useState(true);
   const [statusBusy, setStatusBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -136,6 +142,17 @@ function Page() {
     listAdvancesForDriver(driverId)
       .then((rows) => active && setAdvances(rows))
       .finally(() => active && setLoadingAdvances(false));
+    return () => {
+      active = false;
+    };
+  }, [driverId]);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingTrips(true);
+    listTripsForDriver(driverId)
+      .then((rows) => active && setTrips(rows))
+      .finally(() => active && setLoadingTrips(false));
     return () => {
       active = false;
     };
@@ -364,11 +381,49 @@ function Page() {
               <p className="text-xs text-muted-foreground">Rating</p>
             </div>
             <div>
-              <p className="text-2xl font-bold">{driver.totalTrips}</p>
+              <p className="text-2xl font-bold">
+                {loadingTrips ? "—" : trips.filter((t) => t.status === "completed").length}
+              </p>
               <p className="text-xs text-muted-foreground">Trips completed</p>
             </div>
           </Card>
         </div>
+
+        <Card className="gap-4 p-6 shadow-soft">
+          <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <RouteIcon className="size-4" /> Trip history
+          </h2>
+
+          {loadingTrips ? (
+            <div className="flex items-center justify-center py-10 text-muted-foreground">
+              <Loader2 className="size-5 animate-spin" />
+            </div>
+          ) : trips.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
+              <RouteIcon className="size-8" />
+              <p className="text-sm">No trips recorded yet.</p>
+            </div>
+          ) : (
+            <ul className="grid gap-3">
+              {trips.map((t) => (
+                <li key={t.id} className="rounded-lg border border-border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold">{t.tripCode}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(t.completedAt ?? t.startedAt ?? t.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <StatusPill status={TRIP_STATUS_LABELS[t.status]} />
+                  </div>
+                  <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <MapPin className="size-3.5" /> {t.origin} → {t.destination}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
 
         <Card className="gap-4 p-6 shadow-soft">
           <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">

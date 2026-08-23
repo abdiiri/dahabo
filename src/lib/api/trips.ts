@@ -50,6 +50,22 @@ export async function listTripsForVehicle(vehicleId: string): Promise<Trip[]> {
   return store.list().filter((t) => t.vehicleId === vehicleId);
 }
 
+/** Trips for a single driver — powers the trip history and "best driver"
+ * ranking shown on the driver profile page. */
+export async function listTripsForDriver(driverId: string): Promise<Trip[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("trips")
+      .select(SELECT)
+      .eq("driver_id", driverId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(mapSupabaseTrip);
+  }
+  return store.list().filter((t) => t.driverId === driverId);
+}
+
 /** Which drivers and vehicles are currently on an active (scheduled or
  * in_progress) trip, and which trip that is — used to keep the Start Trip
  * dropdowns from offering someone who's already out on the road, and to

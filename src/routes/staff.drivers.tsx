@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Loader2, Lock, MoreHorizontal, Pencil, Trash2, Unlock, UserCog } from "lucide-react";
+import { Loader2, Lock, MoreHorizontal, Pencil, Trash2, Trophy, Unlock, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusPill } from "@/components/common/StatusPill";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +49,7 @@ import {
   setDriverAccountStatus,
   type EditDriverInput,
 } from "@/lib/api/drivers";
+import { listTrips } from "@/lib/api/trips";
 import {
   LICENSE_CLASS_LABELS,
   DRIVER_STATUS_LABELS,
@@ -89,7 +91,20 @@ function Page() {
 
   useEffect(() => {
     let active = true;
-    listDrivers().then((rows) => active && setDrivers(rows));
+    Promise.all([listDrivers(), listTrips()]).then(([driverRows, trips]) => {
+      if (!active) return;
+      // totalTrips on the driver record itself isn't kept in sync anywhere
+      // (nothing increments it when a trip completes), so it reads 0
+      // forever — derive the real count from actual completed trips instead
+      // of trusting that stale column. This is also what "best driver"
+      // below is ranked on.
+      const completedCounts = new Map<string, number>();
+      for (const t of trips) {
+        if (t.status !== "completed") continue;
+        completedCounts.set(t.driverId, (completedCounts.get(t.driverId) ?? 0) + 1);
+      }
+      setDrivers(driverRows.map((d) => ({ ...d, totalTrips: completedCounts.get(d.id) ?? 0 })));
+    });
     return () => {
       active = false;
     };
@@ -144,6 +159,7 @@ function Page() {
     { key: "phone", header: "Phone" },
     { key: "licenseNumber", header: "Licence" },
     { key: "licenseClass", header: "Class", render: (r) => LICENSE_CLASS_LABELS[r.licenseClass] },
+    { key: "totalTrips", header: "Trips" },
     {
       key: "currentLocation",
       header: "Last known location",
@@ -218,6 +234,10 @@ function Page() {
     },
   ];
 
+  const topDriver = (drivers ?? [])
+    .filter((d) => d.totalTrips > 0)
+    .sort((a, b) => b.totalTrips - a.totalTrips || b.rating - a.rating)[0];
+
   return (
     <>
       <PageHeader
@@ -230,6 +250,24 @@ function Page() {
           ) : null
         }
       />
+
+      {topDriver ? (
+        <Card className="mb-6 flex-row items-center gap-4 border-gold/40 bg-gold/5 p-5 shadow-soft">
+          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-gold/15 text-gold">
+            <Trophy className="size-6" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Top driver
+            </p>
+            <p className="truncate text-lg font-bold">{topDriver.fullName}</p>
+            <p className="text-sm text-muted-foreground">
+              {topDriver.totalTrips} completed {topDriver.totalTrips === 1 ? "trip" : "trips"} ·{" "}
+              {topDriver.rating.toFixed(1)}★ rating
+            </p>
+          </div>
+        </Card>
+      ) : null}
 
       {drivers === null ? (
         <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground">
