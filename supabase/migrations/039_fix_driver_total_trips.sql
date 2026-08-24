@@ -6,7 +6,7 @@
 -- edit (see the driver profile-protection trigger), but nothing has ever
 -- incremented it — no trigger updates it when a trip completes. It's been
 -- stuck at 0 (or whatever a row was seeded with) for every driver since day
--- one, which is why the driver` profile's "Trips completed" and any ranking
+-- one, which is why the driver profile's "Trips completed" and any ranking
 -- built on it were meaningless.
 --
 -- This adds a trigger that keeps it in sync with reality: +1 when a trip

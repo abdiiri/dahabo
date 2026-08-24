@@ -109,6 +109,7 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
         origin: input.origin,
         destination: input.destination,
         mileage_amount: input.mileageAmount ?? 0,
+        permit_cost: input.permitCost ?? 0,
         status: "in_progress",
         started_at: new Date().toISOString(),
       })
@@ -149,6 +150,7 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
     origin: input.origin,
     destination: input.destination,
     mileageAmount: input.mileageAmount ?? 0,
+    permitCost: input.permitCost ?? 0,
     status: "in_progress",
     startedAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),
@@ -244,6 +246,7 @@ export type EditTripInput = Partial<{
   origin: string;
   destination: string;
   mileageAmount: number;
+  permitCost: number;
 }>;
 
 export async function editTrip(id: string, input: EditTripInput): Promise<Trip> {
@@ -254,6 +257,7 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
         ...(input.origin !== undefined ? { origin: input.origin } : {}),
         ...(input.destination !== undefined ? { destination: input.destination } : {}),
         ...(input.mileageAmount !== undefined ? { mileage_amount: input.mileageAmount } : {}),
+        ...(input.permitCost !== undefined ? { permit_cost: input.permitCost } : {}),
       })
       .eq("id", id)
       .select(SELECT)
@@ -320,6 +324,7 @@ function mapSupabaseTrip(row: any): Trip {
     origin: row.origin,
     destination: row.destination,
     mileageAmount: Number(row.mileage_amount ?? 0),
+    permitCost: Number(row.permit_cost ?? 0),
     status: row.status,
     startedAt: row.started_at ?? undefined,
     completedAt: row.completed_at ?? undefined,

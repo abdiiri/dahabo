@@ -498,6 +498,10 @@ export type Trip = {
   destination: string;
   /** Flat mileage pay agreed for this trip (KSh or local currency) — entered when the trip is created, no distance calculation involved. */
   mileageAmount: number;
+  /** Permit, toll, or other legal/paperwork fee for this trip (e.g. cross-border
+   * transit permits) — a cost, not pay, so it's subtracted from vehicle profit
+   * rather than added to the driver's payment. */
+  permitCost: number;
   status: TripStatus;
   /** Recorded automatically when the trip is started. */
   startedAt?: string | undefined;
@@ -515,6 +519,8 @@ export type NewTripInput = {
   destination: string;
   /** Flat mileage pay agreed for this trip (KSh or local currency) — no distance calculation involved. */
   mileageAmount: number;
+  /** Permit/toll/legal paperwork fee for this trip — optional, defaults to 0. */
+  permitCost?: number | undefined;
 };
 
 export type CompleteTripInput = Record<string, never>;
@@ -699,6 +705,8 @@ export type VehicleProfitTrip = {
   completedAt: string;
   revenue: number;
   mileagePayment: number;
+  /** Permit/toll/legal paperwork fee charged against this trip. */
+  permitCost: number;
 };
 
 /** One fuel purchase counted against this vehicle's monthly fuel cost.
@@ -736,6 +744,8 @@ export type VehicleProfitMonth = {
   fuelCost: number;
   maintenanceCost: number;
   mileagePayments: number;
+  /** Sum of permit/toll/legal paperwork fees across this vehicle's completed trips this month. */
+  permitCosts: number;
   otherCost: number;
   netProfit: number;
   /** Trips that made up this vehicle's revenue/mileage-pay figures this month. */

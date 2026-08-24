@@ -34,6 +34,7 @@ const empty: NewTripInput = {
   origin: "",
   destination: "",
   mileageAmount: 0,
+  permitCost: 0,
   transportOrderId: undefined,
 };
 
@@ -228,15 +229,31 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
             </div>
           </div>
           {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
-          <div>
-            <Label className="mb-1.5 block text-sm">Mileage agreement (KSh)</Label>
-            <Input
-              type="number"
-              min={0}
-              value={values.mileageAmount ?? ""}
-              onChange={(e) => set("mileageAmount")(Number(e.target.value))}
-              placeholder="e.g. 5000"
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-sm">Mileage agreement (KSh)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.mileageAmount ?? ""}
+                onChange={(e) => set("mileageAmount")(Number(e.target.value))}
+                placeholder="e.g. 5000"
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Permit / legal fees (KSh)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.permitCost ?? ""}
+                onChange={(e) => set("permitCost")(Number(e.target.value))}
+                placeholder="e.g. 2000"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Transit permits, papers or other legal fees — subtracted from this vehicle's profit,
+                not paid to the driver.
+              </p>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground">
             The start date and time are recorded automatically the moment this trip is created.

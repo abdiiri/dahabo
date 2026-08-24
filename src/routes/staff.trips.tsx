@@ -105,6 +105,11 @@ function Page() {
       header: "Mileage pay",
       render: (r) => (r.mileageAmount ? `KSh ${r.mileageAmount.toLocaleString()}` : "—"),
     },
+    {
+      key: "permitCost",
+      header: "Permit fee",
+      render: (r) => (r.permitCost ? `KSh ${r.permitCost.toLocaleString()}` : "—"),
+    },
     { key: "status", header: "Status", render: (r) => <StatusPill status={TRIP_STATUS_LABELS[r.status]} /> },
     {
       key: "id",
@@ -219,6 +224,7 @@ function EditTripDialog({
         origin: trip.origin,
         destination: trip.destination,
         mileageAmount: trip.mileageAmount,
+        permitCost: trip.permitCost,
       });
     }
   }, [trip]);
@@ -271,15 +277,27 @@ function EditTripDialog({
               <CityCombobox value={values.destination ?? ""} onChange={set("destination")} />
             </div>
           </div>
-          <div>
-            <Label className="mb-1.5 block text-sm">Mileage agreement (KSh)</Label>
-            <Input
-              type="number"
-              min={0}
-              value={values.mileageAmount || ""}
-              onChange={(e) => set("mileageAmount")(Number(e.target.value))}
-              placeholder="e.g. 5000"
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-sm">Mileage agreement (KSh)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.mileageAmount || ""}
+                onChange={(e) => set("mileageAmount")(Number(e.target.value))}
+                placeholder="e.g. 5000"
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Permit / legal fees (KSh)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={values.permitCost || ""}
+                onChange={(e) => set("permitCost")(Number(e.target.value))}
+                placeholder="e.g. 2000"
+              />
+            </div>
           </div>
         </div>
         <DialogFooter>

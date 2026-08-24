@@ -121,6 +121,11 @@ function Page() {
       render: (r) => `− ${money(r.mileagePayments)}`,
     },
     {
+      key: "permitCosts",
+      header: "Permit fees",
+      render: (r) => `− ${money(r.permitCosts)}`,
+    },
+    {
       key: "netProfit",
       header: "Net profit",
       render: (r) => (
@@ -216,6 +221,9 @@ function Page() {
                               Mileage pay
                             </th>
                             <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Permit fee
+                            </th>
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                               Trip net
                             </th>
                           </tr>
@@ -241,8 +249,11 @@ function Page() {
                               <td className="whitespace-nowrap px-3 py-2 text-destructive">
                                 − {money(t.mileagePayment)}
                               </td>
+                              <td className="whitespace-nowrap px-3 py-2 text-destructive">
+                                {t.permitCost ? `− ${money(t.permitCost)}` : "—"}
+                              </td>
                               <td className="whitespace-nowrap px-3 py-2 font-semibold">
-                                {money(t.revenue - t.mileagePayment)}
+                                {money(t.revenue - t.mileagePayment - t.permitCost)}
                               </td>
                             </tr>
                           ))}
@@ -379,6 +390,12 @@ function Page() {
                     − Mileage pay{" "}
                     <span className="font-semibold text-destructive">
                       {money(r.mileagePayments)}
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    − Permit fees{" "}
+                    <span className="font-semibold text-destructive">
+                      {money(r.permitCosts)}
                     </span>
                   </span>
                   <span>

@@ -49,6 +49,7 @@ function tripBreakdownFor(
         completedAt: t.completedAt as string,
         revenue: order?.agreedAmount ?? 0,
         mileagePayment: payment?.amount ?? 0,
+        permitCost: t.permitCost ?? 0,
       };
     })
     .sort((a, b) => a.completedAt.localeCompare(b.completedAt));
@@ -132,6 +133,7 @@ export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]
       fuelCost: Number(row.fuel_cost) || 0,
       maintenanceCost: Number(row.maintenance_cost) || 0,
       mileagePayments: Number(row.mileage_payments) || 0,
+      permitCosts: Number(row.permit_costs) || 0,
       otherCost: Number(row.other_cost) || 0,
       netProfit: Number(row.net_profit) || 0,
       trips: tripBreakdownFor(row.vehicle_id, thisMonth, trips, orders, payments),
@@ -159,6 +161,7 @@ export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]
 
       const revenue = vehicleTrips.reduce((sum, t) => sum + t.revenue, 0);
       const mileagePayments = vehicleTrips.reduce((sum, t) => sum + t.mileagePayment, 0);
+      const permitCosts = vehicleTrips.reduce((sum, t) => sum + t.permitCost, 0);
       const fuelCost = vehicleFuel.reduce((sum, f) => sum + f.cost, 0);
       const maintenanceCost = vehicleMaintenance.reduce((sum, m) => sum + m.cost, 0);
 
@@ -172,8 +175,9 @@ export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]
         fuelCost,
         maintenanceCost,
         mileagePayments,
+        permitCosts,
         otherCost: 0,
-        netProfit: revenue - fuelCost - maintenanceCost - mileagePayments,
+        netProfit: revenue - fuelCost - maintenanceCost - mileagePayments - permitCosts,
         trips: vehicleTrips,
         fuelEntries: vehicleFuel,
         maintenanceEntries: vehicleMaintenance,
