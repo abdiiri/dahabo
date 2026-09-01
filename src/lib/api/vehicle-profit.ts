@@ -21,6 +21,17 @@ function monthKey(iso: string): string {
   return iso.slice(0, 7); // "2026-08"
 }
 
+/** First day of the month after the given "YYYY-MM" key, as "YYYY-MM-DD" —
+ * an always-valid exclusive upper bound for a month-range query. Building
+ * this as `${thisMonth}-31` instead (as a previous version of this file
+ * did) breaks every month with fewer than 31 days: Postgres rejects
+ * "2026-09-31" outright since September has no 31st. */
+function firstDayOfNextMonth(monthOf: string): string {
+  const [year, month] = monthOf.split("-").map(Number);
+  const next = new Date(Date.UTC(year, month, 1)); // JS Date rolls Dec -> next Jan automatically
+  return next.toISOString().slice(0, 10);
+}
+
 /** Builds the per-trip breakdown (exact revenue + mileage pay per trip) for
  * one vehicle in one month, from trips/orders/payments already in memory. */
 function tripBreakdownFor(
@@ -101,13 +112,14 @@ function maintenanceBreakdownFor(
     .sort((a, b) => a.serviceDate.localeCompare(b.serviceDate));
 }
 
-/** Vehicle profit for the current calendar month, per vehicle. Real data,
- * computed either from Supabase or from local/demo records — same formula
- * either way. Each row also carries a per-trip, per-fuel-purchase, and
- * per-maintenance-job breakdown so nothing gets flattened into one blended
- * number — every KSh deducted is traceable to a specific date and record. */
-export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]> {
-  const thisMonth = monthKey(new Date().toISOString());
+/** Vehicle profit for a given calendar month ("YYYY-MM"; defaults to the
+ * current month), per vehicle. Real data, computed either from Supabase or
+ * from local/demo records — same formula either way. Each row also carries
+ * a per-trip, per-fuel-purchase, and per-maintenance-job breakdown so
+ * nothing gets flattened into one blended number — every KSh deducted is
+ * traceable to a specific date and record. */
+export async function listVehicleProfitForMonth(monthOf?: string): Promise<VehicleProfitMonth[]> {
+  const thisMonth = monthOf ?? monthKey(new Date().toISOString());
 
   if (isSupabaseConfigured && supabase) {
     const [{ data, error }, trips, orders, payments, fuel, maintenance] = await Promise.all([
@@ -115,7 +127,7 @@ export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]
         .from("vehicle_profit_monthly")
         .select("*")
         .gte("period_month", `${thisMonth}-01`)
-        .lt("period_month", `${thisMonth}-31`),
+        .lt("period_month", firstDayOfNextMonth(thisMonth)),
       listTrips(),
       listTransportOrders(),
       listDriverPayments(),
@@ -183,4 +195,22 @@ export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]
         maintenanceEntries: vehicleMaintenance,
       };
     });
+}
+
+/** Unchanged name/signature for existing callers (e.g. the dashboard, which
+ * only ever wants the current month). */
+export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]> {
+  return listVehicleProfitForMonth();
+}
+
+/** Last 12 months as "YYYY-MM" keys, most recent first — matches the
+ * rolling 12-month window the vehicle_profit_monthly view itself keeps (see
+ * migration 026/040), so every option in a month picker actually has data
+ * behind it rather than silently coming back empty. */
+export function recentMonthOptions(): string[] {
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    return d.toISOString().slice(0, 7);
+  });
 }

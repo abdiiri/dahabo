@@ -29,7 +29,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { listVehicleProfitThisMonth } from "@/lib/api/vehicle-profit";
+import {
+  listVehicleProfitForMonth,
+  recentMonthOptions,
+} from "@/lib/api/vehicle-profit";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { setVehicleProfitExclusion } from "@/lib/api/vehicles";
 import type { VehicleProfitMonth } from "@/lib/api/types";
 
@@ -48,8 +58,16 @@ export const Route = createFileRoute("/staff/vehicle-profit")({
 });
 
 const money = (n: number) => `KSh ${n.toLocaleString()}`;
+const monthLabel = (monthKey: string) =>
+  new Date(`${monthKey}-01T00:00:00Z`).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 
 function Page() {
+  const monthOptions = recentMonthOptions();
+  const [month, setMonth] = useState(monthOptions[0]);
   const [rows, setRows] = useState<VehicleProfitMonth[] | null>(null);
   const [removing, setRemoving] = useState<VehicleProfitMonth | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -57,7 +75,8 @@ function Page() {
 
   useEffect(() => {
     let active = true;
-    listVehicleProfitThisMonth()
+    setRows(null);
+    listVehicleProfitForMonth(month)
       .then((r) => active && setRows(r))
       .catch((err) => {
         if (!active) return;
@@ -67,7 +86,7 @@ function Page() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [month]);
 
   async function handleRemove() {
     if (!removing) return;
@@ -173,7 +192,21 @@ function Page() {
       <PageHeader
         breadcrumb={["Staff", "Vehicle Profit"]}
         title="Vehicle Profit"
-        description="This month, per vehicle: revenue minus fuel, maintenance and mileage pay."
+        description="Per vehicle: revenue minus fuel, maintenance, permit fees and mileage pay."
+        actions={
+          <Select value={month} onValueChange={setMonth}>
+            <SelectTrigger className="w-[170px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {monthOptions.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {monthLabel(m)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
       />
 
       {rows === null ? (
@@ -192,7 +225,7 @@ function Page() {
             if (!hasAnything) {
               return (
                 <p className="text-sm text-muted-foreground">
-                  No trips, fuel or maintenance recorded for this vehicle this month.
+                  No trips, fuel or maintenance recorded for this vehicle in this month.
                 </p>
               );
             }
