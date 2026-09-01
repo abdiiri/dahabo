@@ -159,6 +159,40 @@ export async function createUpfront(input: NewUpfrontInput): Promise<CustomerTra
   return insertTransaction("upfront", input);
 }
 
+/** Settle an "upfront" entry once its order is complete — the money isn't a
+ * pending advance anymore, so it converts to a plain "extra" receipt. Its
+ * amount already counted toward "Total received" (upfront money has always
+ * been in hand); this only moves it out of the "Upfront received" breakdown
+ * and into "Extra / advance balance" instead. One-way, unlike the generic
+ * edit path above — type is deliberately not editable there. */
+export async function settleUpfront(id: string): Promise<CustomerTransaction> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: current, error: fetchError } = await supabase
+      .from("customer_transactions")
+      .select(SELECT)
+      .eq("id", id)
+      .single();
+    if (fetchError) throw fetchError;
+    const row = mapRow(current);
+    if (row.type !== "upfront") throw new Error("Only upfront entries can be settled");
+    const { data, error } = await supabase
+      .from("customer_transactions")
+      .update({ type: "extra" })
+      .eq("id", id)
+      .select(SELECT)
+      .single();
+    if (error) throw error;
+    return mapRow(data);
+  }
+
+  const existing = store.get(id);
+  if (!existing) throw new Error("Ledger entry not found");
+  if (existing.type !== "upfront") throw new Error("Only upfront entries can be settled");
+  const updated = store.update(id, { type: "extra" });
+  if (!updated) throw new Error("Ledger entry not found");
+  return updated;
+}
+
 /** Edit an existing ledger entry's amount, currency, mode, date, reference,
  * or notes. Re-totals the customer's outstanding balance afterward in case
  * the amount changed on a debt row. */

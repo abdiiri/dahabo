@@ -235,7 +235,7 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
               <Input
                 type="number"
                 min={0}
-                value={values.mileageAmount ?? ""}
+                value={values.mileageAmount || ""}
                 onChange={(e) => set("mileageAmount")(Number(e.target.value))}
                 placeholder="e.g. 5000"
               />
@@ -245,7 +245,7 @@ export function StartTripDialog({ onCreated }: { onCreated?: (trip: Trip) => voi
               <Input
                 type="number"
                 min={0}
-                value={values.permitCost ?? ""}
+                value={values.permitCost || ""}
                 onChange={(e) => set("permitCost")(Number(e.target.value))}
                 placeholder="e.g. 2000"
               />

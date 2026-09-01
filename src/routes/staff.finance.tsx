@@ -8,6 +8,7 @@ import {
   HandCoins,
   PiggyBank,
   BadgeCheck,
+  CheckCircle2,
   Users as UsersIcon,
   MessageCircle,
   FileText,
@@ -54,6 +55,7 @@ import { listCustomers } from "@/lib/api/customers";
 import {
   listCustomerTransactions,
   deleteCustomerTransaction,
+  settleUpfront,
   getTransactionStatus,
   remainingBalance,
 } from "@/lib/api/customer-transactions";
@@ -292,6 +294,41 @@ function Page() {
     }
   }
 
+  async function handleSettleUpfront(t: CustomerTransaction) {
+    if (!canEdit) {
+      toast.error("You don't have permission to edit ledger entries");
+      return;
+    }
+    setBusyId(t.id);
+    try {
+      const updated = await settleUpfront(t.id);
+      setTransactions((rows) => (rows ?? []).map((r) => (r.id === updated.id ? updated : r)));
+      toast.success("Marked as settled — now counted as an extra receipt");
+    } catch (err) {
+      toast.error("Couldn't settle this entry", { description: getErrorMessage(err) });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function sendUpfrontReceipt(t: CustomerTransaction) {
+    const customer = customerById.get(t.customerId);
+    const message = [
+      "*Dahabo Global Logistics*",
+      `Hi ${customer?.name ?? t.customerName ?? "there"}, we've received your upfront payment of ${formatMoney(t.amount, t.currency)} on ${new Date(t.date).toLocaleDateString()}${t.reference ? ` (Ref: ${t.reference})` : ""}.`,
+      "This has been recorded against your order in full. Thank you for your business.",
+      "— Dahabo Global Logistics",
+    ].join("\n");
+    const link = buildWhatsAppLink(customer?.phone, message);
+    if (!link) {
+      toast.error("No phone number on file for this customer", {
+        description: "Add one from the Customers tab to enable WhatsApp sending.",
+      });
+      return;
+    }
+    window.open(link, "_blank", "noopener,noreferrer");
+  }
+
   function sendDebtReminder(t: CustomerTransaction) {
     const customer = customerById.get(t.customerId);
     const remaining = remainingBalance(t);
@@ -433,6 +470,16 @@ function Page() {
               {r.type === "debt" && status !== "settled" ? (
                 <DropdownMenuItem onSelect={() => sendDebtReminder(r)}>
                   <MessageCircle className="size-4" /> Send reminder
+                </DropdownMenuItem>
+              ) : null}
+              {r.type === "upfront" ? (
+                <DropdownMenuItem onSelect={() => sendUpfrontReceipt(r)}>
+                  <MessageCircle className="size-4" /> Send receipt
+                </DropdownMenuItem>
+              ) : null}
+              {canEdit && r.type === "upfront" ? (
+                <DropdownMenuItem onSelect={() => handleSettleUpfront(r)}>
+                  <CheckCircle2 className="size-4" /> Settle
                 </DropdownMenuItem>
               ) : null}
               {canDelete ? (
