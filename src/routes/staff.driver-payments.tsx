@@ -11,7 +11,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
+import { getErrorMessage, monthLabel, recentMonthOptions } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatCard } from "@/components/common/StatCard";
@@ -70,6 +70,8 @@ export const Route = createFileRoute("/staff/driver-payments")({
 });
 
 function Page() {
+  const monthOptions = recentMonthOptions();
+  const [month, setMonth] = useState(monthOptions[0]);
   const [payments, setPayments] = useState<DriverPayment[] | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [statusFilter, setStatusFilter] = useState<DriverPaymentStatus | "all">("all");
@@ -87,31 +89,31 @@ function Page() {
 
   const tripById = useMemo(() => new Map(trips.map((t) => [t.id, t])), [trips]);
 
-  // Default view order: most recent trip first, descending — not creation
-  // order. Users can still click the Trip column header to flip it or sort
-  // by something else entirely; this only sets what they see before
-  // touching a header.
+  // Scoped to the selected month (defaults to current, like Vehicle Profit)
+  // — not creation order within that month. Users can still click the Trip
+  // column header to flip it or sort by something else entirely; this only
+  // sets what they see before touching a header.
   const sortedPayments = useMemo(() => {
-    const rows = payments ?? [];
+    const rows = (payments ?? []).filter((p) => p.createdAt.slice(0, 7) === month);
     return [...rows].sort(
       (a, b) => (extractRefNumber(b.tripCode) ?? 0) - (extractRefNumber(a.tripCode) ?? 0),
     );
-  }, [payments]);
+  }, [payments, month]);
 
   const filteredPayments = useMemo(() => {
     if (statusFilter === "all") return sortedPayments;
     return sortedPayments.filter((p) => p.status === statusFilter);
   }, [sortedPayments, statusFilter]);
 
-  // Totals always reflect every payment, not just the filtered view — so
-  // the numbers up top stay a stable summary while the filter narrows the
-  // table below it.
+  // Totals always reflect every payment in the selected month, not just the
+  // status-filtered view — so the numbers up top stay a stable summary
+  // while the filter narrows the table below it.
   const totals = useMemo(() => {
-    const rows = payments ?? [];
+    const rows = (payments ?? []).filter((p) => p.createdAt.slice(0, 7) === month);
     const sum = (status: DriverPaymentStatus) =>
       rows.filter((p) => p.status === status).reduce((acc, p) => acc + p.amount, 0);
     return { pending: sum("pending"), approved: sum("approved"), paid: sum("paid") };
-  }, [payments]);
+  }, [payments, month]);
 
   async function setStatus(payment: DriverPayment, status: DriverPaymentStatus) {
     setBusyId(payment.id);
@@ -201,6 +203,20 @@ function Page() {
         breadcrumb={["Staff", "Driver Payments"]}
         title="Driver Payments"
         description="Mileage pay — the flat agreement amount entered when each trip was started."
+        actions={
+          <Select value={month} onValueChange={setMonth}>
+            <SelectTrigger className="w-[170px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {monthOptions.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {monthLabel(m)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
       />
 
       {payments === null ? (

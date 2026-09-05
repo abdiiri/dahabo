@@ -203,14 +203,7 @@ export async function listVehicleProfitThisMonth(): Promise<VehicleProfitMonth[]
   return listVehicleProfitForMonth();
 }
 
-/** Last 12 months as "YYYY-MM" keys, most recent first — matches the
- * rolling 12-month window the vehicle_profit_monthly view itself keeps (see
- * migration 026/040), so every option in a month picker actually has data
- * behind it rather than silently coming back empty. */
-export function recentMonthOptions(): string[] {
-  const now = new Date();
-  return Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
-    return d.toISOString().slice(0, 7);
-  });
-}
+// Re-exported so existing imports of `recentMonthOptions` from this module
+// keep working — the actual implementation now lives in lib/utils.ts, since
+// Driver Payments and Maintenance use the same month-picker pattern.
+export { recentMonthOptions } from "@/lib/utils";

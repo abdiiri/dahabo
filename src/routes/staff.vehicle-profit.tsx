@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, MoreHorizontal, EyeOff, Fuel } from "lucide-react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
+import { getErrorMessage, monthLabel } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
@@ -58,12 +58,6 @@ export const Route = createFileRoute("/staff/vehicle-profit")({
 });
 
 const money = (n: number) => `KSh ${n.toLocaleString()}`;
-const monthLabel = (monthKey: string) =>
-  new Date(`${monthKey}-01T00:00:00Z`).toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 function Page() {
   const monthOptions = recentMonthOptions();

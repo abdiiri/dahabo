@@ -294,6 +294,7 @@ function EditTransportOrderDialog({
         destination: order.destination,
         agreedAmount: order.agreedAmount,
         notes: order.notes ?? "",
+        createdAt: order.createdAt,
       });
     }
   }, [order]);
@@ -358,6 +359,17 @@ function EditTransportOrderDialog({
               min={0}
               value={values.agreedAmount || ""}
               onChange={(e) => set("agreedAmount")(Number(e.target.value))}
+            />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-sm">Date</Label>
+            <Input
+              type="date"
+              // createdAt is stored as a full timestamp; a native date input
+              // only accepts "yyyy-MM-dd" and shows blank on anything else,
+              // so trim it here — same fix as editing a fuel record's date.
+              value={values.createdAt ? values.createdAt.slice(0, 10) : ""}
+              onChange={(e) => set("createdAt")(e.target.value)}
             />
           </div>
           <div>

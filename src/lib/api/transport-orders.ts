@@ -88,7 +88,12 @@ export type EditTransportOrderInput = Partial<
   Pick<
     NewTransportOrderInput,
     "customerId" | "branch" | "pickupLocation" | "destination" | "agreedAmount" | "notes"
-  >
+  > & {
+    /** Lets a wrong order date get corrected after the fact — stored as a
+     * full timestamp, but only the date portion is editable (see the Edit
+     * dialog), same convention as fixing a fuel record's date. */
+    createdAt: string;
+  }
 >;
 
 export async function editTransportOrder(
@@ -105,6 +110,7 @@ export async function editTransportOrder(
         ...(input.destination !== undefined ? { destination: input.destination } : {}),
         ...(input.agreedAmount !== undefined ? { agreed_amount: input.agreedAmount } : {}),
         ...(input.notes !== undefined ? { notes: input.notes || null } : {}),
+        ...(input.createdAt !== undefined ? { created_at: input.createdAt } : {}),
       })
       .eq("id", id)
       .select("*, customers(name)")

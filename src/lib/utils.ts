@@ -5,6 +5,26 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Last 12 months as "YYYY-MM" keys, most recent first — the standard
+ * window used by every "current month, with history" view in the app
+ * (Vehicle Profit, Driver Payments, Maintenance). */
+export function recentMonthOptions(): string[] {
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    return d.toISOString().slice(0, 7);
+  });
+}
+
+/** "2026-09" -> "September 2026". */
+export function monthLabel(monthKey: string): string {
+  return new Date(`${monthKey}-01T00:00:00Z`).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 /**
  * Extracts a readable message from any thrown value. Real `Error` instances
  * are handled, but Supabase/Postgrest errors are plain objects with a
