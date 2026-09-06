@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, FlagTriangleRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
+import { getErrorMessage, recentMonthOptions, monthLabel, isInMonth } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusPill } from "@/components/common/StatusPill";
@@ -34,6 +34,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StartTripDialog } from "@/components/staff/StartTripDialog";
 import { CompleteTripDialog } from "@/components/staff/CompleteTripDialog";
 import { listTrips, deleteTrip, editTrip, type EditTripInput } from "@/lib/api/trips";
@@ -50,6 +57,8 @@ export const Route = createFileRoute("/staff/trips")({
 });
 
 function Page() {
+  const monthOptions = recentMonthOptions();
+  const [month, setMonth] = useState(monthOptions[0]);
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [completing, setCompleting] = useState<Trip | null>(null);
   const [editing, setEditing] = useState<Trip | null>(null);
@@ -83,6 +92,10 @@ function Page() {
       setDeletingId(null);
     }
   }
+
+  const filteredTrips = useMemo(() => {
+    return (trips ?? []).filter((t) => isInMonth(t.createdAt, month));
+  }, [trips, month]);
 
   const columns: Column<Trip>[] = [
     { key: "tripCode", header: "Trip" },
@@ -155,7 +168,23 @@ function Page() {
         breadcrumb={["Staff", "Trips"]}
         title="Trips"
         description="Start a trip against a vehicle and driver, entering the agreed mileage pay up front — no distance calculation needed."
-        actions={<StartTripDialog onCreated={() => refresh()} />}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Select value={month} onValueChange={setMonth}>
+              <SelectTrigger className="w-[170px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {monthLabel(m)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <StartTripDialog onCreated={() => refresh()} />
+          </div>
+        }
       />
 
       {trips === null ? (
@@ -163,7 +192,12 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable data={trips} columns={columns} searchPlaceholder="Search trips…" exportFilename="trips" />
+        <DataTable
+          data={filteredTrips}
+          columns={columns}
+          searchPlaceholder="Search trips…"
+          exportFilename="trips"
+        />
       )}
 
       <CompleteTripDialog

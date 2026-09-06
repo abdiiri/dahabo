@@ -55,7 +55,7 @@ import { listCustomers } from "@/lib/api/customers";
 import {
   listCustomerTransactions,
   deleteCustomerTransaction,
-  settleUpfront,
+  settleReceipt,
   getTransactionStatus,
   remainingBalance,
 } from "@/lib/api/customer-transactions";
@@ -252,11 +252,13 @@ function Page() {
         .map((t) => ({ amount: t.amount, currency: t.currency })),
     ]);
     const totalExtra = formatMoneyGroups(
-      ledgerRows.filter((t) => t.type === "extra").map((t) => ({ amount: t.amount, currency: t.currency })),
+      ledgerRows
+        .filter((t) => t.type === "extra" && !t.settled)
+        .map((t) => ({ amount: t.amount, currency: t.currency })),
     );
     const totalUpfront = formatMoneyGroups(
       ledgerRows
-        .filter((t) => t.type === "upfront")
+        .filter((t) => t.type === "upfront" && !t.settled)
         .map((t) => ({ amount: t.amount, currency: t.currency })),
     );
     const customersOwing = new Set(
@@ -294,16 +296,16 @@ function Page() {
     }
   }
 
-  async function handleSettleUpfront(t: CustomerTransaction) {
+  async function handleSettleReceipt(t: CustomerTransaction) {
     if (!canEdit) {
       toast.error("You don't have permission to edit ledger entries");
       return;
     }
     setBusyId(t.id);
     try {
-      const updated = await settleUpfront(t.id);
+      const updated = await settleReceipt(t.id);
       setTransactions((rows) => (rows ?? []).map((r) => (r.id === updated.id ? updated : r)));
-      toast.success("Marked as settled — now counted as an extra receipt");
+      toast.success("Marked as settled");
     } catch (err) {
       toast.error("Couldn't settle this entry", { description: getErrorMessage(err) });
     } finally {
@@ -472,13 +474,13 @@ function Page() {
                   <MessageCircle className="size-4" /> Send reminder
                 </DropdownMenuItem>
               ) : null}
-              {r.type === "upfront" ? (
+              {r.type === "upfront" && !r.settled ? (
                 <DropdownMenuItem onSelect={() => sendUpfrontReceipt(r)}>
                   <MessageCircle className="size-4" /> Send receipt
                 </DropdownMenuItem>
               ) : null}
-              {canEdit && r.type === "upfront" ? (
-                <DropdownMenuItem onSelect={() => handleSettleUpfront(r)}>
+              {canEdit && (r.type === "upfront" || r.type === "extra") && !r.settled ? (
+                <DropdownMenuItem onSelect={() => handleSettleReceipt(r)}>
                   <CheckCircle2 className="size-4" /> Settle
                 </DropdownMenuItem>
               ) : null}

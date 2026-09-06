@@ -406,6 +406,14 @@ export type CustomerTransaction = {
   /** Only meaningful for "debt" rows — how much of `amount` has been paid
    * back so far. Always 0 for "extra" and "upfront" rows. */
   amountPaid: number;
+  /** Only meaningful for "extra" and "upfront" rows — marks the money as
+   * finalized (order delivered / advance fully used) rather than still
+   * sitting as an open advance. Doesn't affect "Total received", which
+   * already counts this money from the moment it came in; it only moves
+   * the row out of the "Extra / advance balance" / "Upfront received"
+   * breakdown cards. Always false for "debt" rows, which use amountPaid
+   * to derive their own outstanding/partial/settled status instead. */
+  settled?: boolean | undefined;
   mode: CustomerTransactionMode;
   reference?: string | undefined;
   /** Date the debt was given, or the date the extra/upfront money was received. */

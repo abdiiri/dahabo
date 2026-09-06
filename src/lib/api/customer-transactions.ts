@@ -44,8 +44,8 @@ export async function listCustomerTransactionsFor(
  * "extra" and "upfront" rows are recorded for the books but don't reduce
  * it — see the CustomerTransactionType doc comment in types.ts for why. */
 export function getTransactionStatus(t: CustomerTransaction): CustomerTransactionStatus {
-  if (t.type === "extra") return "extra";
-  if (t.type === "upfront") return "upfront";
+  if (t.type === "extra") return t.settled ? "settled" : "extra";
+  if (t.type === "upfront") return t.settled ? "settled" : "upfront";
   if (t.amountPaid <= 0) return "outstanding";
   if (t.amountPaid < t.amount) return "partial";
   return "settled";
@@ -130,6 +130,7 @@ async function insertTransaction(
     amount: input.amount,
     currency: input.currency,
     amountPaid: 0,
+    settled: false,
     mode: input.mode,
     reference: input.reference,
     date: input.date,
@@ -159,13 +160,13 @@ export async function createUpfront(input: NewUpfrontInput): Promise<CustomerTra
   return insertTransaction("upfront", input);
 }
 
-/** Settle an "upfront" entry once its order is complete — the money isn't a
- * pending advance anymore, so it converts to a plain "extra" receipt. Its
- * amount already counted toward "Total received" (upfront money has always
- * been in hand); this only moves it out of the "Upfront received" breakdown
- * and into "Extra / advance balance" instead. One-way, unlike the generic
- * edit path above — type is deliberately not editable there. */
-export async function settleUpfront(id: string): Promise<CustomerTransaction> {
+/** Settle an "extra" or "upfront" entry once its money is finalized (order
+ * delivered, advance fully used) rather than an open advance. Its amount
+ * already counted toward "Total received" — that money has been in hand
+ * since it was recorded — this only moves it out of the "Extra / advance
+ * balance" / "Upfront received" breakdown and into the same "Settled"
+ * status debt rows use once fully paid. One-way, like settling a debt. */
+export async function settleReceipt(id: string): Promise<CustomerTransaction> {
   if (isSupabaseConfigured && supabase) {
     const { data: current, error: fetchError } = await supabase
       .from("customer_transactions")
@@ -174,10 +175,12 @@ export async function settleUpfront(id: string): Promise<CustomerTransaction> {
       .single();
     if (fetchError) throw fetchError;
     const row = mapRow(current);
-    if (row.type !== "upfront") throw new Error("Only upfront entries can be settled");
+    if (row.type !== "extra" && row.type !== "upfront") {
+      throw new Error("Only extra/upfront entries can be settled");
+    }
     const { data, error } = await supabase
       .from("customer_transactions")
-      .update({ type: "extra" })
+      .update({ settled: true })
       .eq("id", id)
       .select(SELECT)
       .single();
@@ -187,8 +190,10 @@ export async function settleUpfront(id: string): Promise<CustomerTransaction> {
 
   const existing = store.get(id);
   if (!existing) throw new Error("Ledger entry not found");
-  if (existing.type !== "upfront") throw new Error("Only upfront entries can be settled");
-  const updated = store.update(id, { type: "extra" });
+  if (existing.type !== "extra" && existing.type !== "upfront") {
+    throw new Error("Only extra/upfront entries can be settled");
+  }
+  const updated = store.update(id, { settled: true });
   if (!updated) throw new Error("Ledger entry not found");
   return updated;
 }
@@ -306,6 +311,7 @@ function mapRow(row: any): CustomerTransaction {
     amount: Number(row.amount) || 0,
     currency: (row.currency as CustomerTransactionCurrency) || "KES",
     amountPaid: Number(row.amount_paid) || 0,
+    settled: Boolean(row.settled),
     mode: row.mode,
     reference: row.reference ?? undefined,
     date: row.entry_date,

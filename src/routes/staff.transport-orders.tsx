@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
+import { getErrorMessage, recentMonthOptions, monthLabel, isInMonth } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusPill } from "@/components/common/StatusPill";
@@ -36,6 +36,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AddTransportOrderDialog } from "@/components/staff/AddTransportOrderDialog";
 import {
   listTransportOrders,
@@ -83,6 +90,8 @@ export const Route = createFileRoute("/staff/transport-orders")({
 });
 
 function Page() {
+  const monthOptions = recentMonthOptions();
+  const [month, setMonth] = useState(monthOptions[0]);
   const [orders, setOrders] = useState<TransportOrder[] | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -139,6 +148,10 @@ function Page() {
       setDeletingId(null);
     }
   }
+
+  const filteredOrders = useMemo(() => {
+    return (orders ?? []).filter((o) => isInMonth(o.createdAt, month));
+  }, [orders, month]);
 
   const columns: Column<TransportOrder>[] = [
     { key: "orderCode", header: "Order" },
@@ -209,7 +222,21 @@ function Page() {
         title="Transport Orders"
         description="Jobs requested by customers — the starting point for every trip. Completing the linked trip marks the order complete automatically, or mark it complete here directly."
         actions={
-          <AddTransportOrderDialog onCreated={(o) => setOrders((rows) => [o, ...(rows ?? [])])} />
+          <div className="flex flex-wrap gap-2">
+            <Select value={month} onValueChange={setMonth}>
+              <SelectTrigger className="w-[170px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {monthLabel(m)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <AddTransportOrderDialog onCreated={(o) => setOrders((rows) => [o, ...(rows ?? [])])} />
+          </div>
         }
       />
 
@@ -218,7 +245,12 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable data={orders} columns={columns} searchPlaceholder="Search orders…" exportFilename="transport-orders" />
+        <DataTable
+          data={filteredOrders}
+          columns={columns}
+          searchPlaceholder="Search orders…"
+          exportFilename="transport-orders"
+        />
       )}
 
       <EditTransportOrderDialog
@@ -294,7 +326,6 @@ function EditTransportOrderDialog({
         destination: order.destination,
         agreedAmount: order.agreedAmount,
         notes: order.notes ?? "",
-        createdAt: order.createdAt,
       });
     }
   }, [order]);
@@ -359,17 +390,6 @@ function EditTransportOrderDialog({
               min={0}
               value={values.agreedAmount || ""}
               onChange={(e) => set("agreedAmount")(Number(e.target.value))}
-            />
-          </div>
-          <div>
-            <Label className="mb-1.5 block text-sm">Date</Label>
-            <Input
-              type="date"
-              // createdAt is stored as a full timestamp; a native date input
-              // only accepts "yyyy-MM-dd" and shows blank on anything else,
-              // so trim it here — same fix as editing a fuel record's date.
-              value={values.createdAt ? values.createdAt.slice(0, 10) : ""}
-              onChange={(e) => set("createdAt")(e.target.value)}
             />
           </div>
           <div>

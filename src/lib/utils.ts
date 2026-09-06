@@ -5,26 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Last 12 months as "YYYY-MM" keys, most recent first — the standard
- * window used by every "current month, with history" view in the app
- * (Vehicle Profit, Driver Payments, Maintenance). */
-export function recentMonthOptions(): string[] {
-  const now = new Date();
-  return Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
-    return d.toISOString().slice(0, 7);
-  });
-}
-
-/** "2026-09" -> "September 2026". */
-export function monthLabel(monthKey: string): string {
-  return new Date(`${monthKey}-01T00:00:00Z`).toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
 /**
  * Extracts a readable message from any thrown value. Real `Error` instances
  * are handled, but Supabase/Postgrest errors are plain objects with a
@@ -68,4 +48,34 @@ export function buildWhatsAppLink(
   const number = toWhatsAppNumber(phone);
   if (!number) return undefined;
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+}
+
+/** Last 12 months as "YYYY-MM" keys, most recent first — used to populate
+ * the month picker on pages like Fuel, Trips, Transport Orders, and
+ * Vehicle Profit so the current month is always the first/default option. */
+export function recentMonthOptions(): string[] {
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    return d.toISOString().slice(0, 7);
+  });
+}
+
+/** "2026-09" -> "September 2026", for display in a month picker. */
+export function monthLabel(monthKey: string): string {
+  return new Date(`${monthKey}-01T00:00:00Z`).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/** True if the given date string (or Date) falls within the given
+ * "YYYY-MM" month key. Used to filter a list of rows down to one month. */
+export function isInMonth(date: string | Date | undefined | null, monthKey: string): boolean {
+  if (!date) return false;
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return false;
+  const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  return key === monthKey;
 }

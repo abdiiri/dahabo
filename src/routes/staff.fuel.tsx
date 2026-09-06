@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, MoreHorizontal, Pencil, Trash2, Fuel as FuelIcon, Droplets, Wallet, Route as RouteIcon } from "lucide-react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
+import { getErrorMessage, recentMonthOptions, monthLabel, isInMonth } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatCard } from "@/components/common/StatCard";
@@ -62,6 +62,8 @@ export const Route = createFileRoute("/staff/fuel")({
 });
 
 function Page() {
+  const monthOptions = recentMonthOptions();
+  const [month, setMonth] = useState(monthOptions[0]);
   const [records, setRecords] = useState<FuelRecord[] | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehicleFilter, setVehicleFilter] = useState<string>("all");
@@ -80,9 +82,10 @@ function Page() {
 
   const filteredRecords = useMemo(() => {
     const rows = records ?? [];
-    if (vehicleFilter === "all") return rows;
-    return rows.filter((r) => r.vehicleId === vehicleFilter);
-  }, [records, vehicleFilter]);
+    const inMonth = rows.filter((r) => isInMonth(r.filledAt, month));
+    if (vehicleFilter === "all") return inMonth;
+    return inMonth.filter((r) => r.vehicleId === vehicleFilter);
+  }, [records, vehicleFilter, month]);
 
   // Totals reflect whatever filter is active, so the numbers always match what's in the table below.
   const fuelStats = useMemo(() => {
@@ -181,7 +184,21 @@ function Page() {
         title="Fuel"
         description="Fuel purchases, per vehicle."
         actions={
-          <AddFuelRecordDialog onCreated={(r) => setRecords((rows) => [r, ...(rows ?? [])])} />
+          <div className="flex flex-wrap gap-2">
+            <Select value={month} onValueChange={setMonth}>
+              <SelectTrigger className="w-[170px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {monthLabel(m)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <AddFuelRecordDialog onCreated={(r) => setRecords((rows) => [r, ...(rows ?? [])])} />
+          </div>
         }
       />
 
