@@ -9,12 +9,14 @@ import fleetHeavy1 from "@/assets/fleet-heavy-1.jpg";
 import fleetHeavy2 from "@/assets/fleet-heavy-2.jpg";
 import fleetHeavy3 from "@/assets/fleet-heavy-3.jpg";
 import fleetHeavy6 from "@/assets/fleet-heavy-6.jpg";
+import fleetProbox1 from "@/assets/fleet-probox-1.jpg";
 
 const fleetGallery = [
   { src: fleetHeavy1, alt: "Dahabo prime mover and trailer, KDX 183Z" },
   { src: fleetHeavy2, alt: "Dahabo prime mover hauling a multi-axle livestock trailer" },
   { src: fleetHeavy3, alt: "Dahabo prime mover and tautliner trailer, roadside" },
   { src: fleetHeavy6, alt: "Dahabo MAN prime mover and tipper trailer, KDB 902A" },
+  { src: fleetProbox1, alt: "Dahabo Toyota Probox last-mile vehicle, KDZ 926F" },
 ];
 
 export const Route = createFileRoute("/fleet")({
