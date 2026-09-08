@@ -72,9 +72,12 @@ export type NewDebtInput = {
   notes?: string | undefined;
 };
 
-export type NewExtraInput = NewDebtInput;
+/** `settled` only applies to extra/upfront entries — lets staff record
+ * money that's already finalized (e.g. an advance immediately used against
+ * a completed order) without a separate "Mark as paid" step afterward. */
+export type NewExtraInput = NewDebtInput & { settled?: boolean | undefined };
 
-export type NewUpfrontInput = NewDebtInput;
+export type NewUpfrontInput = NewDebtInput & { settled?: boolean | undefined };
 
 export type RecordPaymentInput = {
   amount: number;
@@ -100,7 +103,7 @@ export type UpdateTransactionInput = {
 
 async function insertTransaction(
   type: CustomerTransactionType,
-  input: NewDebtInput,
+  input: NewDebtInput & { settled?: boolean | undefined },
 ): Promise<CustomerTransaction> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
@@ -114,6 +117,7 @@ async function insertTransaction(
         entry_date: input.date,
         reference: input.reference || null,
         notes: input.notes || null,
+        settled: input.settled ?? false,
       })
       .select(SELECT)
       .single();
@@ -130,7 +134,7 @@ async function insertTransaction(
     amount: input.amount,
     currency: input.currency,
     amountPaid: 0,
-    settled: false,
+    settled: input.settled ?? false,
     mode: input.mode,
     reference: input.reference,
     date: input.date,

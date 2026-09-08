@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CustomerSelect } from "@/components/common/CustomerSelect";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   createDebt,
   createExtra,
@@ -54,6 +55,10 @@ type FormState = {
   date: string;
   reference: string;
   notes: string;
+  /** Only used for new extra/upfront entries — lets staff record money
+   * that's already finalized instead of a separate "Mark as paid" step
+   * afterward. Ignored for debt and when editing. */
+  settled: boolean;
 };
 
 const emptyForm = (initialCustomerId?: string): FormState => ({
@@ -65,6 +70,7 @@ const emptyForm = (initialCustomerId?: string): FormState => ({
   date: today(),
   reference: "",
   notes: "",
+  settled: false,
 });
 
 const formFromEntry = (entry: CustomerTransaction): FormState => ({
@@ -76,6 +82,7 @@ const formFromEntry = (entry: CustomerTransaction): FormState => ({
   date: entry.date,
   reference: entry.reference ?? "",
   notes: entry.notes ?? "",
+  settled: entry.settled ?? false,
 });
 
 export function AddCustomerTransactionDialog({
@@ -163,6 +170,7 @@ export function AddCustomerTransactionDialog({
           date: values.date,
           reference: values.reference || undefined,
           notes: values.notes || undefined,
+          settled: values.settled,
         };
         const row =
           values.type === "debt"
@@ -229,6 +237,16 @@ export function AddCustomerTransactionDialog({
                   : "Money received beyond what they owed (an advance/overpayment) — this does not reduce any debt."}
             </p>
           </div>
+        ) : null}
+
+        {!isEditing && (values.type === "extra" || values.type === "upfront") ? (
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={values.settled}
+              onCheckedChange={(v) => set("settled")(v === true)}
+            />
+            Already paid — mark as paid right away
+          </label>
         ) : null}
 
         {!customerId && !isEditing ? (

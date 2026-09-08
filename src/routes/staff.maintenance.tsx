@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, MoreHorizontal, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
+import { getErrorMessage, recentMonthOptions, monthLabel, isInMonth } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,8 @@ export const Route = createFileRoute("/staff/maintenance")({
 });
 
 function Page() {
+  const monthOptions = recentMonthOptions();
+  const [month, setMonth] = useState(monthOptions[0]);
   const [records, setRecords] = useState<MaintenanceRecord[] | null>(null);
   const [editing, setEditing] = useState<MaintenanceRecord | null>(null);
 
@@ -59,6 +61,10 @@ function Page() {
       active = false;
     };
   }, []);
+
+  const filteredRecords = useMemo(() => {
+    return (records ?? []).filter((r) => isInMonth(r.serviceDate, month));
+  }, [records, month]);
 
   const columns: Column<MaintenanceRecord>[] = [
     { key: "vehicleLabel", header: "Vehicle", render: (r) => r.vehicleLabel ?? "—" },
@@ -108,9 +114,23 @@ function Page() {
         title="Maintenance"
         description="Servicing and repair records, per vehicle."
         actions={
-          <AddMaintenanceRecordDialog
-            onCreated={(r) => setRecords((rows) => [r, ...(rows ?? [])])}
-          />
+          <div className="flex flex-wrap gap-2">
+            <Select value={month} onValueChange={setMonth}>
+              <SelectTrigger className="w-[170px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {monthLabel(m)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <AddMaintenanceRecordDialog
+              onCreated={(r) => setRecords((rows) => [r, ...(rows ?? [])])}
+            />
+          </div>
         }
       />
 
@@ -120,7 +140,7 @@ function Page() {
         </div>
       ) : (
         <DataTable
-          data={records}
+          data={filteredRecords}
           columns={columns}
           searchPlaceholder="Search maintenance records…"
           exportFilename="maintenance-records"

@@ -305,7 +305,7 @@ function Page() {
     try {
       const updated = await settleReceipt(t.id);
       setTransactions((rows) => (rows ?? []).map((r) => (r.id === updated.id ? updated : r)));
-      toast.success("Marked as settled");
+      toast.success("Marked as paid");
     } catch (err) {
       toast.error("Couldn't settle this entry", { description: getErrorMessage(err) });
     } finally {
@@ -434,9 +434,18 @@ function Page() {
       key: "id",
       header: "Status",
       className: "w-px",
-      render: (r) => (
-        <StatusPill status={CUSTOMER_TRANSACTION_STATUS_LABELS[getTransactionStatus(r)]} />
-      ),
+      render: (r) => {
+        const status = getTransactionStatus(r);
+        // "Settled" is shared with fully-paid debts; for extra/upfront rows
+        // it means the money itself was paid out/used, so show "Paid"
+        // instead without touching the debt wording or the underlying
+        // status value used for filtering.
+        const label =
+          status === "settled" && (r.type === "extra" || r.type === "upfront")
+            ? "Paid"
+            : CUSTOMER_TRANSACTION_STATUS_LABELS[status];
+        return <StatusPill status={label} />;
+      },
     },
     {
       key: "id",
@@ -481,7 +490,7 @@ function Page() {
               ) : null}
               {canEdit && (r.type === "upfront" || r.type === "extra") && !r.settled ? (
                 <DropdownMenuItem onSelect={() => handleSettleReceipt(r)}>
-                  <CheckCircle2 className="size-4" /> Settle
+                  <CheckCircle2 className="size-4" /> Mark as paid
                 </DropdownMenuItem>
               ) : null}
               {canDelete ? (
