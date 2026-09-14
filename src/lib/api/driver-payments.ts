@@ -73,8 +73,13 @@ export function syncLocalDriverPayment(params: {
 }) {
   const existing = store.list().find((p) => p.tripId === params.tripId);
   if (existing) {
-    if (existing.status !== "pending") return; // don't clobber an approved/paid figure
-    store.update(existing.id, { amount: params.amount });
+    // driver_id always follows the trip's current assignment, regardless of
+    // status — mirrors the Supabase upsert trigger's `driver_id =
+    // excluded.driver_id`. Only the amount is protected once a payment has
+    // moved past pending.
+    const patch: Partial<DriverPayment> = { driverId: params.driverId, driverName: params.driverName };
+    if (existing.status === "pending") patch.amount = params.amount;
+    store.update(existing.id, patch);
     return;
   }
   store.insert({

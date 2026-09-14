@@ -232,21 +232,29 @@ export async function completeTrip(
 }
 
 /**
- * Edits a trip's own details — origin, destination, starting odometer, and
- * the flat mileage amount. Editing the mileage amount updates its driver
- * payment (and therefore vehicle profit) automatically, whether or not the
- * trip has been completed yet:
+ * Edits a trip's own details — origin, destination, starting odometer, the
+ * flat mileage amount, and (new) who it's assigned to. Editing the mileage
+ * amount updates its driver payment (and therefore vehicle profit)
+ * automatically, whether or not the trip has been completed yet:
  *  - in Supabase, the trips_sync_driver_payment trigger re-fires on this
  *    update the same way it does when the trip is first created
  *  - in local/demo mode, right here, so the app behaves the same either way
  * This is what lets a trip's agreed amount be corrected after the fact if
  * it was entered wrong.
+ *
+ * Reassigning the driver (input.driverId) follows the same split:
+ *  - in Supabase, the trips_guard_availability trigger rejects the change
+ *    if the new driver is already on another active trip, and
+ *    trips_sync_driver_status (migration 042) flips the old driver back to
+ *    available and the new one to on_route
+ *  - in local/demo mode, the same two things happen right here
  */
 export type EditTripInput = Partial<{
   origin: string;
   destination: string;
   mileageAmount: number;
   permitCost: number;
+  driverId: string;
 }>;
 
 export async function editTrip(id: string, input: EditTripInput): Promise<Trip> {
@@ -258,6 +266,7 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
         ...(input.destination !== undefined ? { destination: input.destination } : {}),
         ...(input.mileageAmount !== undefined ? { mileage_amount: input.mileageAmount } : {}),
         ...(input.permitCost !== undefined ? { permit_cost: input.permitCost } : {}),
+        ...(input.driverId !== undefined ? { driver_id: input.driverId } : {}),
       })
       .eq("id", id)
       .select(SELECT)
@@ -268,18 +277,58 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
 
   const existing = store.get(id);
   if (!existing) throw new Error("Trip not found");
-  const updated = store.update(id, input as Partial<Trip>);
+
+  const reassigning = input.driverId !== undefined && input.driverId !== existing.driverId;
+  const isActive = (ACTIVE_TRIP_STATUSES as readonly string[]).includes(existing.status);
+  let driverName = existing.driverName;
+
+  if (reassigning) {
+    // Mirrors the trips_guard_availability trigger: an active trip can't be
+    // handed to a driver who's already on another active trip.
+    if (isActive) {
+      const conflict = store
+        .list()
+        .find(
+          (t) =>
+            t.id !== id &&
+            t.driverId === input.driverId &&
+            (ACTIVE_TRIP_STATUSES as readonly string[]).includes(t.status),
+        );
+      if (conflict) {
+        throw new Error(
+          `This driver is already on trip ${conflict.tripCode} — complete or remove that trip first.`,
+        );
+      }
+    }
+    const newDriver = await getDriver(input.driverId!);
+    driverName = newDriver?.fullName;
+  }
+
+  const updated = store.update(id, { ...(input as Partial<Trip>), driverName });
   if (!updated) throw new Error("Trip not found");
 
-  // The agreed amount changed — recalculate its pending driver payment,
-  // same as when the trip is first created.
-  if (input.mileageAmount !== undefined) {
-    const driver = await getDriver(updated.driverId);
+  if (reassigning && isActive) {
+    syncLocalDriverTripStatus(input.driverId!, true);
+    // Free the old driver, unless they're still on some other active trip.
+    const oldDriverStillActive = store
+      .list()
+      .some(
+        (t) =>
+          t.id !== id &&
+          t.driverId === existing.driverId &&
+          (ACTIVE_TRIP_STATUSES as readonly string[]).includes(t.status),
+      );
+    if (!oldDriverStillActive) syncLocalDriverTripStatus(existing.driverId, false);
+  }
+
+  // The agreed amount and/or driver changed — recalculate its pending
+  // driver payment, same as when the trip is first created.
+  if (input.mileageAmount !== undefined || reassigning) {
     syncLocalDriverPayment({
       tripId: updated.id,
       tripCode: updated.tripCode,
       driverId: updated.driverId,
-      driverName: driver?.fullName,
+      driverName: updated.driverName,
       amount: updated.mileageAmount,
     });
   }

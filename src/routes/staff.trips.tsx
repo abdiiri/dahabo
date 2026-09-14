@@ -43,8 +43,9 @@ import {
 } from "@/components/ui/select";
 import { StartTripDialog } from "@/components/staff/StartTripDialog";
 import { CompleteTripDialog } from "@/components/staff/CompleteTripDialog";
-import { listTrips, deleteTrip, editTrip, type EditTripInput } from "@/lib/api/trips";
-import { TRIP_STATUS_LABELS, type Trip } from "@/lib/api/types";
+import { listTrips, deleteTrip, editTrip, listActiveTripAssignments, type EditTripInput } from "@/lib/api/trips";
+import { listDrivers } from "@/lib/api/drivers";
+import { TRIP_STATUS_LABELS, type Trip, type Driver } from "@/lib/api/types";
 
 export const Route = createFileRoute("/staff/trips")({
   head: () => ({
@@ -251,6 +252,8 @@ function EditTripDialog({
 }) {
   const [values, setValues] = useState<EditTripInput>({});
   const [submitting, setSubmitting] = useState(false);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [busyDriverIds, setBusyDriverIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (trip) {
@@ -259,6 +262,16 @@ function EditTripDialog({
         destination: trip.destination,
         mileageAmount: trip.mileageAmount,
         permitCost: trip.permitCost,
+        driverId: trip.driverId,
+      });
+      listDrivers().then(setDrivers);
+      listActiveTripAssignments().then(({ tripByDriverId }) => {
+        // Everyone with an active trip is off-limits, except the driver
+        // already on THIS trip — that's this trip's own assignment, not a
+        // conflict, and needs to stay selectable so "no change" is an option.
+        const busy = new Set(tripByDriverId.keys());
+        busy.delete(trip.driverId);
+        setBusyDriverIds(busy);
       });
     }
   }, [trip]);
@@ -268,19 +281,33 @@ function EditTripDialog({
     (v: EditTripInput[K]) =>
       setValues((s) => ({ ...s, [k]: v }));
 
+  // Only available drivers, or whoever is already on this trip, can be
+  // picked — same rule Start Trip uses, so a driver already out on another
+  // job can't be double-booked here either.
+  const assignableDrivers = drivers.filter(
+    (d) => d.id === trip?.driverId || (d.status === "available" && !busyDriverIds.has(d.id)),
+  );
+
   async function handleSubmit() {
     if (!trip) return;
     if (!values.origin?.trim() || !values.destination?.trim()) {
       toast.error("Origin and destination are required");
       return;
     }
+    if (!values.driverId) {
+      toast.error("Pick a driver");
+      return;
+    }
     setSubmitting(true);
     try {
       const updated = await editTrip(trip.id, values);
+      const reassigned = values.driverId !== trip.driverId;
       toast.success(
-        values.mileageAmount !== trip.mileageAmount
-          ? "Trip updated — mileage pay and vehicle profit recalculated"
-          : "Trip updated",
+        reassigned
+          ? "Trip reassigned to a new driver"
+          : values.mileageAmount !== trip.mileageAmount
+            ? "Trip updated — mileage pay and vehicle profit recalculated"
+            : "Trip updated",
       );
       onSaved(updated);
     } catch (err) {
@@ -296,11 +323,27 @@ function EditTripDialog({
         <DialogHeader>
           <DialogTitle>Edit trip {trip?.tripCode}</DialogTitle>
           <DialogDescription>
-            Vehicle and driver can't be changed here. Changing the mileage amount recalculates
-            driver pay and vehicle profit automatically.
+            Vehicle can't be changed here. Reassigning the driver moves their pending pay to the
+            new driver. Changing the mileage amount recalculates driver pay and vehicle profit
+            automatically.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 py-2">
+          <div>
+            <Label className="mb-1.5 block text-sm">Driver</Label>
+            <Select value={values.driverId ?? ""} onValueChange={set("driverId")}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {assignableDrivers.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.fullName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="mb-1.5 block text-sm">Origin</Label>
