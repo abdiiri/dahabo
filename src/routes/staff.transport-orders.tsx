@@ -267,8 +267,10 @@ function Page() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this order?</AlertDialogTitle>
             <AlertDialogDescription>
-              This moves the order to the Recycle Bin. It can be restored from there, or permanently
-              removed later. Any trip already linked to it is not affected.
+              This moves the order to the Recycle Bin, along with any trip linked to it — and that
+              trip's driver payment and fuel records go too, whether or not the trip is finished.
+              None of that money will keep counting anywhere while it's deleted. Everything is
+              restorable from the Recycle Bin, or can be permanently removed later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

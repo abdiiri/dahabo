@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { localStore, nextTableRef, renumberFleetCodes } from "./local-store";
+import { listTrips, deleteTrip } from "./trips";
 import type { TransportOrder, NewTransportOrderInput } from "./types";
 
 const store = localStore<TransportOrder>("transport_orders", []);
@@ -119,16 +120,22 @@ export async function editTransportOrder(
 }
 
 /** Moves the transport order to the Recycle Bin (soft delete) — restorable
- * there any time. Doesn't touch any trip already linked to it. */
+ * there any time. Cascades to everything that only exists because of it: any
+ * trip(s) linked to it, and in turn those trips' driver payments and fuel
+ * records — none of that money keeps counting anywhere once the order is
+ * gone. Works regardless of whether a linked trip is still in progress;
+ * that only blocks "Mark complete" on the order, not deletion. */
 export async function deleteTransportOrder(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase
-      .from("transport_orders")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", id);
+    const { error } = await supabase.rpc("delete_transport_order_cascade", { p_order_id: id });
     if (error) throw error;
     return;
   }
+
+  const trips = await listTrips();
+  const linkedTrips = trips.filter((t) => t.transportOrderId === id);
+  await Promise.all(linkedTrips.map((t) => deleteTrip(t.id)));
+
   store.remove(id);
   renumberFleetCodes();
 }

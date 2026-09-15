@@ -1,7 +1,8 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { localStore, nextTableRef, renumberFleetCodes } from "./local-store";
 import { getDriver, syncLocalDriverTripStatus } from "./drivers";
-import { syncLocalDriverPayment } from "./driver-payments";
+import { syncLocalDriverPayment, listDriverPayments, deleteDriverPayment } from "./driver-payments";
+import { listFuelRecords, deleteFuelRecord } from "./fuel-records";
 import { getTransportOrder, updateTransportOrderStatus } from "./transport-orders";
 import type { Trip, NewTripInput, CompleteTripInput } from "./types";
 
@@ -337,21 +338,30 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
 }
 
 /** Moves the trip to the Recycle Bin (soft delete) — restorable there any
- * time. Its driver_payments row (if the trip was completed) goes with it,
- * since driver_payments.trip_id cascades on delete/relies on the same
- * soft-delete convention used across the app. */
+ * time. Its driver_payments row and any fuel records logged against it go
+ * with it, so neither keeps counting toward Driver Payments or Vehicle
+ * Profit once the trip itself is gone. Works regardless of the trip's
+ * status — an in_progress trip isn't protected from deletion, only from
+ * being double-booked (see trips_guard_availability). */
 export async function deleteTrip(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase
-      .from("trips")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", id);
+    const { error } = await supabase.rpc("delete_trip_cascade", { p_trip_id: id });
     if (error) throw error;
     return;
   }
   const trip = store.get(id);
   store.remove(id);
   renumberFleetCodes();
+
+  // Cascade to what only exists because of this trip.
+  const payments = await listDriverPayments();
+  await Promise.all(
+    payments.filter((p) => p.tripId === id).map((p) => deleteDriverPayment(p.id)),
+  );
+  const fuelRecords = await listFuelRecords();
+  await Promise.all(
+    fuelRecords.filter((f) => f.tripId === id).map((f) => deleteFuelRecord(f.id)),
+  );
 
   // Mirrors the trips_sync_driver_status trigger (migration 030): a
   // deleted trip no longer keeps its driver marked as on the road.
