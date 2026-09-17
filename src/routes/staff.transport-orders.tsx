@@ -53,7 +53,7 @@ import {
 } from "@/lib/api/transport-orders";
 import { listTrips } from "@/lib/api/trips";
 import { listCustomers } from "@/lib/api/customers";
-import { TRANSPORT_ORDER_STATUS_LABELS, type TransportOrder, type Customer, type Trip } from "@/lib/api/types";
+import { TRANSPORT_ORDER_STATUS_LABELS, type TransportOrder, type Customer, type Trip, type TransportOrderStatus } from "@/lib/api/types";
 
 /** Compact "18 Aug 2026, 10:30 AM" style date + time, matching how Trips
  * displays its own timestamps. */
@@ -96,6 +96,7 @@ function Page() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editing, setEditing] = useState<TransportOrder | null>(null);
+  const [changingStatus, setChangingStatus] = useState<TransportOrder | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [blockedOrder, setBlockedOrder] = useState<{ order: TransportOrder; trip: Trip } | null>(null);
 
@@ -128,6 +129,20 @@ function Page() {
       toast.success(`${order.orderCode} marked complete`);
     } catch (err) {
       toast.error("Couldn't update this order", { description: getErrorMessage(err) });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function changeStatus(order: TransportOrder, status: TransportOrderStatus) {
+    setBusyId(order.id);
+    try {
+      await updateTransportOrderStatus(order.id, status);
+      setOrders((rows) => (rows ?? []).map((r) => (r.id === order.id ? { ...r, status } : r)));
+      toast.success(`${order.orderCode} set to ${TRANSPORT_ORDER_STATUS_LABELS[status]}`);
+      setChangingStatus(null);
+    } catch (err) {
+      toast.error("Couldn't update status", { description: getErrorMessage(err) });
     } finally {
       setBusyId(null);
     }
@@ -203,6 +218,7 @@ function Page() {
                 {findBlockingTrip(r.id, trips) ? "Mark complete…" : "Mark complete"}
               </DropdownMenuItem>
             ) : null}
+            <DropdownMenuItem onSelect={() => setChangingStatus(r)}>Change status…</DropdownMenuItem>
             <DropdownMenuItem
               onSelect={() => setDeletingId(r.id)}
               className="text-destructive focus:text-destructive"
@@ -262,6 +278,13 @@ function Page() {
         }}
       />
 
+      <ChangeStatusDialog
+        order={changingStatus}
+        busy={busyId === changingStatus?.id}
+        onClose={() => setChangingStatus(null)}
+        onConfirm={(status) => changingStatus && changeStatus(changingStatus, status)}
+      />
+
       <AlertDialog open={deletingId !== null} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -303,6 +326,75 @@ function Page() {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+const ALL_STATUSES: TransportOrderStatus[] = [
+  "pending",
+  "assigned",
+  "in_progress",
+  "completed",
+  "cancelled",
+];
+
+/** Lets staff correct an order's status directly — for fixing a mismatch
+ * left over from a wrong trip assignment or similar, without having to go
+ * into the database by hand. Any status can be picked; nothing here is
+ * blocked the way "Mark complete" is, since this is an explicit manual
+ * correction. */
+function ChangeStatusDialog({
+  order,
+  busy,
+  onClose,
+  onConfirm,
+}: {
+  order: TransportOrder | null;
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: (status: TransportOrderStatus) => void;
+}) {
+  const [status, setStatus] = useState<TransportOrderStatus>("pending");
+
+  useEffect(() => {
+    if (order) setStatus(order.status);
+  }, [order]);
+
+  return (
+    <Dialog open={order !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Change status — {order?.orderCode}</DialogTitle>
+          <DialogDescription>
+            Set this order's status directly. Use this to correct a mismatch — e.g. an order
+            stuck on "In Progress" after its trip was moved elsewhere.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-2">
+          <Label className="mb-1.5 block text-sm">Status</Label>
+          <Select value={status} onValueChange={(v) => setStatus(v as TransportOrderStatus)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ALL_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {TRANSPORT_ORDER_STATUS_LABELS[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button onClick={() => onConfirm(status)} disabled={busy}>
+            {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+            Save status
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

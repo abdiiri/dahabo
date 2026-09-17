@@ -243,12 +243,13 @@ export async function completeTrip(
  * This is what lets a trip's agreed amount be corrected after the fact if
  * it was entered wrong.
  *
- * Reassigning the driver (input.driverId) follows the same split:
+ * Reassigning the driver (input.driverId) or the vehicle (input.vehicleId)
+ * follows the same split:
  *  - in Supabase, the trips_guard_availability trigger rejects the change
- *    if the new driver is already on another active trip, and
+ *    if the new driver or vehicle is already on another active trip, and
  *    trips_sync_driver_status (migration 042) flips the old driver back to
  *    available and the new one to on_route
- *  - in local/demo mode, the same two things happen right here
+ *  - in local/demo mode, the same things happen right here
  */
 export type EditTripInput = Partial<{
   origin: string;
@@ -256,6 +257,7 @@ export type EditTripInput = Partial<{
   mileageAmount: number;
   permitCost: number;
   driverId: string;
+  vehicleId: string;
 }>;
 
 export async function editTrip(id: string, input: EditTripInput): Promise<Trip> {
@@ -268,6 +270,7 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
         ...(input.mileageAmount !== undefined ? { mileage_amount: input.mileageAmount } : {}),
         ...(input.permitCost !== undefined ? { permit_cost: input.permitCost } : {}),
         ...(input.driverId !== undefined ? { driver_id: input.driverId } : {}),
+        ...(input.vehicleId !== undefined ? { vehicle_id: input.vehicleId } : {}),
       })
       .eq("id", id)
       .select(SELECT)
@@ -280,6 +283,7 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
   if (!existing) throw new Error("Trip not found");
 
   const reassigning = input.driverId !== undefined && input.driverId !== existing.driverId;
+  const reassigningVehicle = input.vehicleId !== undefined && input.vehicleId !== existing.vehicleId;
   const isActive = (ACTIVE_TRIP_STATUSES as readonly string[]).includes(existing.status);
   let driverName = existing.driverName;
 
@@ -305,8 +309,26 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
     driverName = newDriver?.fullName;
   }
 
+  if (reassigningVehicle && isActive) {
+    // Same guard, for the vehicle.
+    const conflict = store
+      .list()
+      .find(
+        (t) =>
+          t.id !== id &&
+          t.vehicleId === input.vehicleId &&
+          (ACTIVE_TRIP_STATUSES as readonly string[]).includes(t.status),
+      );
+    if (conflict) {
+      throw new Error(
+        `This vehicle is already on trip ${conflict.tripCode} — complete or remove that trip first.`,
+      );
+    }
+  }
+
   const updated = store.update(id, { ...(input as Partial<Trip>), driverName });
   if (!updated) throw new Error("Trip not found");
+
 
   if (reassigning && isActive) {
     syncLocalDriverTripStatus(input.driverId!, true);
@@ -332,6 +354,64 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
       driverName: updated.driverName,
       amount: updated.mileageAmount,
     });
+  }
+
+  return updated;
+}
+
+/** Moves a trip onto a different transport order (or unlinks it, if
+ * transportOrderId is null) — fixes a trip that got started against the
+ * wrong order. The old order automatically drops back to "pending" if
+ * nothing else justifies its current status; the new order is picked up
+ * by the existing trips_sync_transport_order trigger the same way it would
+ * be for any other trip update. */
+export async function reassignTripOrder(
+  tripId: string,
+  transportOrderId: string | null,
+): Promise<Trip> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.rpc("reassign_trip_order", {
+      p_trip_id: tripId,
+      p_new_order_id: transportOrderId,
+    });
+    if (error) throw error;
+    const trip = await getTrip(tripId);
+    if (!trip) throw new Error("Trip not found");
+    return trip;
+  }
+
+  const existing = store.get(tripId);
+  if (!existing) throw new Error("Trip not found");
+  const oldOrderId = existing.transportOrderId;
+
+  const updated = store.update(tripId, { transportOrderId: transportOrderId ?? undefined });
+  if (!updated) throw new Error("Trip not found");
+
+  if (oldOrderId && oldOrderId !== transportOrderId) {
+    const siblings = store
+      .list()
+      .filter((t) => t.id !== tripId && t.transportOrderId === oldOrderId);
+    if (siblings.some((t) => t.status === "completed")) {
+      await updateTransportOrderStatus(oldOrderId, "completed");
+    } else if (siblings.some((t) => t.status === "in_progress" || t.status === "scheduled")) {
+      await updateTransportOrderStatus(oldOrderId, "in_progress");
+    } else {
+      const old = await getTransportOrder(oldOrderId);
+      if (old && (old.status === "in_progress" || old.status === "completed")) {
+        await updateTransportOrderStatus(oldOrderId, "pending");
+      }
+    }
+  }
+
+  if (transportOrderId) {
+    if (updated.status === "completed") {
+      await updateTransportOrderStatus(transportOrderId, "completed");
+    } else if (updated.status === "in_progress") {
+      const order = await getTransportOrder(transportOrderId);
+      if (order && order.status !== "completed" && order.status !== "cancelled") {
+        await updateTransportOrderStatus(transportOrderId, "in_progress");
+      }
+    }
   }
 
   return updated;
