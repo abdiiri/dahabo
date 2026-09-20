@@ -54,6 +54,7 @@ import {
 import { listTrips } from "@/lib/api/trips";
 import { listCustomers } from "@/lib/api/customers";
 import { TRANSPORT_ORDER_STATUS_LABELS, type TransportOrder, type Customer, type Trip } from "@/lib/api/types";
+import { useRefetchOnFocus } from "@/lib/use-refetch-on-focus";
 
 /** Compact "18 Aug 2026, 10:30 AM" style date + time, matching how Trips
  * displays its own timestamps. */
@@ -99,6 +100,11 @@ function Page() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [blockedOrder, setBlockedOrder] = useState<{ order: TransportOrder; trip: Trip } | null>(null);
 
+  function refresh() {
+    listTransportOrders().then(setOrders);
+    listTrips().then(setTrips);
+  }
+
   useEffect(() => {
     let active = true;
     listTransportOrders().then((rows) => active && setOrders(rows));
@@ -107,6 +113,11 @@ function Page() {
       active = false;
     };
   }, []);
+
+  // Coming back to a tab that's been open a while shouldn't keep showing
+  // something an admin already deleted elsewhere — refetch when it's
+  // looked at again instead of only ever fetching once on mount.
+  useRefetchOnFocus(refresh);
 
   async function markComplete(order: TransportOrder) {
     // An order's own trip is what actually earns the money — completing the

@@ -46,6 +46,7 @@ import { CompleteTripDialog } from "@/components/staff/CompleteTripDialog";
 import { listTrips, deleteTrip, editTrip, listActiveTripAssignments, type EditTripInput } from "@/lib/api/trips";
 import { listDrivers } from "@/lib/api/drivers";
 import { TRIP_STATUS_LABELS, type Trip, type Driver } from "@/lib/api/types";
+import { useRefetchOnFocus } from "@/lib/use-refetch-on-focus";
 
 export const Route = createFileRoute("/staff/trips")({
   head: () => ({
@@ -77,6 +78,11 @@ function Page() {
       active = false;
     };
   }, []);
+
+  // Coming back to a tab that's been open a while shouldn't keep showing
+  // something an admin already deleted elsewhere — refetch when it's
+  // looked at again instead of only ever fetching once on mount.
+  useRefetchOnFocus(refresh);
 
   async function handleDelete() {
     if (!deletingId) return;
