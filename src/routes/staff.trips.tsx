@@ -43,24 +43,9 @@ import {
 } from "@/components/ui/select";
 import { StartTripDialog } from "@/components/staff/StartTripDialog";
 import { CompleteTripDialog } from "@/components/staff/CompleteTripDialog";
-import {
-  listTrips,
-  deleteTrip,
-  editTrip,
-  reassignTripOrder,
-  listActiveTripAssignments,
-  type EditTripInput,
-} from "@/lib/api/trips";
+import { listTrips, deleteTrip, editTrip, listActiveTripAssignments, type EditTripInput } from "@/lib/api/trips";
 import { listDrivers } from "@/lib/api/drivers";
-import { listVehicles } from "@/lib/api/vehicles";
-import { listTransportOrders } from "@/lib/api/transport-orders";
-import {
-  TRIP_STATUS_LABELS,
-  type Trip,
-  type Driver,
-  type Vehicle,
-  type TransportOrder,
-} from "@/lib/api/types";
+import { TRIP_STATUS_LABELS, type Trip, type Driver } from "@/lib/api/types";
 
 export const Route = createFileRoute("/staff/trips")({
   head: () => ({
@@ -266,13 +251,9 @@ function EditTripDialog({
   onSaved: (trip: Trip) => void;
 }) {
   const [values, setValues] = useState<EditTripInput>({});
-  const [orderId, setOrderId] = useState<string | undefined>(undefined);
-  const [orders, setOrders] = useState<TransportOrder[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [busyDriverIds, setBusyDriverIds] = useState<Set<string>>(new Set());
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [busyVehicleIds, setBusyVehicleIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (trip) {
@@ -282,43 +263,15 @@ function EditTripDialog({
         mileageAmount: trip.mileageAmount,
         permitCost: trip.permitCost,
         driverId: trip.driverId,
-        vehicleId: trip.vehicleId,
       });
-      setOrderId(trip.transportOrderId);
       listDrivers().then(setDrivers);
-      listVehicles().then(setVehicles);
-      listActiveTripAssignments().then(({ tripByDriverId, tripByVehicleId }) => {
+      listActiveTripAssignments().then(({ tripByDriverId }) => {
         // Everyone with an active trip is off-limits, except the driver
         // already on THIS trip — that's this trip's own assignment, not a
         // conflict, and needs to stay selectable so "no change" is an option.
         const busy = new Set(tripByDriverId.keys());
         busy.delete(trip.driverId);
         setBusyDriverIds(busy);
-
-        // Same rule for vehicles — this trip's own vehicle stays selectable.
-        const busyVehicles = new Set(tripByVehicleId.keys());
-        busyVehicles.delete(trip.vehicleId);
-        setBusyVehicleIds(busyVehicles);
-      });
-      // Orders already tied to a different live trip aren't offered — this
-      // trip's own current order stays listed regardless of its status, so
-      // "no change" is always an option.
-      Promise.all([listTransportOrders(), listTrips()]).then(([orderRows, tripRows]) => {
-        const linkedOrderIds = new Set(
-          tripRows
-            .filter(
-              (t) => t.id !== trip.id && (t.status === "in_progress" || t.status === "scheduled"),
-            )
-            .map((t) => t.transportOrderId)
-            .filter((id): id is string => Boolean(id)),
-        );
-        setOrders(
-          orderRows.filter(
-            (o) =>
-              o.id === trip.transportOrderId ||
-              (o.status !== "cancelled" && !linkedOrderIds.has(o.id)),
-          ),
-        );
       });
     }
   }, [trip]);
@@ -335,12 +288,6 @@ function EditTripDialog({
     (d) => d.id === trip?.driverId || (d.status === "available" && !busyDriverIds.has(d.id)),
   );
 
-  // Same rule for vehicles — whoever's already on this trip stays
-  // selectable, everyone else already out on another active trip doesn't.
-  const assignableVehicles = vehicles.filter(
-    (v) => v.id === trip?.vehicleId || !busyVehicleIds.has(v.id),
-  );
-
   async function handleSubmit() {
     if (!trip) return;
     if (!values.origin?.trim() || !values.destination?.trim()) {
@@ -353,23 +300,14 @@ function EditTripDialog({
     }
     setSubmitting(true);
     try {
-      let updated = await editTrip(trip.id, values);
-      const orderChanged = orderId !== trip.transportOrderId;
-      if (orderChanged) {
-        updated = await reassignTripOrder(trip.id, orderId ?? null);
-      }
-      const reassignedDriver = values.driverId !== trip.driverId;
-      const reassignedVehicle = values.vehicleId !== trip.vehicleId;
+      const updated = await editTrip(trip.id, values);
+      const reassigned = values.driverId !== trip.driverId;
       toast.success(
-        orderChanged
-          ? "Trip moved to a different transport order"
-          : reassignedVehicle
-            ? "Trip reassigned to a different vehicle"
-            : reassignedDriver
-              ? "Trip reassigned to a new driver"
-              : values.mileageAmount !== trip.mileageAmount
-                ? "Trip updated — mileage pay and vehicle profit recalculated"
-                : "Trip updated",
+        reassigned
+          ? "Trip reassigned to a new driver"
+          : values.mileageAmount !== trip.mileageAmount
+            ? "Trip updated — mileage pay and vehicle profit recalculated"
+            : "Trip updated",
       );
       onSaved(updated);
     } catch (err) {
@@ -385,34 +323,12 @@ function EditTripDialog({
         <DialogHeader>
           <DialogTitle>Edit trip {trip?.tripCode}</DialogTitle>
           <DialogDescription>
-            Reassigning the driver or vehicle moves them off any other active trip they're on.
-            Changing the mileage amount recalculates driver pay and vehicle profit automatically.
+            Vehicle can't be changed here. Reassigning the driver moves their pending pay to the
+            new driver. Changing the mileage amount recalculates driver pay and vehicle profit
+            automatically.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 py-2">
-          <div>
-            <Label className="mb-1.5 block text-sm">Transport order</Label>
-            <Select
-              value={orderId ?? "none"}
-              onValueChange={(v) => setOrderId(v === "none" ? undefined : v)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="No linked order" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No linked order</SelectItem>
-                {orders.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.orderCode} — {o.pickupLocation} to {o.destination}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Moving this trip off its order drops that order back to pending unless another
-              trip still justifies its status.
-            </p>
-          </div>
           <div>
             <Label className="mb-1.5 block text-sm">Driver</Label>
             <Select value={values.driverId ?? ""} onValueChange={set("driverId")}>
@@ -423,21 +339,6 @@ function EditTripDialog({
                 {assignableDrivers.map((d) => (
                   <SelectItem key={d.id} value={d.id}>
                     {d.fullName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="mb-1.5 block text-sm">Vehicle</Label>
-            <Select value={values.vehicleId ?? ""} onValueChange={set("vehicleId")}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {assignableVehicles.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.plateNumber}
                   </SelectItem>
                 ))}
               </SelectContent>

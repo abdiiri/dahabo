@@ -31,6 +31,10 @@ export type NavItem = {
   to: string;
   icon: LucideIcon;
   badge?: string;
+  /** Hidden from the sidebar (and the page itself redirects/blocks) for
+   * anyone whose role isn't "admin". Currently only the Recycle Bin — once
+   * something is deleted, only an admin can see it again or restore it. */
+  adminOnly?: boolean;
   children?: { label: string; to: string }[];
 };
 
@@ -156,6 +160,7 @@ export const staffNav: NavGroup[] = [
         label: "Recycle Bin",
         to: "/staff/recycle-bin",
         icon: Trash2,
+        adminOnly: true,
       },
       // Commented out — not currently used in the system. Restore this
       // item (and the matching route/pages) if Notifications is needed

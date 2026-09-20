@@ -48,12 +48,13 @@ function Page() {
   const [resetting, setResetting] = useState(false);
 
   function refresh() {
+    if (!isAdmin) return;
     listRecycleBin().then(setItems);
   }
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [isAdmin]);
 
   async function handleRestore(item: RecycleBinItem) {
     setBusyId(item.id);
@@ -130,6 +131,24 @@ function Page() {
       ),
     },
   ];
+
+  if (!isAdmin) {
+    return (
+      <>
+        <PageHeader
+          breadcrumb={["Staff", "Recycle Bin"]}
+          title="Recycle Bin"
+          description="Anything deleted lands here first — restore it, or delete it permanently when you're sure."
+        />
+        <Card className="mt-6 gap-2 p-6 text-center shadow-soft">
+          <p className="text-sm font-medium">Admins only</p>
+          <p className="text-sm text-muted-foreground">
+            Once something's deleted, only an admin can see it here or restore it.
+          </p>
+        </Card>
+      </>
+    );
+  }
 
   return (
     <>
