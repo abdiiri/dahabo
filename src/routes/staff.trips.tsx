@@ -45,7 +45,8 @@ import { StartTripDialog } from "@/components/staff/StartTripDialog";
 import { CompleteTripDialog } from "@/components/staff/CompleteTripDialog";
 import { listTrips, deleteTrip, editTrip, listActiveTripAssignments, type EditTripInput } from "@/lib/api/trips";
 import { listDrivers } from "@/lib/api/drivers";
-import { TRIP_STATUS_LABELS, type Trip, type Driver } from "@/lib/api/types";
+import { listVehicles } from "@/lib/api/vehicles";
+import { TRIP_STATUS_LABELS, type Trip, type Driver, type Vehicle } from "@/lib/api/types";
 import { useRefetchOnFocus } from "@/lib/use-refetch-on-focus";
 
 export const Route = createFileRoute("/staff/trips")({
@@ -259,7 +260,9 @@ function EditTripDialog({
   const [values, setValues] = useState<EditTripInput>({});
   const [submitting, setSubmitting] = useState(false);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [busyDriverIds, setBusyDriverIds] = useState<Set<string>>(new Set());
+  const [busyVehicleIds, setBusyVehicleIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (trip) {
@@ -269,15 +272,21 @@ function EditTripDialog({
         mileageAmount: trip.mileageAmount,
         permitCost: trip.permitCost,
         driverId: trip.driverId,
+        vehicleId: trip.vehicleId,
       });
       listDrivers().then(setDrivers);
-      listActiveTripAssignments().then(({ tripByDriverId }) => {
-        // Everyone with an active trip is off-limits, except the driver
-        // already on THIS trip — that's this trip's own assignment, not a
-        // conflict, and needs to stay selectable so "no change" is an option.
-        const busy = new Set(tripByDriverId.keys());
-        busy.delete(trip.driverId);
-        setBusyDriverIds(busy);
+      listVehicles().then(setVehicles);
+      listActiveTripAssignments().then(({ tripByDriverId, tripByVehicleId }) => {
+        // Everyone/everything with an active trip is off-limits, except
+        // whoever/whatever is already on THIS trip — that's this trip's
+        // own assignment, not a conflict, and needs to stay selectable so
+        // "no change" is an option.
+        const busyDrivers = new Set(tripByDriverId.keys());
+        busyDrivers.delete(trip.driverId);
+        setBusyDriverIds(busyDrivers);
+        const busyVehicles = new Set(tripByVehicleId.keys());
+        busyVehicles.delete(trip.vehicleId);
+        setBusyVehicleIds(busyVehicles);
       });
     }
   }, [trip]);
@@ -293,6 +302,12 @@ function EditTripDialog({
   const assignableDrivers = drivers.filter(
     (d) => d.id === trip?.driverId || (d.status === "available" && !busyDriverIds.has(d.id)),
   );
+  // Same idea for vehicles: active fleet only, and not already out on
+  // another trip — a wrong vehicle picked by mistake can be swapped, but
+  // never onto one that's already busy elsewhere.
+  const assignableVehicles = vehicles.filter(
+    (v) => v.id === trip?.vehicleId || (v.status === "active" && !busyVehicleIds.has(v.id)),
+  );
 
   async function handleSubmit() {
     if (!trip) return;
@@ -304,16 +319,25 @@ function EditTripDialog({
       toast.error("Pick a driver");
       return;
     }
+    if (!values.vehicleId) {
+      toast.error("Pick a vehicle");
+      return;
+    }
     setSubmitting(true);
     try {
       const updated = await editTrip(trip.id, values);
-      const reassigned = values.driverId !== trip.driverId;
+      const reassignedDriver = values.driverId !== trip.driverId;
+      const reassignedVehicle = values.vehicleId !== trip.vehicleId;
       toast.success(
-        reassigned
-          ? "Trip reassigned to a new driver"
-          : values.mileageAmount !== trip.mileageAmount
-            ? "Trip updated — mileage pay and vehicle profit recalculated"
-            : "Trip updated",
+        reassignedDriver && reassignedVehicle
+          ? "Trip reassigned to a new driver and vehicle"
+          : reassignedVehicle
+            ? "Trip reassigned to a new vehicle"
+            : reassignedDriver
+              ? "Trip reassigned to a new driver"
+              : values.mileageAmount !== trip.mileageAmount
+                ? "Trip updated — mileage pay and vehicle profit recalculated"
+                : "Trip updated",
       );
       onSaved(updated);
     } catch (err) {
@@ -329,26 +353,43 @@ function EditTripDialog({
         <DialogHeader>
           <DialogTitle>Edit trip {trip?.tripCode}</DialogTitle>
           <DialogDescription>
-            Vehicle can't be changed here. Reassigning the driver moves their pending pay to the
-            new driver. Changing the mileage amount recalculates driver pay and vehicle profit
-            automatically.
+            Reassigning the driver or vehicle — say, if the wrong one was picked by mistake — moves
+            the pending pay to the new driver and won't allow one already out on another trip.
+            Changing the mileage amount recalculates driver pay and vehicle profit automatically.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 py-2">
-          <div>
-            <Label className="mb-1.5 block text-sm">Driver</Label>
-            <Select value={values.driverId ?? ""} onValueChange={set("driverId")}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {assignableDrivers.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.fullName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-sm">Driver</Label>
+              <Select value={values.driverId ?? ""} onValueChange={set("driverId")}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignableDrivers.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.fullName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">Vehicle</Label>
+              <Select value={values.vehicleId ?? ""} onValueChange={set("vehicleId")}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignableVehicles.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.plateNumber}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>

@@ -3,6 +3,7 @@ import { localStore, nextTableRef, renumberFleetCodes } from "./local-store";
 import { getDriver, syncLocalDriverTripStatus } from "./drivers";
 import { syncLocalDriverPayment, listDriverPayments, deleteDriverPayment } from "./driver-payments";
 import { listFuelRecords, deleteFuelRecord } from "./fuel-records";
+import { listVehicles } from "./vehicles";
 import { getTransportOrder, updateTransportOrderStatus } from "./transport-orders";
 import type { Trip, NewTripInput, CompleteTripInput } from "./types";
 
@@ -234,8 +235,8 @@ export async function completeTrip(
 
 /**
  * Edits a trip's own details — origin, destination, starting odometer, the
- * flat mileage amount, and (new) who it's assigned to. Editing the mileage
- * amount updates its driver payment (and therefore vehicle profit)
+ * flat mileage amount, and (new) who/what it's assigned to. Editing the
+ * mileage amount updates its driver payment (and therefore vehicle profit)
  * automatically, whether or not the trip has been completed yet:
  *  - in Supabase, the trips_sync_driver_payment trigger re-fires on this
  *    update the same way it does when the trip is first created
@@ -243,12 +244,16 @@ export async function completeTrip(
  * This is what lets a trip's agreed amount be corrected after the fact if
  * it was entered wrong.
  *
- * Reassigning the driver (input.driverId) follows the same split:
+ * Reassigning the driver (input.driverId) or the vehicle (input.vehicleId)
+ * follows the same split:
  *  - in Supabase, the trips_guard_availability trigger rejects the change
- *    if the new driver is already on another active trip, and
+ *    if the new driver/vehicle is already on another active trip, and
  *    trips_sync_driver_status (migration 042) flips the old driver back to
  *    available and the new one to on_route
  *  - in local/demo mode, the same two things happen right here
+ * Vehicles don't carry a stored "on_route" status the way drivers do (see
+ * migration 030), so swapping the vehicle only needs the double-booking
+ * check — nothing else to sync.
  */
 export type EditTripInput = Partial<{
   origin: string;
@@ -256,6 +261,7 @@ export type EditTripInput = Partial<{
   mileageAmount: number;
   permitCost: number;
   driverId: string;
+  vehicleId: string;
 }>;
 
 export async function editTrip(id: string, input: EditTripInput): Promise<Trip> {
@@ -268,6 +274,7 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
         ...(input.mileageAmount !== undefined ? { mileage_amount: input.mileageAmount } : {}),
         ...(input.permitCost !== undefined ? { permit_cost: input.permitCost } : {}),
         ...(input.driverId !== undefined ? { driver_id: input.driverId } : {}),
+        ...(input.vehicleId !== undefined ? { vehicle_id: input.vehicleId } : {}),
       })
       .eq("id", id)
       .select(SELECT)
@@ -279,11 +286,13 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
   const existing = store.get(id);
   if (!existing) throw new Error("Trip not found");
 
-  const reassigning = input.driverId !== undefined && input.driverId !== existing.driverId;
+  const reassigningDriver = input.driverId !== undefined && input.driverId !== existing.driverId;
+  const reassigningVehicle = input.vehicleId !== undefined && input.vehicleId !== existing.vehicleId;
   const isActive = (ACTIVE_TRIP_STATUSES as readonly string[]).includes(existing.status);
   let driverName = existing.driverName;
+  let vehicleLabel = existing.vehicleLabel;
 
-  if (reassigning) {
+  if (reassigningDriver) {
     // Mirrors the trips_guard_availability trigger: an active trip can't be
     // handed to a driver who's already on another active trip.
     if (isActive) {
@@ -305,10 +314,32 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
     driverName = newDriver?.fullName;
   }
 
-  const updated = store.update(id, { ...(input as Partial<Trip>), driverName });
+  if (reassigningVehicle) {
+    // Same double-booking check the guard trigger does, just for the
+    // vehicle side of the same conflict query.
+    if (isActive) {
+      const conflict = store
+        .list()
+        .find(
+          (t) =>
+            t.id !== id &&
+            t.vehicleId === input.vehicleId &&
+            (ACTIVE_TRIP_STATUSES as readonly string[]).includes(t.status),
+        );
+      if (conflict) {
+        throw new Error(
+          `This vehicle is already on trip ${conflict.tripCode} — complete or remove that trip first.`,
+        );
+      }
+    }
+    const vehicles = await listVehicles();
+    vehicleLabel = vehicles.find((v) => v.id === input.vehicleId)?.plateNumber;
+  }
+
+  const updated = store.update(id, { ...(input as Partial<Trip>), driverName, vehicleLabel });
   if (!updated) throw new Error("Trip not found");
 
-  if (reassigning && isActive) {
+  if (reassigningDriver && isActive) {
     syncLocalDriverTripStatus(input.driverId!, true);
     // Free the old driver, unless they're still on some other active trip.
     const oldDriverStillActive = store
@@ -324,7 +355,7 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
 
   // The agreed amount and/or driver changed — recalculate its pending
   // driver payment, same as when the trip is first created.
-  if (input.mileageAmount !== undefined || reassigning) {
+  if (input.mileageAmount !== undefined || reassigningDriver) {
     syncLocalDriverPayment({
       tripId: updated.id,
       tripCode: updated.tripCode,
