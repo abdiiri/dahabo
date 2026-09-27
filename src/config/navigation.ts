@@ -23,6 +23,8 @@ import {
   ShieldCheck,
   Wallet,
   Trash2,
+  Handshake,
+  Banknote,
   type LucideIcon,
 } from "lucide-react";
 
@@ -96,6 +98,11 @@ export const staffNav: NavGroup[] = [
         icon: CreditCard,
       },
       {
+        label: "Partner Payments",
+        to: "/staff/partner-payments",
+        icon: Banknote,
+      },
+      {
         label: "Salaries",
         to: "/staff/salaries",
         icon: Wallet,
@@ -119,6 +126,11 @@ export const staffNav: NavGroup[] = [
         label: "Customers",
         to: "/staff/customers",
         icon: Users2,
+      },
+      {
+        label: "Partner Fleet",
+        to: "/staff/partner-fleet",
+        icon: Handshake,
       },
       // Commented out — not currently used in the system. Restore this
       // item (and the matching route/pages) if Shipments is needed again.
@@ -285,6 +297,18 @@ export const searchIndex = [
     items: ["Fleet"],
     to: "/staff/fleet",
     icon: Truck,
+  },
+  {
+    group: "Partner Fleet",
+    items: ["Partner Fleet", "Owner-Operators", "Partners"],
+    to: "/staff/partner-fleet",
+    icon: Handshake,
+  },
+  {
+    group: "Partner Payments",
+    items: ["Partner Payments"],
+    to: "/staff/partner-payments",
+    icon: Banknote,
   },
   {
     group: "Shipments",

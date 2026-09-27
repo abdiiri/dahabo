@@ -561,6 +561,56 @@ export type DriverPayment = {
 };
 
 /* =========================================================
+   PARTNER FLEET — owner-operators with their own vehicle and
+   driver, given a job instead of running it through Dahabo's
+   own fleet. Reuses DriverPaymentStatus for a partner job's
+   payout status (pending/approved/paid) since it's the same
+   three-state flow.
+   ========================================================= */
+
+export type Partner = {
+  id: string;
+  partnerCode?: string | undefined;
+  name: string;
+  phone?: string | undefined;
+  vehiclePlate: string;
+  driverName: string;
+  createdAt: string;
+};
+
+export type NewPartnerInput = {
+  name: string;
+  phone?: string | undefined;
+  vehiclePlate: string;
+  driverName: string;
+};
+
+export type EditPartnerInput = Partial<NewPartnerInput>;
+
+export type PartnerJob = {
+  id: string;
+  partnerId: string;
+  partnerName?: string | undefined;
+  transportOrderId: string;
+  orderCode?: string | undefined;
+  customerName?: string | undefined;
+  /** The linked order's agreed amount — what the customer is paying —
+   * kept alongside payoutAmount purely so the UI can show the margin
+   * (agreedAmount - payoutAmount) without a second lookup. */
+  agreedAmount?: number | undefined;
+  payoutAmount: number;
+  status: DriverPaymentStatus;
+  paidAt?: string | undefined;
+  createdAt: string;
+};
+
+export type NewPartnerJobInput = {
+  partnerId: string;
+  transportOrderId: string;
+  payoutAmount: number;
+};
+
+/* =========================================================
    FUEL
    ========================================================= */
 
