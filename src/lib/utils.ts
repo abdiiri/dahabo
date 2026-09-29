@@ -25,6 +25,14 @@ export function monthLabel(monthKey: string): string {
   });
 }
 
+/** True if an ISO date/timestamp string falls within the given "YYYY-MM"
+ * month key — the standard check used across every month-scoped tab
+ * (Vehicle Profit, Driver Payments, Maintenance, Fuel, Transport Orders,
+ * Trips, Partner Payments). */
+export function isInMonth(dateIso: string | undefined | null, monthKey: string): boolean {
+  return !!dateIso && dateIso.slice(0, 7) === monthKey;
+}
+
 /**
  * Extracts a readable message from any thrown value. Real `Error` instances
  * are handled, but Supabase/Postgrest errors are plain objects with a
