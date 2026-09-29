@@ -55,8 +55,6 @@ import { Route as StaffFleetRouteImport } from './routes/staff.fleet'
 import { Route as StaffFuelRouteImport } from './routes/staff.fuel'
 import { Route as StaffMaintenanceRouteImport } from './routes/staff.maintenance'
 import { Route as StaffNotificationsRouteImport } from './routes/staff.notifications'
-import { Route as StaffPartnerFleetRouteImport } from './routes/staff.partner-fleet'
-import { Route as StaffPartnerPaymentsRouteImport } from './routes/staff.partner-payments'
 import { Route as StaffRecycleBinRouteImport } from './routes/staff.recycle-bin'
 import { Route as StaffReportsRouteImport } from './routes/staff.reports'
 import { Route as StaffSalariesRouteImport } from './routes/staff.salaries'
@@ -299,16 +297,6 @@ const StaffNotificationsRoute = StaffNotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => StaffRoute,
 } as any)
-const StaffPartnerFleetRoute = StaffPartnerFleetRouteImport.update({
-  id: '/partner-fleet',
-  path: '/partner-fleet',
-  getParentRoute: () => StaffRoute,
-} as any)
-const StaffPartnerPaymentsRoute = StaffPartnerPaymentsRouteImport.update({
-  id: '/partner-payments',
-  path: '/partner-payments',
-  getParentRoute: () => StaffRoute,
-} as any)
 const StaffRecycleBinRoute = StaffRecycleBinRouteImport.update({
   id: '/recycle-bin',
   path: '/recycle-bin',
@@ -409,8 +397,6 @@ export interface FileRoutesByFullPath {
   '/staff/fuel': typeof StaffFuelRoute
   '/staff/maintenance': typeof StaffMaintenanceRoute
   '/staff/notifications': typeof StaffNotificationsRoute
-  '/staff/partner-fleet': typeof StaffPartnerFleetRoute
-  '/staff/partner-payments': typeof StaffPartnerPaymentsRoute
   '/staff/recycle-bin': typeof StaffRecycleBinRoute
   '/staff/reports': typeof StaffReportsRoute
   '/staff/salaries': typeof StaffSalariesRoute
@@ -467,8 +453,6 @@ export interface FileRoutesByTo {
   '/staff/fuel': typeof StaffFuelRoute
   '/staff/maintenance': typeof StaffMaintenanceRoute
   '/staff/notifications': typeof StaffNotificationsRoute
-  '/staff/partner-fleet': typeof StaffPartnerFleetRoute
-  '/staff/partner-payments': typeof StaffPartnerPaymentsRoute
   '/staff/recycle-bin': typeof StaffRecycleBinRoute
   '/staff/reports': typeof StaffReportsRoute
   '/staff/salaries': typeof StaffSalariesRoute
@@ -529,8 +513,6 @@ export interface FileRoutesById {
   '/staff/fuel': typeof StaffFuelRoute
   '/staff/maintenance': typeof StaffMaintenanceRoute
   '/staff/notifications': typeof StaffNotificationsRoute
-  '/staff/partner-fleet': typeof StaffPartnerFleetRoute
-  '/staff/partner-payments': typeof StaffPartnerPaymentsRoute
   '/staff/recycle-bin': typeof StaffRecycleBinRoute
   '/staff/reports': typeof StaffReportsRoute
   '/staff/salaries': typeof StaffSalariesRoute
@@ -592,8 +574,6 @@ export interface FileRouteTypes {
     | '/staff/fuel'
     | '/staff/maintenance'
     | '/staff/notifications'
-    | '/staff/partner-fleet'
-    | '/staff/partner-payments'
     | '/staff/recycle-bin'
     | '/staff/reports'
     | '/staff/salaries'
@@ -650,8 +630,6 @@ export interface FileRouteTypes {
     | '/staff/fuel'
     | '/staff/maintenance'
     | '/staff/notifications'
-    | '/staff/partner-fleet'
-    | '/staff/partner-payments'
     | '/staff/recycle-bin'
     | '/staff/reports'
     | '/staff/salaries'
@@ -711,8 +689,6 @@ export interface FileRouteTypes {
     | '/staff/fuel'
     | '/staff/maintenance'
     | '/staff/notifications'
-    | '/staff/partner-fleet'
-    | '/staff/partner-payments'
     | '/staff/recycle-bin'
     | '/staff/reports'
     | '/staff/salaries'
@@ -1079,20 +1055,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffNotificationsRouteImport
       parentRoute: typeof StaffRoute
     }
-    '/staff/partner-fleet': {
-      id: '/staff/partner-fleet'
-      path: '/partner-fleet'
-      fullPath: '/staff/partner-fleet'
-      preLoaderRoute: typeof StaffPartnerFleetRouteImport
-      parentRoute: typeof StaffRoute
-    }
-    '/staff/partner-payments': {
-      id: '/staff/partner-payments'
-      path: '/partner-payments'
-      fullPath: '/staff/partner-payments'
-      preLoaderRoute: typeof StaffPartnerPaymentsRouteImport
-      parentRoute: typeof StaffRoute
-    }
     '/staff/recycle-bin': {
       id: '/staff/recycle-bin'
       path: '/recycle-bin'
@@ -1237,8 +1199,6 @@ interface StaffRouteChildren {
   StaffFuelRoute: typeof StaffFuelRoute
   StaffMaintenanceRoute: typeof StaffMaintenanceRoute
   StaffNotificationsRoute: typeof StaffNotificationsRoute
-  StaffPartnerFleetRoute: typeof StaffPartnerFleetRoute
-  StaffPartnerPaymentsRoute: typeof StaffPartnerPaymentsRoute
   StaffRecycleBinRoute: typeof StaffRecycleBinRoute
   StaffReportsRoute: typeof StaffReportsRoute
   StaffSalariesRoute: typeof StaffSalariesRoute
@@ -1264,8 +1224,6 @@ const StaffRouteChildren: StaffRouteChildren = {
   StaffFuelRoute: StaffFuelRoute,
   StaffMaintenanceRoute: StaffMaintenanceRoute,
   StaffNotificationsRoute: StaffNotificationsRoute,
-  StaffPartnerFleetRoute: StaffPartnerFleetRoute,
-  StaffPartnerPaymentsRoute: StaffPartnerPaymentsRoute,
   StaffRecycleBinRoute: StaffRecycleBinRoute,
   StaffReportsRoute: StaffReportsRoute,
   StaffSalariesRoute: StaffSalariesRoute,
