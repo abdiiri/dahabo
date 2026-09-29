@@ -30,7 +30,7 @@
 -- -----------------------------------------------------------------------------
 create table if not exists public.partners (
   id uuid primary key default gen_random_uuid(),
-  partner_code text unique not null,
+  partner_code text not null,
   name text not null,
   phone text,
   vehicle_plate text not null,

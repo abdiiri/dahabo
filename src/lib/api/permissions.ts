@@ -18,7 +18,6 @@ export const PERMISSION_MODULES: { key: string; label: string }[] = [
   { key: "maintenance_records", label: "Maintenance" },
   { key: "warehouses", label: "Warehouses" },
   { key: "documents", label: "Documents" },
-  { key: "partners", label: "Partner Fleet" },
 ];
 
 /** Roles an admin can configure. Admin itself is never listed here — an

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getErrorMessage, recentMonthOptions, monthLabel, isInMonth } from "@/lib/utils";
+import { getErrorMessage, monthLabel, recentMonthOptions } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusPill } from "@/components/common/StatusPill";
@@ -12,6 +12,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CityCombobox } from "@/components/common/CityCombobox";
 import { CustomerSelect } from "@/components/common/CustomerSelect";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -36,13 +43,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { AddTransportOrderDialog } from "@/components/staff/AddTransportOrderDialog";
 import {
   listTransportOrders,
@@ -54,7 +54,6 @@ import {
 import { listTrips } from "@/lib/api/trips";
 import { listCustomers } from "@/lib/api/customers";
 import { TRANSPORT_ORDER_STATUS_LABELS, type TransportOrder, type Customer, type Trip } from "@/lib/api/types";
-import { useRefetchOnFocus } from "@/lib/use-refetch-on-focus";
 
 /** Compact "18 Aug 2026, 10:30 AM" style date + time, matching how Trips
  * displays its own timestamps. */
@@ -100,11 +99,6 @@ function Page() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [blockedOrder, setBlockedOrder] = useState<{ order: TransportOrder; trip: Trip } | null>(null);
 
-  function refresh() {
-    listTransportOrders().then(setOrders);
-    listTrips().then(setTrips);
-  }
-
   useEffect(() => {
     let active = true;
     listTransportOrders().then((rows) => active && setOrders(rows));
@@ -114,10 +108,9 @@ function Page() {
     };
   }, []);
 
-  // Coming back to a tab that's been open a while shouldn't keep showing
-  // something an admin already deleted elsewhere — refetch when it's
-  // looked at again instead of only ever fetching once on mount.
-  useRefetchOnFocus(refresh);
+  // Scoped to the selected month (defaults to current, same as Vehicle
+  // Profit, Driver Payments, Maintenance and Fuel).
+  const monthOrders = (orders ?? []).filter((o) => o.createdAt.slice(0, 7) === month);
 
   async function markComplete(order: TransportOrder) {
     // An order's own trip is what actually earns the money — completing the
@@ -159,10 +152,6 @@ function Page() {
       setDeletingId(null);
     }
   }
-
-  const filteredOrders = useMemo(() => {
-    return (orders ?? []).filter((o) => isInMonth(o.createdAt, month));
-  }, [orders, month]);
 
   const columns: Column<TransportOrder>[] = [
     { key: "orderCode", header: "Order" },
@@ -233,7 +222,7 @@ function Page() {
         title="Transport Orders"
         description="Jobs requested by customers — the starting point for every trip. Completing the linked trip marks the order complete automatically, or mark it complete here directly."
         actions={
-          <div className="flex flex-wrap gap-2">
+          <>
             <Select value={month} onValueChange={setMonth}>
               <SelectTrigger className="w-[170px]">
                 <SelectValue />
@@ -247,7 +236,7 @@ function Page() {
               </SelectContent>
             </Select>
             <AddTransportOrderDialog onCreated={(o) => setOrders((rows) => [o, ...(rows ?? [])])} />
-          </div>
+          </>
         }
       />
 
@@ -256,12 +245,7 @@ function Page() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <DataTable
-          data={filteredOrders}
-          columns={columns}
-          searchPlaceholder="Search orders…"
-          exportFilename="transport-orders"
-        />
+        <DataTable data={monthOrders} columns={columns} searchPlaceholder="Search orders…" exportFilename="transport-orders" />
       )}
 
       <EditTransportOrderDialog
@@ -278,10 +262,8 @@ function Page() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this order?</AlertDialogTitle>
             <AlertDialogDescription>
-              This moves the order to the Recycle Bin, along with any trip linked to it — and that
-              trip's driver payment and fuel records go too, whether or not the trip is finished.
-              None of that money will keep counting anywhere while it's deleted. Everything is
-              restorable from the Recycle Bin, or can be permanently removed later.
+              This moves the order to the Recycle Bin. It can be restored from there, or permanently
+              removed later. Any trip already linked to it is not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -339,6 +321,7 @@ function EditTransportOrderDialog({
         destination: order.destination,
         agreedAmount: order.agreedAmount,
         notes: order.notes ?? "",
+        createdAt: order.createdAt,
       });
     }
   }, [order]);
@@ -403,6 +386,17 @@ function EditTransportOrderDialog({
               min={0}
               value={values.agreedAmount || ""}
               onChange={(e) => set("agreedAmount")(Number(e.target.value))}
+            />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-sm">Date</Label>
+            <Input
+              type="date"
+              // createdAt is stored as a full timestamp; a native date input
+              // only accepts "yyyy-MM-dd" and shows blank on anything else,
+              // so trim it here — same fix as editing a fuel record's date.
+              value={values.createdAt ? values.createdAt.slice(0, 10) : ""}
+              onChange={(e) => set("createdAt")(e.target.value)}
             />
           </div>
           <div>

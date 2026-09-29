@@ -1,9 +1,7 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { localStore, nextTableRef, renumberFleetCodes } from "./local-store";
 import { getDriver, syncLocalDriverTripStatus } from "./drivers";
-import { syncLocalDriverPayment, listDriverPayments, deleteDriverPayment } from "./driver-payments";
-import { listFuelRecords, deleteFuelRecord } from "./fuel-records";
-import { listVehicles } from "./vehicles";
+import { syncLocalDriverPayment } from "./driver-payments";
 import { getTransportOrder, updateTransportOrderStatus } from "./transport-orders";
 import type { Trip, NewTripInput, CompleteTripInput } from "./types";
 
@@ -234,34 +232,28 @@ export async function completeTrip(
 }
 
 /**
- * Edits a trip's own details — origin, destination, starting odometer, the
- * flat mileage amount, and (new) who/what it's assigned to. Editing the
- * mileage amount updates its driver payment (and therefore vehicle profit)
- * automatically, whether or not the trip has been completed yet:
+ * Edits a trip's own details — origin, destination, starting odometer, and
+ * the flat mileage amount. Editing the mileage amount updates its driver
+ * payment (and therefore vehicle profit) automatically, whether or not the
+ * trip has been completed yet:
  *  - in Supabase, the trips_sync_driver_payment trigger re-fires on this
  *    update the same way it does when the trip is first created
  *  - in local/demo mode, right here, so the app behaves the same either way
  * This is what lets a trip's agreed amount be corrected after the fact if
  * it was entered wrong.
- *
- * Reassigning the driver (input.driverId) or the vehicle (input.vehicleId)
- * follows the same split:
- *  - in Supabase, the trips_guard_availability trigger rejects the change
- *    if the new driver/vehicle is already on another active trip, and
- *    trips_sync_driver_status (migration 042) flips the old driver back to
- *    available and the new one to on_route
- *  - in local/demo mode, the same two things happen right here
- * Vehicles don't carry a stored "on_route" status the way drivers do (see
- * migration 030), so swapping the vehicle only needs the double-booking
- * check — nothing else to sync.
  */
 export type EditTripInput = Partial<{
   origin: string;
   destination: string;
   mileageAmount: number;
   permitCost: number;
+  /** Reassigns the trip to a different driver — their mileage pay for this
+   * trip moves with them; the vehicle stays put. */
   driverId: string;
-  vehicleId: string;
+  /** Corrects a wrong trip date after the fact — same idea as fixing a fuel
+   * record or transport order's date. */
+  startedAt: string;
+  completedAt: string;
 }>;
 
 export async function editTrip(id: string, input: EditTripInput): Promise<Trip> {
@@ -274,7 +266,8 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
         ...(input.mileageAmount !== undefined ? { mileage_amount: input.mileageAmount } : {}),
         ...(input.permitCost !== undefined ? { permit_cost: input.permitCost } : {}),
         ...(input.driverId !== undefined ? { driver_id: input.driverId } : {}),
-        ...(input.vehicleId !== undefined ? { vehicle_id: input.vehicleId } : {}),
+        ...(input.startedAt !== undefined ? { started_at: input.startedAt } : {}),
+        ...(input.completedAt !== undefined ? { completed_at: input.completedAt } : {}),
       })
       .eq("id", id)
       .select(SELECT)
@@ -285,114 +278,55 @@ export async function editTrip(id: string, input: EditTripInput): Promise<Trip> 
 
   const existing = store.get(id);
   if (!existing) throw new Error("Trip not found");
-
-  const reassigningDriver = input.driverId !== undefined && input.driverId !== existing.driverId;
-  const reassigningVehicle = input.vehicleId !== undefined && input.vehicleId !== existing.vehicleId;
-  const isActive = (ACTIVE_TRIP_STATUSES as readonly string[]).includes(existing.status);
-  let driverName = existing.driverName;
-  let vehicleLabel = existing.vehicleLabel;
-
-  if (reassigningDriver) {
-    // Mirrors the trips_guard_availability trigger: an active trip can't be
-    // handed to a driver who's already on another active trip.
-    if (isActive) {
-      const conflict = store
-        .list()
-        .find(
-          (t) =>
-            t.id !== id &&
-            t.driverId === input.driverId &&
-            (ACTIVE_TRIP_STATUSES as readonly string[]).includes(t.status),
-        );
-      if (conflict) {
-        throw new Error(
-          `This driver is already on trip ${conflict.tripCode} — complete or remove that trip first.`,
-        );
-      }
-    }
-    const newDriver = await getDriver(input.driverId!);
-    driverName = newDriver?.fullName;
-  }
-
-  if (reassigningVehicle) {
-    // Same double-booking check the guard trigger does, just for the
-    // vehicle side of the same conflict query.
-    if (isActive) {
-      const conflict = store
-        .list()
-        .find(
-          (t) =>
-            t.id !== id &&
-            t.vehicleId === input.vehicleId &&
-            (ACTIVE_TRIP_STATUSES as readonly string[]).includes(t.status),
-        );
-      if (conflict) {
-        throw new Error(
-          `This vehicle is already on trip ${conflict.tripCode} — complete or remove that trip first.`,
-        );
-      }
-    }
-    const vehicles = await listVehicles();
-    vehicleLabel = vehicles.find((v) => v.id === input.vehicleId)?.plateNumber;
-  }
-
-  const updated = store.update(id, { ...(input as Partial<Trip>), driverName, vehicleLabel });
+  const previousDriverId = existing.driverId;
+  const updated = store.update(id, input as Partial<Trip>);
   if (!updated) throw new Error("Trip not found");
 
-  if (reassigningDriver && isActive) {
-    syncLocalDriverTripStatus(input.driverId!, true);
-    // Free the old driver, unless they're still on some other active trip.
-    const oldDriverStillActive = store
-      .list()
-      .some(
-        (t) =>
-          t.id !== id &&
-          t.driverId === existing.driverId &&
-          (ACTIVE_TRIP_STATUSES as readonly string[]).includes(t.status),
-      );
-    if (!oldDriverStillActive) syncLocalDriverTripStatus(existing.driverId, false);
-  }
-
-  // The agreed amount and/or driver changed — recalculate its pending
-  // driver payment, same as when the trip is first created.
-  if (input.mileageAmount !== undefined || reassigningDriver) {
+  // The agreed amount and/or driver changed — recalculate the pending
+  // driver payment so it's attributed to (and priced for) the right
+  // person, same as when the trip is first created.
+  if (input.mileageAmount !== undefined || input.driverId !== undefined) {
+    const driver = await getDriver(updated.driverId);
     syncLocalDriverPayment({
       tripId: updated.id,
       tripCode: updated.tripCode,
       driverId: updated.driverId,
-      driverName: updated.driverName,
+      driverName: driver?.fullName,
       amount: updated.mileageAmount,
     });
+  }
+
+  // Reassigned to a different driver on an active trip — free the previous
+  // driver (nothing else would, since this isn't a completion or delete)
+  // and put the new one on the road instead.
+  if (
+    input.driverId !== undefined &&
+    input.driverId !== previousDriverId &&
+    (ACTIVE_TRIP_STATUSES as readonly string[]).includes(updated.status)
+  ) {
+    syncLocalDriverTripStatus(previousDriverId, false);
+    syncLocalDriverTripStatus(updated.driverId, true);
   }
 
   return updated;
 }
 
 /** Moves the trip to the Recycle Bin (soft delete) — restorable there any
- * time. Its driver_payments row and any fuel records logged against it go
- * with it, so neither keeps counting toward Driver Payments or Vehicle
- * Profit once the trip itself is gone. Works regardless of the trip's
- * status — an in_progress trip isn't protected from deletion, only from
- * being double-booked (see trips_guard_availability). */
+ * time. Its driver_payments row (if the trip was completed) goes with it,
+ * since driver_payments.trip_id cascades on delete/relies on the same
+ * soft-delete convention used across the app. */
 export async function deleteTrip(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.rpc("delete_trip_cascade", { p_trip_id: id });
+    const { error } = await supabase
+      .from("trips")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
     if (error) throw error;
     return;
   }
   const trip = store.get(id);
   store.remove(id);
   renumberFleetCodes();
-
-  // Cascade to what only exists because of this trip.
-  const payments = await listDriverPayments();
-  await Promise.all(
-    payments.filter((p) => p.tripId === id).map((p) => deleteDriverPayment(p.id)),
-  );
-  const fuelRecords = await listFuelRecords();
-  await Promise.all(
-    fuelRecords.filter((f) => f.tripId === id).map((f) => deleteFuelRecord(f.id)),
-  );
 
   // Mirrors the trips_sync_driver_status trigger (migration 030): a
   // deleted trip no longer keeps its driver marked as on the road.

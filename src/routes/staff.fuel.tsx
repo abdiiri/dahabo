@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, MoreHorizontal, Pencil, Trash2, Fuel as FuelIcon, Droplets, Wallet, Route as RouteIcon } from "lucide-react";
 import { toast } from "sonner";
-import { getErrorMessage, recentMonthOptions, monthLabel, isInMonth } from "@/lib/utils";
+import { getErrorMessage, monthLabel, recentMonthOptions } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatCard } from "@/components/common/StatCard";
@@ -80,11 +80,13 @@ function Page() {
     };
   }, []);
 
+  // Scoped to the selected month (defaults to current, same as Vehicle
+  // Profit, Driver Payments and Maintenance), then further narrowed by the
+  // vehicle filter.
   const filteredRecords = useMemo(() => {
-    const rows = records ?? [];
-    const inMonth = rows.filter((r) => isInMonth(r.filledAt, month));
-    if (vehicleFilter === "all") return inMonth;
-    return inMonth.filter((r) => r.vehicleId === vehicleFilter);
+    const rows = (records ?? []).filter((r) => r.filledAt.slice(0, 7) === month);
+    if (vehicleFilter === "all") return rows;
+    return rows.filter((r) => r.vehicleId === vehicleFilter);
   }, [records, vehicleFilter, month]);
 
   // Totals reflect whatever filter is active, so the numbers always match what's in the table below.
@@ -184,7 +186,7 @@ function Page() {
         title="Fuel"
         description="Fuel purchases, per vehicle."
         actions={
-          <div className="flex flex-wrap gap-2">
+          <>
             <Select value={month} onValueChange={setMonth}>
               <SelectTrigger className="w-[170px]">
                 <SelectValue />
@@ -198,7 +200,7 @@ function Page() {
               </SelectContent>
             </Select>
             <AddFuelRecordDialog onCreated={(r) => setRecords((rows) => [r, ...(rows ?? [])])} />
-          </div>
+          </>
         }
       />
 

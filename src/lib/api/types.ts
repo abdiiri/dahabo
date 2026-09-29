@@ -403,17 +403,11 @@ export type CustomerTransaction = {
   /** Currency `amount` (and `amountPaid`) are denominated in. Defaults to
    * "KES" for older rows that predate multi-currency support. */
   currency: CustomerTransactionCurrency;
-  /** Only meaningful for "debt" rows — how much of `amount` has been paid
-   * back so far. Always 0 for "extra" and "upfront" rows. */
+  /** For a "debt" row: how much of `amount` has been paid back so far. For
+   * an "extra"/"upfront" row: how much of that credit has been applied to a
+   * debt via applyCreditToDebt — the rest is still available (see
+   * availableCredit in lib/api/customer-transactions.ts). */
   amountPaid: number;
-  /** Only meaningful for "extra" and "upfront" rows — marks the money as
-   * finalized (order delivered / advance fully used) rather than still
-   * sitting as an open advance. Doesn't affect "Total received", which
-   * already counts this money from the moment it came in; it only moves
-   * the row out of the "Extra / advance balance" / "Upfront received"
-   * breakdown cards. Always false for "debt" rows, which use amountPaid
-   * to derive their own outstanding/partial/settled status instead. */
-  settled?: boolean | undefined;
   mode: CustomerTransactionMode;
   reference?: string | undefined;
   /** Date the debt was given, or the date the extra/upfront money was received. */
@@ -558,56 +552,6 @@ export type DriverPayment = {
   status: DriverPaymentStatus;
   paidAt?: string | undefined;
   createdAt: string;
-};
-
-/* =========================================================
-   PARTNER FLEET — owner-operators with their own vehicle and
-   driver, given a job instead of running it through Dahabo's
-   own fleet. Reuses DriverPaymentStatus for a partner job's
-   payout status (pending/approved/paid) since it's the same
-   three-state flow.
-   ========================================================= */
-
-export type Partner = {
-  id: string;
-  partnerCode?: string | undefined;
-  name: string;
-  phone?: string | undefined;
-  vehiclePlate: string;
-  driverName: string;
-  createdAt: string;
-};
-
-export type NewPartnerInput = {
-  name: string;
-  phone?: string | undefined;
-  vehiclePlate: string;
-  driverName: string;
-};
-
-export type EditPartnerInput = Partial<NewPartnerInput>;
-
-export type PartnerJob = {
-  id: string;
-  partnerId: string;
-  partnerName?: string | undefined;
-  transportOrderId: string;
-  orderCode?: string | undefined;
-  customerName?: string | undefined;
-  /** The linked order's agreed amount — what the customer is paying —
-   * kept alongside payoutAmount purely so the UI can show the margin
-   * (agreedAmount - payoutAmount) without a second lookup. */
-  agreedAmount?: number | undefined;
-  payoutAmount: number;
-  status: DriverPaymentStatus;
-  paidAt?: string | undefined;
-  createdAt: string;
-};
-
-export type NewPartnerJobInput = {
-  partnerId: string;
-  transportOrderId: string;
-  payoutAmount: number;
 };
 
 /* =========================================================

@@ -16,9 +16,7 @@ export type RecycleBinTable =
   | "invoices"
   | "payments"
   | "warehouses"
-  | "documents"
-  | "partners"
-  | "partner_jobs";
+  | "documents";
 
 export const RECYCLE_BIN_TABLES: { table: RecycleBinTable; label: string; labelField: string }[] = [
   { table: "vehicles", label: "Vehicles", labelField: "plate_number" },
@@ -37,8 +35,6 @@ export const RECYCLE_BIN_TABLES: { table: RecycleBinTable; label: string; labelF
   { table: "payments", label: "Payments", labelField: "id" },
   { table: "warehouses", label: "Warehouses", labelField: "name" },
   { table: "documents", label: "Documents", labelField: "name" },
-  { table: "partners", label: "Partner Fleet", labelField: "name" },
-  { table: "partner_jobs", label: "Partner jobs", labelField: "id" },
 ];
 
 export type RecycleBinItem = {

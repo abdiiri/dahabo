@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, MoreHorizontal, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { getErrorMessage, recentMonthOptions, monthLabel, isInMonth } from "@/lib/utils";
+import { getErrorMessage, monthLabel, recentMonthOptions } from "@/lib/utils";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
@@ -62,9 +62,10 @@ function Page() {
     };
   }, []);
 
-  const filteredRecords = useMemo(() => {
-    return (records ?? []).filter((r) => isInMonth(r.serviceDate, month));
-  }, [records, month]);
+  // Scoped to the selected month (defaults to current, same as Vehicle
+  // Profit and Driver Payments) — by service date, not when the record was
+  // entered into the system.
+  const monthRecords = (records ?? []).filter((r) => r.serviceDate.slice(0, 7) === month);
 
   const columns: Column<MaintenanceRecord>[] = [
     { key: "vehicleLabel", header: "Vehicle", render: (r) => r.vehicleLabel ?? "—" },
@@ -114,7 +115,7 @@ function Page() {
         title="Maintenance"
         description="Servicing and repair records, per vehicle."
         actions={
-          <div className="flex flex-wrap gap-2">
+          <>
             <Select value={month} onValueChange={setMonth}>
               <SelectTrigger className="w-[170px]">
                 <SelectValue />
@@ -130,7 +131,7 @@ function Page() {
             <AddMaintenanceRecordDialog
               onCreated={(r) => setRecords((rows) => [r, ...(rows ?? [])])}
             />
-          </div>
+          </>
         }
       />
 
@@ -140,7 +141,7 @@ function Page() {
         </div>
       ) : (
         <DataTable
-          data={filteredRecords}
+          data={monthRecords}
           columns={columns}
           searchPlaceholder="Search maintenance records…"
           exportFilename="maintenance-records"

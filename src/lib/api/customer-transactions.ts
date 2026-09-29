@@ -44,8 +44,8 @@ export async function listCustomerTransactionsFor(
  * "extra" and "upfront" rows are recorded for the books but don't reduce
  * it — see the CustomerTransactionType doc comment in types.ts for why. */
 export function getTransactionStatus(t: CustomerTransaction): CustomerTransactionStatus {
-  if (t.type === "extra") return t.settled ? "settled" : "extra";
-  if (t.type === "upfront") return t.settled ? "settled" : "upfront";
+  if (t.type === "extra") return "extra";
+  if (t.type === "upfront") return "upfront";
   if (t.amountPaid <= 0) return "outstanding";
   if (t.amountPaid < t.amount) return "partial";
   return "settled";
@@ -53,6 +53,15 @@ export function getTransactionStatus(t: CustomerTransaction): CustomerTransactio
 
 export function remainingBalance(t: CustomerTransaction): number {
   if (t.type === "extra" || t.type === "upfront") return 0;
+  return Math.max(t.amount - t.amountPaid, 0);
+}
+
+/** Unused credit still sitting on an "extra" or "upfront" entry — money
+ * already in hand that hasn't been put toward a debt yet. `amountPaid` on a
+ * credit-type row means "amount already applied to a debt" (see
+ * applyCreditToDebt below), the mirror image of what it means on a debt row. */
+export function availableCredit(t: CustomerTransaction): number {
+  if (t.type === "debt") return 0;
   return Math.max(t.amount - t.amountPaid, 0);
 }
 
@@ -72,12 +81,9 @@ export type NewDebtInput = {
   notes?: string | undefined;
 };
 
-/** `settled` only applies to extra/upfront entries — lets staff record
- * money that's already finalized (e.g. an advance immediately used against
- * a completed order) without a separate "Mark as paid" step afterward. */
-export type NewExtraInput = NewDebtInput & { settled?: boolean | undefined };
+export type NewExtraInput = NewDebtInput;
 
-export type NewUpfrontInput = NewDebtInput & { settled?: boolean | undefined };
+export type NewUpfrontInput = NewDebtInput;
 
 export type RecordPaymentInput = {
   amount: number;
@@ -93,6 +99,9 @@ export type RecordPaymentInput = {
  * between debt/extra/upfront changes what it means, not just its details —
  * delete and re-add instead. */
 export type UpdateTransactionInput = {
+  /** Lets a debt/extra/upfront entry recorded against the wrong customer get
+   * corrected — e.g. a name picked in error when the debt was first given. */
+  customerId?: string | undefined;
   amount: number;
   currency: CustomerTransactionCurrency;
   mode: CustomerTransactionMode;
@@ -103,7 +112,7 @@ export type UpdateTransactionInput = {
 
 async function insertTransaction(
   type: CustomerTransactionType,
-  input: NewDebtInput & { settled?: boolean | undefined },
+  input: NewDebtInput,
 ): Promise<CustomerTransaction> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
@@ -117,7 +126,6 @@ async function insertTransaction(
         entry_date: input.date,
         reference: input.reference || null,
         notes: input.notes || null,
-        settled: input.settled ?? false,
       })
       .select(SELECT)
       .single();
@@ -134,7 +142,6 @@ async function insertTransaction(
     amount: input.amount,
     currency: input.currency,
     amountPaid: 0,
-    settled: input.settled ?? false,
     mode: input.mode,
     reference: input.reference,
     date: input.date,
@@ -164,13 +171,13 @@ export async function createUpfront(input: NewUpfrontInput): Promise<CustomerTra
   return insertTransaction("upfront", input);
 }
 
-/** Settle an "extra" or "upfront" entry once its money is finalized (order
- * delivered, advance fully used) rather than an open advance. Its amount
- * already counted toward "Total received" — that money has been in hand
- * since it was recorded — this only moves it out of the "Extra / advance
- * balance" / "Upfront received" breakdown and into the same "Settled"
- * status debt rows use once fully paid. One-way, like settling a debt. */
-export async function settleReceipt(id: string): Promise<CustomerTransaction> {
+/** Settle an "upfront" entry once its order is complete — the money isn't a
+ * pending advance anymore, so it converts to a plain "extra" receipt. Its
+ * amount already counted toward "Total received" (upfront money has always
+ * been in hand); this only moves it out of the "Upfront received" breakdown
+ * and into "Extra / advance balance" instead. One-way, unlike the generic
+ * edit path above — type is deliberately not editable there. */
+export async function settleUpfront(id: string): Promise<CustomerTransaction> {
   if (isSupabaseConfigured && supabase) {
     const { data: current, error: fetchError } = await supabase
       .from("customer_transactions")
@@ -179,12 +186,10 @@ export async function settleReceipt(id: string): Promise<CustomerTransaction> {
       .single();
     if (fetchError) throw fetchError;
     const row = mapRow(current);
-    if (row.type !== "extra" && row.type !== "upfront") {
-      throw new Error("Only extra/upfront entries can be settled");
-    }
+    if (row.type !== "upfront") throw new Error("Only upfront entries can be settled");
     const { data, error } = await supabase
       .from("customer_transactions")
-      .update({ settled: true })
+      .update({ type: "extra" })
       .eq("id", id)
       .select(SELECT)
       .single();
@@ -194,10 +199,8 @@ export async function settleReceipt(id: string): Promise<CustomerTransaction> {
 
   const existing = store.get(id);
   if (!existing) throw new Error("Ledger entry not found");
-  if (existing.type !== "extra" && existing.type !== "upfront") {
-    throw new Error("Only extra/upfront entries can be settled");
-  }
-  const updated = store.update(id, { settled: true });
+  if (existing.type !== "upfront") throw new Error("Only upfront entries can be settled");
+  const updated = store.update(id, { type: "extra" });
   if (!updated) throw new Error("Ledger entry not found");
   return updated;
 }
@@ -210,9 +213,18 @@ export async function updateCustomerTransaction(
   input: UpdateTransactionInput,
 ): Promise<CustomerTransaction> {
   if (isSupabaseConfigured && supabase) {
+    const { data: before, error: beforeError } = await supabase
+      .from("customer_transactions")
+      .select(SELECT)
+      .eq("id", id)
+      .single();
+    if (beforeError) throw beforeError;
+    const previousCustomerId = mapRow(before).customerId;
+
     const { data, error } = await supabase
       .from("customer_transactions")
       .update({
+        ...(input.customerId !== undefined ? { customer_id: input.customerId } : {}),
         amount: input.amount,
         currency: input.currency,
         mode: input.mode,
@@ -225,13 +237,22 @@ export async function updateCustomerTransaction(
       .single();
     if (error) throw error;
     const updated = mapRow(data);
-    if (updated.type === "debt") await recalcOutstanding(updated.customerId);
+    if (updated.type === "debt") {
+      await recalcOutstanding(updated.customerId);
+      // Moved to a different customer — the one it used to be attributed
+      // to owes less now, so their total needs recalculating too.
+      if (previousCustomerId && previousCustomerId !== updated.customerId) {
+        await recalcOutstanding(previousCustomerId);
+      }
+    }
     return updated;
   }
 
   const existing = store.get(id);
   if (!existing) throw new Error("Ledger entry not found");
+  const previousCustomerId = existing.customerId;
   const updated = store.update(id, {
+    ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
     amount: input.amount,
     currency: input.currency,
     mode: input.mode,
@@ -240,7 +261,12 @@ export async function updateCustomerTransaction(
     notes: input.notes,
   });
   if (!updated) throw new Error("Ledger entry not found");
-  if (updated.type === "debt") await recalcOutstanding(updated.customerId);
+  if (updated.type === "debt") {
+    await recalcOutstanding(updated.customerId);
+    if (previousCustomerId && previousCustomerId !== updated.customerId) {
+      await recalcOutstanding(previousCustomerId);
+    }
+  }
   return updated;
 }
 
@@ -280,6 +306,72 @@ export async function recordPayment(
   return updated;
 }
 
+/** Puts unused "extra"/"upfront" credit toward an outstanding debt for the
+ * same customer — the easiest way to use advance money someone already
+ * paid in, instead of chasing them for a fresh payment while a credit
+ * balance sits idle on their account. Moves `amount` from the credit row's
+ * available balance onto the debt's amountPaid, in one step: the debt
+ * shrinks (or clears) and the credit balance shrinks by the same amount.
+ * No new money changes hands, so this never touches "Total received" —
+ * see ledgerStats in staff.finance.tsx for why that formula subtracts
+ * applied credit back out. */
+export async function applyCreditToDebt(
+  creditId: string,
+  debtId: string,
+  amount: number,
+): Promise<{ credit: CustomerTransaction; debt: CustomerTransaction }> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: rows, error: fetchError } = await supabase
+      .from("customer_transactions")
+      .select(SELECT)
+      .in("id", [creditId, debtId]);
+    if (fetchError) throw fetchError;
+    const credit = (rows ?? []).map(mapRow).find((r) => r.id === creditId);
+    const debt = (rows ?? []).map(mapRow).find((r) => r.id === debtId);
+    if (!credit || !debt) throw new Error("Ledger entry not found");
+    if (credit.type === "debt") throw new Error("Source entry must be extra or upfront credit");
+    if (debt.type !== "debt") throw new Error("Target entry must be a debt");
+    if (credit.customerId !== debt.customerId) throw new Error("Both entries must be for the same customer");
+    const clamped = Math.min(amount, availableCredit(credit), remainingBalance(debt));
+    if (clamped <= 0) throw new Error("Nothing to apply");
+
+    const { data: updatedCreditRow, error: creditError } = await supabase
+      .from("customer_transactions")
+      .update({ amount_paid: credit.amountPaid + clamped })
+      .eq("id", creditId)
+      .select(SELECT)
+      .single();
+    if (creditError) throw creditError;
+    const { data: updatedDebtRow, error: debtError } = await supabase
+      .from("customer_transactions")
+      .update({ amount_paid: debt.amountPaid + clamped, paid_date: new Date().toISOString().slice(0, 10) })
+      .eq("id", debtId)
+      .select(SELECT)
+      .single();
+    if (debtError) throw debtError;
+    await recalcOutstanding(debt.customerId);
+    return { credit: mapRow(updatedCreditRow), debt: mapRow(updatedDebtRow) };
+  }
+
+  const credit = store.get(creditId);
+  const debt = store.get(debtId);
+  if (!credit || !debt) throw new Error("Ledger entry not found");
+  if (credit.type === "debt") throw new Error("Source entry must be extra or upfront credit");
+  if (debt.type !== "debt") throw new Error("Target entry must be a debt");
+  if (credit.customerId !== debt.customerId) throw new Error("Both entries must be for the same customer");
+  const clamped = Math.min(amount, availableCredit(credit), remainingBalance(debt));
+  if (clamped <= 0) throw new Error("Nothing to apply");
+
+  const updatedCredit = store.update(creditId, { amountPaid: credit.amountPaid + clamped });
+  const updatedDebt = store.update(debtId, {
+    amountPaid: debt.amountPaid + clamped,
+    paidDate: new Date().toISOString().slice(0, 10),
+  });
+  if (!updatedCredit || !updatedDebt) throw new Error("Ledger entry not found");
+  await recalcOutstanding(debt.customerId);
+  return { credit: updatedCredit, debt: updatedDebt };
+}
+
 /** Moves the ledger entry to the Recycle Bin (soft delete) and re-totals
  * the customer's outstanding balance to match. */
 export async function deleteCustomerTransaction(id: string): Promise<void> {
@@ -315,7 +407,6 @@ function mapRow(row: any): CustomerTransaction {
     amount: Number(row.amount) || 0,
     currency: (row.currency as CustomerTransactionCurrency) || "KES",
     amountPaid: Number(row.amount_paid) || 0,
-    settled: Boolean(row.settled),
     mode: row.mode,
     reference: row.reference ?? undefined,
     date: row.entry_date,

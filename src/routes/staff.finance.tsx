@@ -9,6 +9,7 @@ import {
   PiggyBank,
   BadgeCheck,
   CheckCircle2,
+  ArrowRightLeft,
   Users as UsersIcon,
   MessageCircle,
   FileText,
@@ -48,6 +49,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AddCustomerTransactionDialog } from "@/components/staff/AddCustomerTransactionDialog";
 import { RecordPaymentDialog } from "@/components/staff/RecordPaymentDialog";
+import { ApplyCreditDialog } from "@/components/staff/ApplyCreditDialog";
 import { SendStatementDialog } from "@/components/staff/SendStatementDialog";
 import { ViewStatementDialog } from "@/components/staff/ViewStatementDialog";
 import { listInvoices, type Invoice } from "@/lib/api/invoices";
@@ -55,9 +57,10 @@ import { listCustomers } from "@/lib/api/customers";
 import {
   listCustomerTransactions,
   deleteCustomerTransaction,
-  settleReceipt,
+  settleUpfront,
   getTransactionStatus,
   remainingBalance,
+  availableCredit,
 } from "@/lib/api/customer-transactions";
 import type {
   Customer,
@@ -131,6 +134,7 @@ function Page() {
   const [statusFilter, setStatusFilter] = useState<"all" | CustomerTransactionStatus>("all");
   const [paying, setPaying] = useState<CustomerTransaction | null>(null);
   const [editingEntry, setEditingEntry] = useState<CustomerTransaction | null>(null);
+  const [applyingCredit, setApplyingCredit] = useState<CustomerTransaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [statementOpen, setStatementOpen] = useState(false);
@@ -242,24 +246,31 @@ function Page() {
     const totalOutstanding = formatMoneyGroups(
       debtRows.map((t) => ({ amount: remainingBalance(t), currency: t.currency })),
     );
-    // What's actually landed in the bank: payments collected against debts,
-    // plus extra/upfront money customers have handed over outright. Distinct
-    // from "Total outstanding", which is what's still owed.
+    // What's actually landed in the bank: payments collected against debts
+    // (which now includes credit applied via "Apply to a debt", not just
+    // fresh payments), plus whatever extra/upfront credit hasn't been
+    // applied anywhere yet. Applied credit is subtracted back out of the
+    // extra/upfront side so it isn't counted twice — it was already counted
+    // once, back when the money first came in as extra/upfront.
     const totalReceived = formatMoneyGroups([
       ...debtRows.map((t) => ({ amount: t.amountPaid, currency: t.currency })),
       ...ledgerRows
         .filter((t) => t.type === "extra" || t.type === "upfront")
-        .map((t) => ({ amount: t.amount, currency: t.currency })),
+        .map((t) => ({ amount: availableCredit(t), currency: t.currency })),
     ]);
+    // "Balance" / "received" here mean unapplied credit still sitting on
+    // the account — once some or all of it is applied to a debt (see
+    // "Apply to a debt"), it stops counting here and shows up reducing
+    // Total outstanding instead.
     const totalExtra = formatMoneyGroups(
       ledgerRows
-        .filter((t) => t.type === "extra" && !t.settled)
-        .map((t) => ({ amount: t.amount, currency: t.currency })),
+        .filter((t) => t.type === "extra")
+        .map((t) => ({ amount: availableCredit(t), currency: t.currency })),
     );
     const totalUpfront = formatMoneyGroups(
       ledgerRows
-        .filter((t) => t.type === "upfront" && !t.settled)
-        .map((t) => ({ amount: t.amount, currency: t.currency })),
+        .filter((t) => t.type === "upfront")
+        .map((t) => ({ amount: availableCredit(t), currency: t.currency })),
     );
     const customersOwing = new Set(
       debtRows.filter((t) => remainingBalance(t) > 0).map((t) => t.customerId),
@@ -296,16 +307,16 @@ function Page() {
     }
   }
 
-  async function handleSettleReceipt(t: CustomerTransaction) {
+  async function handleSettleUpfront(t: CustomerTransaction) {
     if (!canEdit) {
       toast.error("You don't have permission to edit ledger entries");
       return;
     }
     setBusyId(t.id);
     try {
-      const updated = await settleReceipt(t.id);
+      const updated = await settleUpfront(t.id);
       setTransactions((rows) => (rows ?? []).map((r) => (r.id === updated.id ? updated : r)));
-      toast.success("Marked as paid");
+      toast.success("Marked as settled — now counted as an extra receipt");
     } catch (err) {
       toast.error("Couldn't settle this entry", { description: getErrorMessage(err) });
     } finally {
@@ -397,6 +408,7 @@ function Page() {
       header: "Amount",
       render: (r) => {
         const remaining = remainingBalance(r);
+        const credit = availableCredit(r);
         return (
           <div className="flex flex-col">
             <span className="font-semibold tabular-nums">{formatMoney(r.amount, r.currency)}</span>
@@ -405,6 +417,13 @@ function Page() {
                 {remaining > 0
                   ? `${formatMoney(remaining, r.currency)} still owed`
                   : "Fully paid back"}
+              </span>
+            ) : null}
+            {r.type !== "debt" && r.amountPaid > 0 ? (
+              <span className="text-xs text-muted-foreground">
+                {credit > 0
+                  ? `${formatMoney(credit, r.currency)} still available`
+                  : "Fully applied to a debt"}
               </span>
             ) : null}
           </div>
@@ -434,18 +453,9 @@ function Page() {
       key: "id",
       header: "Status",
       className: "w-px",
-      render: (r) => {
-        const status = getTransactionStatus(r);
-        // "Settled" is shared with fully-paid debts; for extra/upfront rows
-        // it means the money itself was paid out/used, so show "Paid"
-        // instead without touching the debt wording or the underlying
-        // status value used for filtering.
-        const label =
-          status === "settled" && (r.type === "extra" || r.type === "upfront")
-            ? "Paid"
-            : CUSTOMER_TRANSACTION_STATUS_LABELS[status];
-        return <StatusPill status={label} />;
-      },
+      render: (r) => (
+        <StatusPill status={CUSTOMER_TRANSACTION_STATUS_LABELS[getTransactionStatus(r)]} />
+      ),
     },
     {
       key: "id",
@@ -483,14 +493,19 @@ function Page() {
                   <MessageCircle className="size-4" /> Send reminder
                 </DropdownMenuItem>
               ) : null}
-              {r.type === "upfront" && !r.settled ? (
+              {r.type === "upfront" ? (
                 <DropdownMenuItem onSelect={() => sendUpfrontReceipt(r)}>
                   <MessageCircle className="size-4" /> Send receipt
                 </DropdownMenuItem>
               ) : null}
-              {canEdit && (r.type === "upfront" || r.type === "extra") && !r.settled ? (
-                <DropdownMenuItem onSelect={() => handleSettleReceipt(r)}>
-                  <CheckCircle2 className="size-4" /> Mark as paid
+              {canEdit && r.type === "upfront" ? (
+                <DropdownMenuItem onSelect={() => handleSettleUpfront(r)}>
+                  <CheckCircle2 className="size-4" /> Settle
+                </DropdownMenuItem>
+              ) : null}
+              {canEdit && r.type !== "debt" && availableCredit(r) > 0 ? (
+                <DropdownMenuItem onSelect={() => setApplyingCredit(r)}>
+                  <ArrowRightLeft className="size-4" /> Apply to a debt
                 </DropdownMenuItem>
               ) : null}
               {canDelete ? (
@@ -669,6 +684,27 @@ function Page() {
           setTransactions((rows) => (rows ?? []).map((r) => (r.id === updated.id ? updated : r)));
           listCustomers().then(setCustomers);
           setPaying(null);
+        }}
+      />
+
+      <ApplyCreditDialog
+        credit={applyingCredit}
+        debts={(transactions ?? []).filter(
+          (t) =>
+            applyingCredit &&
+            t.customerId === applyingCredit.customerId &&
+            t.type === "debt" &&
+            remainingBalance(t) > 0,
+        )}
+        onClose={() => setApplyingCredit(null)}
+        onApplied={(updatedCredit, updatedDebt) => {
+          setTransactions((rows) =>
+            (rows ?? []).map((r) =>
+              r.id === updatedCredit.id ? updatedCredit : r.id === updatedDebt.id ? updatedDebt : r,
+            ),
+          );
+          listCustomers().then(setCustomers);
+          setApplyingCredit(null);
         }}
       />
 

@@ -43,20 +43,9 @@ function Layout() {
     email: profile.email,
   };
 
-  // Admin-only items (currently just Recycle Bin) never render in the
-  // sidebar for anyone else — once something's deleted, only an admin
-  // should be able to find it again.
-  const isAdmin = profile.role === "admin";
-  const nav = isAdmin
-    ? staffNav
-    : staffNav.map((group) => ({
-        ...group,
-        items: group.items.filter((item) => !item.adminOnly),
-      }));
-
   return (
     <PortalShell
-      nav={nav}
+      nav={staffNav}
       persona={persona}
       onSignOut={async () => {
         await signOut();

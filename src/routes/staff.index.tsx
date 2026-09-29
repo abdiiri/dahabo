@@ -17,21 +17,19 @@ import {
   CircleDot,
   XCircle,
   MapPin,
-  Handshake,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/common/StatusPill";
-import { cn, getErrorMessage, recentMonthOptions, isInMonth } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import { listDrivers } from "@/lib/api/drivers";
 import { listStaff } from "@/lib/api/staff";
 import { listVehicles } from "@/lib/api/vehicles";
 import { listTrips } from "@/lib/api/trips";
 import { listTransportOrders } from "@/lib/api/transport-orders";
 import { listVehicleProfitThisMonth } from "@/lib/api/vehicle-profit";
-import { listPartnerJobs } from "@/lib/api/partner-jobs";
 import {
   TRIP_STATUS_LABELS,
   TRANSPORT_ORDER_STATUS_LABELS,
@@ -41,7 +39,6 @@ import {
   type Trip,
   type TransportOrder,
   type VehicleProfitMonth,
-  type PartnerJob,
 } from "@/lib/api/types";
 
 export const Route = createFileRoute("/staff/")({
@@ -61,7 +58,6 @@ function Page() {
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [orders, setOrders] = useState<TransportOrder[] | null>(null);
   const [profit, setProfit] = useState<VehicleProfitMonth[] | null>(null);
-  const [partnerJobs, setPartnerJobs] = useState<PartnerJob[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -77,8 +73,7 @@ function Page() {
       listTrips(),
       listTransportOrders(),
       listVehicleProfitThisMonth(),
-      listPartnerJobs(),
-    ]).then(([d, s, v, t, o, p, pj]) => {
+    ]).then(([d, s, v, t, o, p]) => {
       if (!onlyIfActive()) return;
       setDrivers(d.status === "fulfilled" ? d.value : []);
       setStaff(s.status === "fulfilled" ? s.value : []);
@@ -86,8 +81,7 @@ function Page() {
       setTrips(t.status === "fulfilled" ? t.value : []);
       setOrders(o.status === "fulfilled" ? o.value : []);
       setProfit(p.status === "fulfilled" ? p.value : []);
-      setPartnerJobs(pj.status === "fulfilled" ? pj.value : []);
-      const failed = [d, s, v, t, o, p, pj].find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+      const failed = [d, s, v, t, o, p].find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
       if (failed) setError(getErrorMessage(failed.reason, "Some dashboard data couldn't be loaded."));
     });
   }
@@ -105,7 +99,7 @@ function Page() {
     load(() => true).finally(() => setRefreshing(false));
   }
 
-  const loading = drivers === null || staff === null || vehicles === null || trips === null || orders === null || profit === null || partnerJobs === null;
+  const loading = drivers === null || staff === null || vehicles === null || trips === null || orders === null || profit === null;
 
   if (loading) {
     return (
@@ -125,13 +119,6 @@ function Page() {
   const activeDrivers = drivers.filter((d) => d.accountStatus !== "suspended");
   const activeStaff = staff.filter((s) => s.status !== "suspended");
   const recentTrips = [...trips].slice(0, 5);
-
-  const currentMonthKey = recentMonthOptions()[0];
-  const partnerJobsThisMonth = partnerJobs.filter((j) => isInMonth(j.createdAt, currentMonthKey));
-  const partnerMarginThisMonth = partnerJobsThisMonth.reduce(
-    (sum, j) => sum + (j.agreedAmount !== undefined ? j.agreedAmount - j.payoutAmount : 0),
-    0,
-  );
 
   const tripStatusMeta: Record<Trip["status"], { icon: typeof CircleDot; tone: string; iconClass: string }> = {
     scheduled: { icon: CalendarClock, tone: "bg-warning/12 text-warning", iconClass: "" },
@@ -181,24 +168,6 @@ function Page() {
           value={String(pendingOrders.length)}
           icon={ClipboardList}
           tone={pendingOrders.length > 0 ? "warning" : "default"}
-        />
-      </section>
-
-      {/* Partner Fleet — jobs handed to owner-operators instead of run
-          through the company's own fleet, kept separate from the numbers
-          above since none of that money touches Vehicle Profit. */}
-      <section className="grid gap-4 sm:grid-cols-2">
-        <StatCard
-          label="Partner jobs (this month)"
-          value={String(partnerJobsThisMonth.length)}
-          icon={Handshake}
-          tone="default"
-        />
-        <StatCard
-          label="Partner margin (this month)"
-          value={`KSh ${partnerMarginThisMonth.toLocaleString()}`}
-          icon={TrendingUp}
-          tone={partnerMarginThisMonth >= 0 ? "success" : "danger"}
         />
       </section>
 
